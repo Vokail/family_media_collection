@@ -89,7 +89,7 @@ interface Props {
 export default function CollectionGrid({ member, collection, initialItems, isEditor, supabaseUrl }: Props) {
   const [isWishlist, setIsWishlist] = useState(false)
   const [items, setItems] = useState(initialItems)
-  const [sort, setSort] = useState<SortMode>('added')
+  const [sort, setSort] = useState<SortMode>('creator')
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({})
 
   function handleUpdate(updated: Item) {
