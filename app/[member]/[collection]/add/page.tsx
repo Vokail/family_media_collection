@@ -80,7 +80,7 @@ export default function AddItemPage() {
       }),
     })
     setAdding(null)
-    router.push(`/${member}/${collection}`)
+    window.location.href = `/${member}/${collection}`
   }
 
   const collectionLabel = collection === 'vinyl' ? 'Vinyl' : collection === 'book' ? 'Book' : 'Comic'
