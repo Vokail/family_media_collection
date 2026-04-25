@@ -1,27 +1,85 @@
+@import url('https://fonts.googleapis.com/css2?family=Lora:wght@400;600;700&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg: #f5ede0;
+  --bg-card: #fff;
+  --text: #2c1a0e;
+  --text-muted: #8b6914;
+  --accent: #c67c3c;
+  --accent-hover: #a85e20;
+  --border: #e8d5b7;
+  --shadow: rgba(0,0,0,0.10);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --bg: #1c1510;
+    --bg-card: #2a1f16;
+    --text: #f5ede0;
+    --text-muted: #c9a96e;
+    --accent: #c67c3c;
+    --accent-hover: #e09050;
+    --border: #3d2e1e;
+    --shadow: rgba(0,0,0,0.4);
   }
 }
 
 body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: system-ui, sans-serif;
 }
 
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
+h1, h2, h3 { font-family: 'Lora', Georgia, serif; }
+
+@layer components {
+  .btn-primary {
+    @apply px-5 py-2 rounded-full font-semibold text-white transition-colors;
+    background-color: var(--accent);
+  }
+  .btn-primary:hover { background-color: var(--accent-hover); }
+
+  .btn-ghost {
+    @apply px-4 py-1.5 rounded-full text-sm font-medium transition-colors;
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+  }
+  .btn-ghost.active {
+    background-color: var(--accent);
+    color: white;
+    border-color: var(--accent);
+  }
+
+  .card {
+    background-color: var(--bg-card);
+    border: 1px solid var(--border);
+    box-shadow: 0 2px 8px var(--shadow);
+    @apply rounded-xl;
+  }
+
+  .input {
+    background-color: var(--bg-card);
+    border: 1px solid var(--border);
+    color: var(--text);
+    @apply w-full px-4 py-2 rounded-xl outline-none;
+  }
+  .input:focus { border-color: var(--accent); }
+
+  .label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .subtitle { color: var(--text-muted); font-style: italic; }
+
+  .placeholder-tile {
+    background-color: var(--border);
+    @apply rounded-lg flex items-center justify-center aspect-square;
   }
 }
