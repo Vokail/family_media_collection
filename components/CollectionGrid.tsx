@@ -58,7 +58,7 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
         <button className={`btn-ghost ${isWishlist ? 'active' : ''}`} onClick={() => setIsWishlist(true)}>Wishlist</button>
       </div>
 
-      <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-6">
+      <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
         {displayed.map(item => (
           <ItemCard
             key={item.id}

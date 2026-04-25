@@ -22,7 +22,7 @@ export default async function CollectionPage({
   const items = await listItems(member.id, collection as CollectionType)
 
   return (
-    <main className="min-h-screen p-4 max-w-2xl mx-auto">
+    <main className="min-h-screen p-4 max-w-2xl lg:max-w-4xl xl:max-w-6xl mx-auto">
       <div className="flex items-center gap-3 mb-6">
         <Link href="/members" className="btn-ghost text-sm">← Members</Link>
         <h1 className="font-serif text-xl font-bold">{member.name}</h1>
