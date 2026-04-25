@@ -96,7 +96,7 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
                 </div>
               </>
             ) : (
-              notes && <p className="subtitle text-sm text-center italic">"{notes}"</p>
+              notes && <p className="subtitle text-sm text-center italic">&ldquo;{notes}&rdquo;</p>
             )}
             <button onClick={() => setOpen(false)} className="btn-ghost w-full text-center">Close</button>
           </div>
