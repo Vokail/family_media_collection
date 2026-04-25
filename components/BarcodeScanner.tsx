@@ -18,7 +18,8 @@ export default function BarcodeScanner({ onDetected, onClose }: Props) {
       try {
         const { BrowserMultiFormatReader } = await import('@zxing/browser')
         const reader = new BrowserMultiFormatReader()
-        controls = await reader.decodeFromVideoElement(
+        controls = await reader.decodeFromConstraints(
+          { video: { facingMode: 'environment' } },
           videoRef.current!,
           (result) => {
             if (result) {
@@ -48,7 +49,7 @@ export default function BarcodeScanner({ onDetected, onClose }: Props) {
         <p className="text-red-400 text-center p-8">{error}</p>
       ) : (
         <div className="relative flex-1">
-          <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
+          <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="w-64 h-1 bg-green-400 opacity-80" />
           </div>
