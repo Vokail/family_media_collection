@@ -13,7 +13,7 @@ export async function GET(request: Request) {
   const lang = searchParams.get('lang') ?? undefined
   const results = type === 'vinyl' ? await searchVinyl(q)
     : type === 'book' ? await searchBooks(q, lang)
-    : await searchComics(q, lang)
+    : await searchComics(q)
 
   return NextResponse.json(results)
 }

@@ -92,7 +92,7 @@ export default function AddItemPage() {
         <h1 className="font-serif text-xl font-bold">Add {collectionLabel}</h1>
       </div>
 
-      {(collection === 'comic' || collection === 'book') && (
+      {collection === 'book' && (
         <div className="flex gap-2 mb-3 flex-wrap">
           {COMIC_LANGUAGES.map(l => (
             <button
