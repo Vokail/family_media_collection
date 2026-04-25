@@ -66,9 +66,13 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
       {open && (
         <div className="fixed inset-0 bg-black/60 flex items-end z-50" onClick={() => setOpen(false)}>
           <div
-            className="card w-full rounded-b-none p-6 flex flex-col gap-4 max-h-[85vh] overflow-y-auto"
+            className="card w-full rounded-b-none flex flex-col max-h-[90vh]"
             onClick={e => e.stopPropagation()}
           >
+            <div className="flex justify-end p-3 border-b flex-shrink-0" style={{ borderColor: 'var(--border)' }}>
+              <button onClick={() => setOpen(false)} className="btn-ghost px-3 py-1 text-sm">✕ Close</button>
+            </div>
+            <div className="p-6 flex flex-col gap-4 overflow-y-auto">
             {coverSrc && (
               <Image src={coverSrc} alt={item.title} width={120} height={120} className="rounded-lg shadow mx-auto" />
             )}
@@ -112,7 +116,7 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
                 </ol>
               </div>
             )}
-            <button onClick={() => setOpen(false)} className="btn-ghost w-full text-center">Close</button>
+            </div>
           </div>
         </div>
       )}
