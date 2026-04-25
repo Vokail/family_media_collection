@@ -99,6 +99,8 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
     setItems(prev => prev.filter(i => i.id !== id))
   }
 
+  const ownedCount = items.filter(i => !i.is_wishlist).length
+  const wishlistCount = items.filter(i => i.is_wishlist).length
   const filtered = items.filter(i => i.is_wishlist === isWishlist)
   const sorted = sortItems(filtered, sort)
   const byCreator = sort === 'creator'
@@ -151,8 +153,8 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
 
       {/* Owned / Wishlist + Sort */}
       <div className="flex items-center gap-2 flex-wrap">
-        <button className={`btn-ghost ${!isWishlist ? 'active' : ''}`} onClick={() => setIsWishlist(false)}>Owned</button>
-        <button className={`btn-ghost ${isWishlist ? 'active' : ''}`} onClick={() => setIsWishlist(true)}>Wishlist</button>
+        <button className={`btn-ghost ${!isWishlist ? 'active' : ''}`} onClick={() => setIsWishlist(false)}>Owned <span className="opacity-70">({ownedCount})</span></button>
+        <button className={`btn-ghost ${isWishlist ? 'active' : ''}`} onClick={() => setIsWishlist(true)}>Wishlist <span className="opacity-70">({wishlistCount})</span></button>
         <div className="ml-auto flex items-center gap-2">
           <span className="label">Sort</span>
           <select
