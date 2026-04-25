@@ -1,0 +1,39 @@
+export type CollectionType = 'vinyl' | 'book' | 'comic'
+export type Role = 'viewer' | 'editor'
+
+export interface Member {
+  id: string
+  name: string
+  slug: string
+}
+
+export interface Item {
+  id: string
+  member_id: string
+  collection: CollectionType
+  title: string
+  creator: string
+  year: number | null
+  cover_path: string | null
+  is_wishlist: boolean
+  notes: string | null
+  created_at: string
+}
+
+export interface Setting {
+  key: 'view_pin_hash' | 'family_password_hash'
+  value: string
+}
+
+export interface SearchResult {
+  external_id: string
+  title: string
+  creator: string
+  year: number | null
+  cover_url: string | null
+  source: 'openlibrary' | 'discogs' | 'comicvine'
+}
+
+export interface SessionData {
+  role: Role
+}
