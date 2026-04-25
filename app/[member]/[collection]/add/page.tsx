@@ -77,7 +77,7 @@ export default function AddItemPage() {
           onChange={e => setQuery(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && runSearch(query)}
         />
-        <button onClick={() => setScanning(true)} className="btn-ghost px-4 text-xl" title="Scan barcode">📷</button>
+        <button onClick={() => setScanning(true)} className="btn-ghost px-4 text-xl md:hidden" title="Scan barcode">📷</button>
         <button onClick={() => runSearch(query)} className="btn-primary px-4" disabled={loading}>
           {loading ? '…' : 'Search'}
         </button>
