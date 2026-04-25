@@ -7,8 +7,18 @@ const CV_HEADERS = {
   'Accept': 'application/json',
 }
 
-export async function searchComics(query: string): Promise<SearchResult[]> {
-  const url = `${BASE}/search/?api_key=${process.env.COMICVINE_API_KEY}&format=json&query=${encodeURIComponent(query)}&resources=volume&field_list=id,name,start_year,image,publisher&limit=10`
+const LANG_TERMS: Record<string, string> = {
+  dutch: 'Dutch',
+  english: 'English',
+  french: 'French',
+  german: 'German',
+}
+
+export async function searchComics(query: string, lang?: string): Promise<SearchResult[]> {
+  const q = lang && lang !== 'all' && LANG_TERMS[lang]
+    ? `${query} ${LANG_TERMS[lang]}`
+    : query
+  const url = `${BASE}/search/?api_key=${process.env.COMICVINE_API_KEY}&format=json&query=${encodeURIComponent(q)}&resources=volume&field_list=id,name,start_year,image,publisher&limit=10`
   try {
     const res = await fetch(url, { headers: CV_HEADERS })
     if (!res.ok) return []

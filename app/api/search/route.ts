@@ -10,9 +10,10 @@ export async function GET(request: Request) {
 
   if (!q || !type) return NextResponse.json({ error: 'Missing q or type' }, { status: 400 })
 
+  const lang = searchParams.get('lang') ?? undefined
   const results = type === 'vinyl' ? await searchVinyl(q)
     : type === 'book' ? await searchBooks(q)
-    : await searchComics(q)
+    : await searchComics(q, lang)
 
   return NextResponse.json(results)
 }

@@ -1,9 +1,19 @@
 'use client'
 import { useParams, useRouter } from 'next/navigation'
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import BarcodeScanner from '@/components/BarcodeScanner'
 import SearchResults from '@/components/SearchResults'
 import type { SearchResult, CollectionType } from '@/lib/types'
+
+const COMIC_LANGUAGES = [
+  { value: 'dutch', label: 'Nederlands' },
+  { value: 'english', label: 'English' },
+  { value: 'french', label: 'Français' },
+  { value: 'german', label: 'Deutsch' },
+  { value: 'all', label: 'All languages' },
+]
+
+const LANG_STORAGE_KEY = 'comic_search_lang'
 
 export default function AddItemPage() {
   const params = useParams()
@@ -16,14 +26,27 @@ export default function AddItemPage() {
   const [loading, setLoading] = useState(false)
   const [adding, setAdding] = useState<string | null>(null)
   const [scanning, setScanning] = useState(false)
+  const [comicLang, setComicLang] = useState('dutch')
+
+  useEffect(() => {
+    const saved = localStorage.getItem(LANG_STORAGE_KEY)
+    if (saved) setComicLang(saved)
+  }, [])
+
+  function handleLangChange(lang: string) {
+    setComicLang(lang)
+    localStorage.setItem(LANG_STORAGE_KEY, lang)
+  }
 
   const runSearch = useCallback(async (q: string) => {
     if (!q.trim()) return
     setLoading(true)
-    const res = await fetch(`/api/search?q=${encodeURIComponent(q)}&type=${collection}`)
+    const lang = collection === 'comic' ? comicLang : undefined
+    const url = `/api/search?q=${encodeURIComponent(q)}&type=${collection}${lang ? `&lang=${lang}` : ''}`
+    const res = await fetch(url)
     setResults(res.ok ? await res.json() : [])
     setLoading(false)
-  }, [collection])
+  }, [collection, comicLang])
 
   const handleBarcodeDetected = useCallback(async (code: string) => {
     setScanning(false)
@@ -68,6 +91,20 @@ export default function AddItemPage() {
         <button onClick={() => router.back()} className="btn-ghost text-sm">← Back</button>
         <h1 className="font-serif text-xl font-bold">Add {collectionLabel}</h1>
       </div>
+
+      {collection === 'comic' && (
+        <div className="flex gap-2 mb-3 flex-wrap">
+          {COMIC_LANGUAGES.map(l => (
+            <button
+              key={l.value}
+              onClick={() => handleLangChange(l.value)}
+              className={`btn-ghost text-xs ${comicLang === l.value ? 'active' : ''}`}
+            >
+              {l.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       <div className="flex gap-2 mb-4">
         <input
