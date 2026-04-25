@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { revalidatePath } from 'next/cache'
 import { listItems, createItem } from '@/lib/db/items'
 import { getMemberBySlug } from '@/lib/db/members'
 import type { CollectionType } from '@/lib/types'
@@ -40,5 +41,6 @@ export async function POST(request: Request) {
     notes: null,
     tracklist: tracklist?.length ? tracklist : null,
   })
+  revalidatePath(`/${memberSlug}/${collection}`)
   return NextResponse.json(item, { status: 201 })
 }
