@@ -22,8 +22,7 @@ export async function POST(request: Request) {
 
   let cover_path: string | null = null
   if (cover_url) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { downloadCover } = await import('@/lib/cover' as any)
+    const { downloadCover } = await import('@/lib/cover')
     cover_path = await downloadCover(cover_url, member.id)
   }
 
