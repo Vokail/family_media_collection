@@ -16,15 +16,18 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   const body = await request.json()
-  const { memberSlug, collection, title, creator, year, cover_url, is_wishlist } = body
+  const { memberSlug, collection, title, creator, year, cover_url, is_wishlist, external_id } = body
   const member = await getMemberBySlug(memberSlug)
   if (!member) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  let cover_path: string | null = null
-  if (cover_url) {
-    const { downloadCover } = await import('@/lib/cover')
-    cover_path = await downloadCover(cover_url, member.id)
-  }
+  const [cover_path, tracklist] = await Promise.all([
+    cover_url
+      ? import('@/lib/cover').then(m => m.downloadCover(cover_url, member.id))
+      : Promise.resolve(null),
+    collection === 'vinyl' && external_id
+      ? import('@/lib/apis/discogs').then(m => m.fetchVinylTracklist(external_id))
+      : Promise.resolve(null),
+  ])
 
   const item = await createItem({
     member_id: member.id,
@@ -35,6 +38,7 @@ export async function POST(request: Request) {
     cover_path,
     is_wishlist: is_wishlist ?? false,
     notes: null,
+    tracklist: tracklist?.length ? tracklist : null,
   })
   return NextResponse.json(item, { status: 201 })
 }

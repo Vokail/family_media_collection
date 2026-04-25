@@ -1,7 +1,7 @@
 'use client'
 import Image from 'next/image'
 import { useState } from 'react'
-import type { Item } from '@/lib/types'
+import type { Item, Track } from '@/lib/types'
 
 interface Props {
   item: Item
@@ -97,6 +97,20 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
               </>
             ) : (
               notes && <p className="subtitle text-sm text-center italic">&ldquo;{notes}&rdquo;</p>
+            )}
+            {item.tracklist && item.tracklist.length > 0 && (
+              <div>
+                <p className="label mb-2 block">Tracklist</p>
+                <ol className="flex flex-col gap-1">
+                  {item.tracklist.map((track: Track, i: number) => (
+                    <li key={i} className="flex gap-2 text-sm">
+                      <span className="subtitle w-8 flex-shrink-0">{track.position || i + 1}</span>
+                      <span className="flex-1">{track.title}</span>
+                      {track.duration && <span className="subtitle flex-shrink-0">{track.duration}</span>}
+                    </li>
+                  ))}
+                </ol>
+              </div>
             )}
             <button onClick={() => setOpen(false)} className="btn-ghost w-full text-center">Close</button>
           </div>

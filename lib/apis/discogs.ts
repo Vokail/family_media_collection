@@ -1,4 +1,4 @@
-import type { SearchResult } from '../types'
+import type { SearchResult, Track } from '../types'
 
 const BASE = 'https://api.discogs.com'
 const headers = () => ({
@@ -30,6 +30,18 @@ export async function searchVinyl(query: string): Promise<SearchResult[]> {
   if (!res.ok) return []
   const data = await res.json()
   return (data.results ?? []).map(mapResult)
+}
+
+export async function fetchVinylTracklist(releaseId: string): Promise<Track[]> {
+  const url = `${BASE}/releases/${releaseId}`
+  const res = await fetch(url, { headers: headers() })
+  if (!res.ok) return []
+  const data = await res.json()
+  return (data.tracklist ?? []).map((t: Record<string, unknown>) => ({
+    position: (t.position as string) || '',
+    title: (t.title as string) || '',
+    duration: (t.duration as string) || null,
+  }))
 }
 
 export async function lookupVinylByBarcode(barcode: string): Promise<SearchResult | null> {

@@ -7,6 +7,12 @@ export interface Member {
   slug: string
 }
 
+export interface Track {
+  position: string
+  title: string
+  duration: string | null
+}
+
 export interface Item {
   id: string
   member_id: string
@@ -17,6 +23,7 @@ export interface Item {
   cover_path: string | null
   is_wishlist: boolean
   notes: string | null
+  tracklist: Track[] | null
   created_at: string
 }
 

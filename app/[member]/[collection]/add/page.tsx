@@ -53,6 +53,7 @@ export default function AddItemPage() {
         year: result.year,
         cover_url: result.cover_url,
         is_wishlist: isWishlist,
+        external_id: result.external_id,
       }),
     })
     setAdding(null)
