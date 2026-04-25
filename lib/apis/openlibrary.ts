@@ -11,8 +11,17 @@ function mapDoc(doc: Record<string, unknown>): SearchResult {
   }
 }
 
-export async function searchBooks(query: string): Promise<SearchResult[]> {
-  const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&fields=key,title,author_name,first_publish_year,cover_i&limit=10`
+const OL_LANG_CODES: Record<string, string> = {
+  dutch: 'dut',
+  english: 'eng',
+  french: 'fre',
+  german: 'ger',
+}
+
+export async function searchBooks(query: string, lang?: string): Promise<SearchResult[]> {
+  const langCode = lang && lang !== 'all' ? OL_LANG_CODES[lang] : undefined
+  const langParam = langCode ? `&language=${langCode}` : ''
+  const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&fields=key,title,author_name,first_publish_year,cover_i&limit=10${langParam}`
   const res = await fetch(url)
   if (!res.ok) return []
   const data = await res.json()

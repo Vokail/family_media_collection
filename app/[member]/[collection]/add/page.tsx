@@ -13,7 +13,7 @@ const COMIC_LANGUAGES = [
   { value: 'all', label: 'All languages' },
 ]
 
-const LANG_STORAGE_KEY = 'comic_search_lang'
+const langStorageKey = (col: string) => `search_lang_${col}`
 
 export default function AddItemPage() {
   const params = useParams()
@@ -29,13 +29,13 @@ export default function AddItemPage() {
   const [comicLang, setComicLang] = useState('dutch')
 
   useEffect(() => {
-    const saved = localStorage.getItem(LANG_STORAGE_KEY)
+    const saved = localStorage.getItem(langStorageKey(collection))
     if (saved) setComicLang(saved)
-  }, [])
+  }, [collection])
 
   function handleLangChange(lang: string) {
     setComicLang(lang)
-    localStorage.setItem(LANG_STORAGE_KEY, lang)
+    localStorage.setItem(langStorageKey(collection), lang)
   }
 
   const runSearch = useCallback(async (q: string) => {
@@ -92,7 +92,7 @@ export default function AddItemPage() {
         <h1 className="font-serif text-xl font-bold">Add {collectionLabel}</h1>
       </div>
 
-      {collection === 'comic' && (
+      {(collection === 'comic' || collection === 'book') && (
         <div className="flex gap-2 mb-3 flex-wrap">
           {COMIC_LANGUAGES.map(l => (
             <button
