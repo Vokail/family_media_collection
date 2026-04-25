@@ -41,8 +41,41 @@ function sortItems(items: Item[], mode: SortMode): Item[] {
   const copy = [...items]
   if (mode === 'creator') return copy.sort((a, b) => sortKey(a.creator).localeCompare(sortKey(b.creator)))
   if (mode === 'title') return copy.sort((a, b) => a.title.toLowerCase().localeCompare(b.title.toLowerCase()))
-  if (mode === 'year') return copy.sort((a, b) => (a.year ?? 0) - (b.year ?? 0))
+  if (mode === 'year') return copy.sort((a, b) => (a.year ?? 9999) - (b.year ?? 9999))
   return copy // 'added' — already newest-first from DB
+}
+
+interface YearGroup { label: string; shortKey: string; items: Item[] }
+
+function buildYearGroups(items: Item[]): YearGroup[] {
+  const withYear = items.filter(i => i.year != null)
+  const noYear = items.filter(i => i.year == null)
+
+  // Bucket by decade
+  const decadeMap = new Map<number, Item[]>()
+  for (const item of withYear) {
+    const decade = Math.floor(item.year! / 10) * 10
+    if (!decadeMap.has(decade)) decadeMap.set(decade, [])
+    decadeMap.get(decade)!.push(item)
+  }
+
+  const groups: YearGroup[] = []
+  Array.from(decadeMap.entries())
+    .sort(([a], [b]) => a - b)
+    .forEach(([decade, decadeItems]) => {
+      if (decadeItems.length > 12) {
+        // Split into two halves
+        const first = decadeItems.filter(i => i.year! < decade + 5)
+        const second = decadeItems.filter(i => i.year! >= decade + 5)
+        if (first.length > 0) groups.push({ label: `${decade}–${decade + 4}`, shortKey: `'${String(decade).slice(-2)}a`, items: first })
+        if (second.length > 0) groups.push({ label: `${decade + 5}–${decade + 9}`, shortKey: `'${String(decade).slice(-2)}b`, items: second })
+      } else {
+        groups.push({ label: `${decade}–${decade + 9}`, shortKey: `'${String(decade).slice(-2)}s`, items: decadeItems })
+      }
+    })
+
+  if (noYear.length > 0) groups.push({ label: 'Unknown', shortKey: '?', items: noYear })
+  return groups
 }
 
 interface Props {
@@ -69,9 +102,10 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
   const filtered = items.filter(i => i.is_wishlist === isWishlist)
   const sorted = sortItems(filtered, sort)
   const byCreator = sort === 'creator'
+  const byYear = sort === 'year'
 
   // Build groups when sorted by creator
-  const groups: { letter: string; items: Item[] }[] = []
+  const creatorGroups: { letter: string; items: Item[] }[] = []
   if (byCreator) {
     const map = new Map<string, Item[]>()
     for (const item of sorted) {
@@ -80,14 +114,16 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
       map.get(k)!.push(item)
     }
     Array.from(map.entries()).forEach(([letter, groupItems]) => {
-      groups.push({ letter, items: groupItems })
+      creatorGroups.push({ letter, items: groupItems })
     })
   }
 
-  const letters = groups.map(g => g.letter)
+  const yearGroups: YearGroup[] = byYear ? buildYearGroups(sorted) : []
 
-  function scrollTo(letter: string) {
-    sectionRefs.current[letter]?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  const sidebarKeys = byCreator ? creatorGroups.map(g => g.letter) : yearGroups.map(g => g.shortKey)
+
+  function scrollTo(key: string) {
+    sectionRefs.current[key]?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
   return (
@@ -133,7 +169,7 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
       <div className="relative">
         {byCreator ? (
           <>
-            {groups.map(g => (
+            {creatorGroups.map(g => (
               <div
                 key={g.letter}
                 ref={el => { sectionRefs.current[g.letter] = el }}
@@ -152,17 +188,52 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
                 </div>
               </div>
             ))}
-            {/* A–Z sidebar */}
-            {letters.length > 0 && (
+            {sidebarKeys.length > 0 && (
               <div className="fixed right-1 top-1/2 -translate-y-1/2 flex flex-col z-20 select-none">
-                {letters.map(l => (
+                {sidebarKeys.map(k => (
                   <button
-                    key={l}
-                    onClick={() => scrollTo(l)}
+                    key={k}
+                    onClick={() => scrollTo(k)}
                     className="text-xs font-bold leading-tight px-1 py-0.5"
                     style={{ color: 'var(--accent)' }}
                   >
-                    {l}
+                    {k}
+                  </button>
+                ))}
+              </div>
+            )}
+          </>
+        ) : byYear ? (
+          <>
+            {yearGroups.map(g => (
+              <div
+                key={g.shortKey}
+                ref={el => { sectionRefs.current[g.shortKey] = el }}
+                className="mb-6"
+              >
+                <h3
+                  className="font-serif text-lg font-bold mb-2 px-1"
+                  style={{ color: 'var(--accent)' }}
+                >
+                  {g.label}
+                </h3>
+                <div className={GRID}>
+                  {g.items.map(item => (
+                    <ItemCard key={item.id} item={item} isEditor={isEditor} onUpdate={handleUpdate} onDelete={handleDelete} supabaseUrl={supabaseUrl} />
+                  ))}
+                </div>
+              </div>
+            ))}
+            {sidebarKeys.length > 0 && (
+              <div className="fixed right-1 top-1/2 -translate-y-1/2 flex flex-col z-20 select-none">
+                {sidebarKeys.map(k => (
+                  <button
+                    key={k}
+                    onClick={() => scrollTo(k)}
+                    className="text-xs font-bold leading-tight px-1 py-0.5"
+                    style={{ color: 'var(--accent)' }}
+                  >
+                    {k}
                   </button>
                 ))}
               </div>
@@ -173,25 +244,16 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
             {sorted.map(item => (
               <ItemCard key={item.id} item={item} isEditor={isEditor} onUpdate={handleUpdate} onDelete={handleDelete} supabaseUrl={supabaseUrl} />
             ))}
-            {isEditor && (
-              <Link
-                href={`/${member.slug}/${collection}/add`}
-                className="aspect-square placeholder-tile flex items-center justify-center text-3xl font-bold hover:opacity-80 transition-opacity"
-                style={{ color: 'var(--accent)' }}
-              >
-                +
-              </Link>
-            )}
           </div>
         )}
       </div>
 
-      {/* Add button when grouped */}
-      {byCreator && isEditor && (
+      {/* Floating add button */}
+      {isEditor && (
         <Link
           href={`/${member.slug}/${collection}/add`}
-          className="aspect-square placeholder-tile flex items-center justify-center text-3xl font-bold hover:opacity-80 transition-opacity w-full max-w-24"
-          style={{ color: 'var(--accent)' }}
+          className="fixed bottom-6 right-6 z-30 w-14 h-14 rounded-full flex items-center justify-center text-2xl font-bold text-white shadow-lg hover:opacity-90 transition-opacity"
+          style={{ backgroundColor: 'var(--accent)' }}
         >
           +
         </Link>

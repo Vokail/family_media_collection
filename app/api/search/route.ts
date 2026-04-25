@@ -15,5 +15,13 @@ export async function GET(request: Request) {
     : type === 'book' ? await searchBooks(q, lang)
     : await searchComics(q)
 
-  return NextResponse.json(results)
+  const seen = new Set<string>()
+  const unique = results.filter(r => {
+    const key = `${r.title.toLowerCase().trim()}||${r.creator.toLowerCase().trim()}`
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+
+  return NextResponse.json(unique)
 }
