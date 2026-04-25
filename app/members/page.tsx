@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import { listMembers } from '@/lib/db/members'
 import MemberCard from '@/components/MemberCard'
 import LogoutButton from '@/components/LogoutButton'

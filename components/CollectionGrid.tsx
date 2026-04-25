@@ -33,14 +33,24 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex gap-2 overflow-x-auto pb-1">
-        {TABS.map(tab => (
-          <Link key={tab.value} href={`/${member.slug}/${tab.value}`}>
-            <span className={`btn-ghost whitespace-nowrap ${collection === tab.value ? 'active' : ''}`}>
+      <div className="flex gap-1 overflow-x-auto pb-1 border-b" style={{ borderColor: 'var(--border)' }}>
+        {TABS.map(tab => {
+          const isActive = collection === tab.value
+          return (
+            <Link
+              key={tab.value}
+              href={`/${member.slug}/${tab.value}`}
+              className="whitespace-nowrap px-4 py-2 text-sm font-semibold transition-colors"
+              style={{
+                color: isActive ? 'var(--accent)' : 'var(--text-muted)',
+                borderBottom: isActive ? '2px solid var(--accent)' : '2px solid transparent',
+                marginBottom: '-1px',
+              }}
+            >
               {tab.label}
-            </span>
-          </Link>
-        ))}
+            </Link>
+          )
+        })}
       </div>
 
       <div className="flex gap-2">
@@ -72,7 +82,11 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
 
       {displayed.length === 0 && (
         <p className="subtitle text-center py-8">
-          {isWishlist ? 'No wishlist items yet.' : 'No items yet. Tap + to add one.'}
+          {isWishlist
+            ? 'No wishlist items yet.'
+            : isEditor
+              ? 'No items yet. Tap + to add one.'
+              : 'No items yet.'}
         </p>
       )}
     </div>
