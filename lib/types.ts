@@ -35,5 +35,5 @@ export interface SearchResult {
 }
 
 export interface SessionData {
-  role: Role
+  role?: Role
 }
