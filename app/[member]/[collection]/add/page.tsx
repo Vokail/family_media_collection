@@ -86,7 +86,7 @@ export default function AddItemPage() {
   const collectionLabel = collection === 'vinyl' ? 'Vinyl' : collection === 'book' ? 'Book' : 'Comic'
 
   return (
-    <main className="min-h-screen p-4 max-w-lg mx-auto">
+    <main className="min-h-screen p-4 max-w-lg md:max-w-2xl mx-auto">
       <div className="flex items-center gap-3 mb-6">
         <button onClick={() => router.back()} className="btn-ghost text-sm">← Back</button>
         <h1 className="font-serif text-xl font-bold">Add {collectionLabel}</h1>

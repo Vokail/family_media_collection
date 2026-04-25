@@ -14,28 +14,28 @@ export default function SearchResults({ results, onAdd, adding }: Props) {
   return (
     <ul className="flex flex-col gap-3">
       {results.map(r => (
-        <li key={r.external_id} className="card p-3 flex gap-3 items-center">
+        <li key={r.external_id} className="card p-3 md:p-4 flex gap-3 md:gap-5 items-center">
           {r.cover_url ? (
-            <Image src={r.cover_url} alt={r.title} width={56} height={56} className="rounded object-cover flex-shrink-0 w-14 h-14" unoptimized />
+            <Image src={r.cover_url} alt={r.title} width={80} height={80} className="rounded object-cover flex-shrink-0 w-14 h-14 md:w-20 md:h-20" unoptimized />
           ) : (
-            <div className="w-14 h-14 placeholder-tile flex-shrink-0 text-xl flex items-center justify-center">📄</div>
+            <div className="w-14 h-14 md:w-20 md:h-20 placeholder-tile flex-shrink-0 text-xl md:text-3xl flex items-center justify-center">📄</div>
           )}
           <div className="flex-1 min-w-0">
-            <p className="font-semibold truncate">{r.title}</p>
-            <p className="subtitle text-sm truncate">{r.creator}{r.year ? ` · ${r.year}` : ''}</p>
+            <p className="font-semibold truncate md:text-lg">{r.title}</p>
+            <p className="subtitle text-sm md:text-base truncate">{r.creator}{r.year ? ` · ${r.year}` : ''}</p>
           </div>
           <div className="flex flex-col gap-1 flex-shrink-0">
             <button
               onClick={() => onAdd(r, false)}
               disabled={adding === r.external_id}
-              className="btn-primary text-xs px-3 py-1"
+              className="btn-primary text-xs md:text-sm px-3 md:px-4 py-1 md:py-2"
             >
               {adding === r.external_id ? '…' : 'Add'}
             </button>
             <button
               onClick={() => onAdd(r, true)}
               disabled={adding === r.external_id}
-              className="btn-ghost text-xs px-3 py-1"
+              className="btn-ghost text-xs md:text-sm px-3 md:px-4 py-1 md:py-2"
             >
               Wishlist
             </button>
