@@ -129,9 +129,9 @@ export async function lookupBookByISBN(isbn: string): Promise<SearchResult | nul
       olBibKeysByISBN(isbn),
       googleBooksByISBN(isbn),
     ])
-    // If no cover was returned, try direct cover endpoints by ISBN
+    // If no cover was returned, try OL cover endpoint directly by ISBN
     if (!result.cover_url) {
-      result.cover_url = await tryOLCoverByISBN(isbn) ?? await tryGoogleBooksCoverByISBN(isbn)
+      result.cover_url = await tryOLCoverByISBN(isbn)
     }
     return result
   } catch {

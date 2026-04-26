@@ -32,8 +32,6 @@ async function findBookCoverUrl(external_id: string | null, isbn: string | null)
   if (isbnVal) {
     const olUrl = `https://covers.openlibrary.org/b/isbn/${isbnVal}-L.jpg`
     if (await headOk(olUrl, '-1-L.jpg')) return olUrl
-    const gUrl = `https://books.google.com/books/content?vid=ISBN${isbnVal}&printsec=frontcover&img=1&zoom=3`
-    if (await headOkWithMinSize(gUrl, 500)) return gUrl
   }
   if (external_id?.startsWith('/works/')) {
     const olid = external_id.replace('/works/', '')

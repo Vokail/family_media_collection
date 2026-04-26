@@ -41,6 +41,15 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
     setSavingNotes(false)
   }
 
+  async function handleRemoveCover() {
+    const res = await fetch(`/api/items/${item.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cover_path: null }),
+    })
+    if (res.ok) onUpdate(await res.json())
+  }
+
   async function handleCoverUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
@@ -125,6 +134,11 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
                   >
                     {uploadingCover ? 'Uploading…' : coverSrc ? 'Replace cover' : 'Upload cover'}
                   </button>
+                  {coverSrc && (
+                    <button onClick={handleRemoveCover} className="btn-ghost text-xs" style={{ color: 'var(--text-muted)' }}>
+                      Remove cover
+                    </button>
+                  )}
                   <button onClick={handleDelete} className="btn-ghost text-red-500">Delete</button>
                 </div>
                 <input
