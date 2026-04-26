@@ -1,8 +1,10 @@
 'use client'
 import Link from 'next/link'
-import { useState, useRef } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import ItemCard from './ItemCard'
 import type { Item, CollectionType, Member } from '@/lib/types'
+
+const PULL_THRESHOLD = 72
 
 type SortMode = 'added' | 'creator' | 'title' | 'year'
 
@@ -87,6 +89,43 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
   const [sort, setSort] = useState<SortMode>('creator')
   const [search, setSearch] = useState('')
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({})
+  const [pullY, setPullY] = useState(0)
+  const [refreshing, setRefreshing] = useState(false)
+  const touchStartY = useRef(0)
+  const pulling = useRef(false)
+
+  const doRefresh = useCallback(async () => {
+    setRefreshing(true)
+    try {
+      const res = await fetch(`/api/items?member=${member.slug}&collection=${collection}`)
+      if (res.ok) setItems(await res.json())
+    } finally {
+      setRefreshing(false)
+    }
+  }, [member.slug, collection])
+
+  function onTouchStart(e: React.TouchEvent) {
+    if (window.scrollY === 0) {
+      touchStartY.current = e.touches[0].clientY
+      pulling.current = true
+    }
+  }
+
+  function onTouchMove(e: React.TouchEvent) {
+    if (!pulling.current) return
+    const dy = e.touches[0].clientY - touchStartY.current
+    if (dy > 0 && window.scrollY === 0) {
+      setPullY(Math.min(dy * 0.5, PULL_THRESHOLD + 20))
+    }
+  }
+
+  function onTouchEnd() {
+    if (pulling.current && pullY >= PULL_THRESHOLD && !refreshing) {
+      doRefresh()
+    }
+    pulling.current = false
+    setPullY(0)
+  }
 
   function handleUpdate(updated: Item) {
     setItems(prev => prev.map(i => i.id === updated.id ? updated : i))
@@ -134,8 +173,40 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
     sectionRefs.current[key]?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
+  const pullProgress = Math.min(pullY / PULL_THRESHOLD, 1)
+  const pullTriggered = pullY >= PULL_THRESHOLD
+
   return (
-    <div className="flex flex-col gap-4">
+    <div
+      className="flex flex-col gap-4"
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
+    >
+      {/* Pull-to-refresh indicator */}
+      {(pullY > 0 || refreshing) && (
+        <div
+          className="flex items-center justify-center overflow-hidden transition-all"
+          style={{ height: refreshing ? 48 : pullY, opacity: refreshing ? 1 : pullProgress }}
+        >
+          <div
+            className="w-7 h-7 rounded-full border-2 flex items-center justify-center"
+            style={{
+              borderColor: 'var(--accent)',
+              transform: refreshing ? 'none' : `rotate(${pullProgress * 180}deg)`,
+              animation: refreshing ? 'spin 0.8s linear infinite' : 'none',
+            }}
+          >
+            {refreshing ? (
+              <div className="w-3 h-3 rounded-full border-2 border-t-transparent" style={{ borderColor: 'var(--accent)', borderTopColor: 'transparent' }} />
+            ) : (
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ color: pullTriggered ? 'var(--accent)' : 'var(--text-muted)' }}>
+                <path d="M6 1v8M3 6l3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            )}
+          </div>
+        </div>
+      )}
       {/* Tab bar */}
       <div className="flex gap-1 overflow-x-auto pb-1 border-b" style={{ borderColor: 'var(--border)' }}>
         {TABS.map(tab => {
