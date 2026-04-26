@@ -25,9 +25,6 @@ async function findBookCoverUrl(external_id: string | null, isbn: string | null)
   return null
 }
 
-function stripHtml(html: string): string {
-  return html.replace(/<[^>]*>/g, '').replace(/&[a-z]+;/gi, ' ').replace(/\s+/g, ' ').trim()
-}
 
 // --- Vinyl ---
 async function searchDiscogsId(creator: string, title: string): Promise<string | null> {
