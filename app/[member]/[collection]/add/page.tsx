@@ -27,6 +27,7 @@ export default function AddItemPage() {
   const [loadingMore, setLoadingMore] = useState(false)
   const [adding, setAdding] = useState<string | null>(null)
   const [scanning, setScanning] = useState(false)
+  const [barcodeHint, setBarcodeHint] = useState<string | null>(null)
   const [comicLang, setComicLang] = useState('dutch')
   const [offset, setOffset] = useState(0)
   const [lastQuery, setLastQuery] = useState('')
@@ -79,6 +80,8 @@ export default function AddItemPage() {
     setScanning(false)
     setLoading(true)
     setResults([])
+    setQuery('')
+    setBarcodeHint(null)
 
     try {
       const res = await fetch(`/api/barcode?code=${encodeURIComponent(code)}&type=${collection}`, {
@@ -87,13 +90,11 @@ export default function AddItemPage() {
       if (res.ok) {
         setResults([await res.json()])
       } else {
-        setQuery(code)
-        await runSearch(code)
+        setBarcodeHint('Barcode not found in database — search by title below.')
       }
     } catch (e) {
       if ((e as Error).name !== 'AbortError') {
-        setQuery(code)
-        await runSearch(code)
+        setBarcodeHint('Barcode lookup failed — search by title below.')
       }
     } finally {
       if (!controller.signal.aborted) setLoading(false)
@@ -144,12 +145,15 @@ export default function AddItemPage() {
         </div>
       )}
 
+      {barcodeHint && (
+        <p className="text-sm mb-2 text-center" style={{ color: 'var(--text-muted)' }}>{barcodeHint}</p>
+      )}
       <div className="flex gap-2 mb-4">
         <input
           className="input flex-1"
           placeholder="Search by title or artist…"
           value={query}
-          onChange={e => setQuery(e.target.value)}
+          onChange={e => { setQuery(e.target.value); setBarcodeHint(null) }}
           onKeyDown={e => e.key === 'Enter' && runSearch(query)}
         />
         <button onClick={() => setScanning(true)} className="btn-ghost px-4 text-xl md:hidden" title="Scan barcode">📷</button>
