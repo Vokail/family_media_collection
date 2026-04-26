@@ -77,11 +77,26 @@ async function searchBookExternalId(title: string, creator: string): Promise<str
   } catch { return null }
 }
 
+async function fetchBookIsbn(worksKey: string): Promise<string | null> {
+  try {
+    const res = await fetch(`https://openlibrary.org${worksKey}/editions.json?limit=10`)
+    if (!res.ok) return null
+    const data = await res.json()
+    for (const edition of data.entries ?? []) {
+      const isbn13 = (edition.isbn_13 as string[])?.[0]
+      if (isbn13) return isbn13
+      const isbn10 = (edition.isbn_10 as string[])?.[0]
+      if (isbn10) return isbn10
+    }
+    return null
+  } catch { return null }
+}
+
 async function backfillBooks(db: ReturnType<typeof createServerClient>, force: boolean) {
-  const { data: allItems } = await db.from('items').select('id, title, creator, external_id, description').eq('collection', 'book')
+  const { data: allItems } = await db.from('items').select('id, title, creator, external_id, description, isbn').eq('collection', 'book')
   const fullItems = force
     ? (allItems ?? [])
-    : (allItems ?? []).filter(i => !i.external_id || !i.description)
+    : (allItems ?? []).filter(i => !i.external_id || !i.description || !i.isbn)
   const result = { total: fullItems.length, updated: 0 }
   for (const item of fullItems) {
     let externalId = item.external_id
@@ -90,10 +105,19 @@ async function backfillBooks(db: ReturnType<typeof createServerClient>, force: b
       await delay(300)
       if (!externalId) continue
     }
-    const description = await fetchBookDescription(externalId)
-    await delay(300)
-    if (description) {
-      await db.from('items').update({ description, external_id: externalId }).eq('id', item.id)
+    const patch: Record<string, unknown> = { external_id: externalId }
+    if (!item.description) {
+      const description = await fetchBookDescription(externalId)
+      await delay(300)
+      if (description) patch.description = description
+    }
+    if (!item.isbn && externalId.startsWith('/works/')) {
+      const isbn = await fetchBookIsbn(externalId)
+      await delay(300)
+      if (isbn) patch.isbn = isbn
+    }
+    if (Object.keys(patch).length > 1) {
+      await db.from('items').update(patch).eq('id', item.id)
       result.updated++
     }
   }
