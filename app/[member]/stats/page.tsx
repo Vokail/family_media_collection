@@ -90,7 +90,7 @@ export default async function StatsPage({ params }: { params: Promise<{ member: 
           <div className="flex flex-col gap-2">
             {ratingCounts.map(({ stars, count }) => (
               <div key={stars} className="flex items-center gap-2">
-                <span className="text-xs w-8 text-right flex-shrink-0" style={{ color: 'var(--accent)' }}>{'★'.repeat(stars)}</span>
+                <span className="text-xs w-16 text-right flex-shrink-0 tracking-tight" style={{ color: 'var(--accent)' }}>{'★'.repeat(stars)}</span>
                 <div className="flex-1 h-3 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--border)' }}>
                   <div
                     className="h-full rounded-full transition-all"
