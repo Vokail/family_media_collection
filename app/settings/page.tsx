@@ -3,15 +3,30 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import PasswordField from '@/components/PasswordField'
 
+const BACKFILL_TYPES = [
+  { value: 'vinyl', label: 'Vinyl', hint: 'sort name + tracklist' },
+  { value: 'book', label: 'Books', hint: 'description' },
+  { value: 'comic', label: 'Comics', hint: 'description' },
+  { value: 'lego', label: 'Lego', hint: 'theme + parts count' },
+]
+
 function BackfillButton() {
   const [status, setStatus] = useState<'idle' | 'running' | 'done' | 'error'>('idle')
   const [result, setResult] = useState('')
   const [force, setForce] = useState(false)
+  const [types, setTypes] = useState<string[]>(['vinyl', 'book', 'comic', 'lego'])
+
+  function toggleType(value: string) {
+    setTypes(prev => prev.includes(value) ? prev.filter(t => t !== value) : [...prev, value])
+  }
 
   async function run() {
+    if (!types.length) return
     setStatus('running')
     setResult('')
-    const res = await fetch(`/api/admin/backfill-sort${force ? '?force=true' : ''}`)
+    const params = new URLSearchParams({ types: types.join(',') })
+    if (force) params.set('force', 'true')
+    const res = await fetch(`/api/admin/backfill-sort?${params}`)
     const data = await res.json()
     if (res.ok) {
       const parts = Object.entries(data.summary as Record<string, { total: number; updated: number }>)
@@ -26,11 +41,20 @@ function BackfillButton() {
 
   return (
     <div className="flex flex-col gap-3">
+      <div className="flex flex-wrap gap-3">
+        {BACKFILL_TYPES.map(t => (
+          <label key={t.value} className="flex items-center gap-1.5 text-sm cursor-pointer">
+            <input type="checkbox" checked={types.includes(t.value)} onChange={() => toggleType(t.value)} />
+            <span>{t.label}</span>
+            <span className="opacity-50 text-xs">({t.hint})</span>
+          </label>
+        ))}
+      </div>
       <label className="flex items-center gap-2 text-sm cursor-pointer">
-        <input type="checkbox" checked={force} onChange={e => setForce(e.target.checked)} className="rounded" />
-        Force re-fetch all items (even if already filled)
+        <input type="checkbox" checked={force} onChange={e => setForce(e.target.checked)} />
+        Force re-fetch (even if already filled)
       </label>
-      <button onClick={run} disabled={status === 'running'} className="btn-ghost text-sm self-start">
+      <button onClick={run} disabled={status === 'running' || !types.length} className="btn-ghost text-sm self-start">
         {status === 'running' ? 'Running…' : 'Run backfill'}
       </button>
       {result && <p className={`text-sm ${status === 'error' ? 'text-red-500' : 'text-green-600'}`}>{result}</p>}
