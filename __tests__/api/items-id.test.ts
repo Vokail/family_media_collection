@@ -107,4 +107,26 @@ describe('DELETE /api/items/[id]', () => {
     await DELETE(req, buildParams('item-uuid'))
     expect(mockStorageRemove).toHaveBeenCalledWith(['member-id/file.jpg'])
   })
+
+  it('returns 500 when deleteItem throws', async () => {
+    mockSingle.mockResolvedValue({ data: { cover_path: null }, error: null })
+    mockDeleteItem.mockRejectedValue(new Error('db error'))
+
+    const req = new Request('http://localhost/api/items/item-uuid', { method: 'DELETE' })
+    const res = await DELETE(req, buildParams('item-uuid'))
+    expect(res.status).toBe(500)
+  })
+})
+
+describe('PATCH /api/items/[id] error handling', () => {
+  it('returns 500 when updateItem throws', async () => {
+    mockUpdateItem.mockRejectedValue(new Error('db error'))
+    const req = new Request('http://localhost/api/items/item-uuid', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ is_wishlist: true }),
+    })
+    const res = await PATCH(req, buildParams('item-uuid'))
+    expect(res.status).toBe(500)
+  })
 })

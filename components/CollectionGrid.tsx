@@ -97,9 +97,16 @@ interface Props {
 }
 
 export default function CollectionGrid({ member, collection, initialItems, isEditor, supabaseUrl }: Props) {
-  const [isWishlist, setIsWishlist] = useState(false)
+  const sortStorageKey = `sort_${member.slug}_${collection}`
+  const tabStorageKey = `tab_${member.slug}_${collection}`
+
+  const [isWishlist, setIsWishlist] = useState(() =>
+    typeof window !== 'undefined' ? localStorage.getItem(tabStorageKey) === 'wishlist' : false
+  )
   const [items, setItems] = useState(initialItems)
-  const [sort, setSort] = useState<SortMode>('creator')
+  const [sort, setSort] = useState<SortMode>(() =>
+    typeof window !== 'undefined' ? (localStorage.getItem(sortStorageKey) as SortMode | null) ?? 'creator' : 'creator'
+  )
   const [search, setSearch] = useState('')
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({})
   const [pullY, setPullY] = useState(0)
@@ -259,13 +266,13 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
 
       {/* Owned / Wishlist + Sort */}
       <div className="flex items-center gap-2 flex-wrap">
-        <button className={`btn-ghost ${!isWishlist ? 'active' : ''}`} onClick={() => setIsWishlist(false)}>Owned <span className="opacity-70">({ownedCount})</span></button>
-        <button className={`btn-ghost ${isWishlist ? 'active' : ''}`} onClick={() => setIsWishlist(true)}>Wishlist <span className="opacity-70">({wishlistCount})</span></button>
+        <button className={`btn-ghost ${!isWishlist ? 'active' : ''}`} onClick={() => { setIsWishlist(false); localStorage.setItem(tabStorageKey, 'owned') }}>Owned <span className="opacity-70">({ownedCount})</span></button>
+        <button className={`btn-ghost ${isWishlist ? 'active' : ''}`} onClick={() => { setIsWishlist(true); localStorage.setItem(tabStorageKey, 'wishlist') }}>Wishlist <span className="opacity-70">({wishlistCount})</span></button>
         <div className="ml-auto flex items-center gap-2">
           <span className="label">Sort</span>
           <select
             value={sort}
-            onChange={e => setSort(e.target.value as SortMode)}
+            onChange={e => { const v = e.target.value as SortMode; setSort(v); localStorage.setItem(sortStorageKey, v) }}
             className="input py-1 px-2 text-sm w-auto"
           >
             <option value="added">Date added</option>

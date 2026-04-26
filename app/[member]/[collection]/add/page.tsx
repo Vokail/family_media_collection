@@ -1,6 +1,6 @@
 'use client'
 import { useParams, useRouter } from 'next/navigation'
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import BarcodeScanner from '@/components/BarcodeScanner'
 import PhotoCapture from '@/components/PhotoCapture'
 import SearchResults from '@/components/SearchResults'
@@ -56,18 +56,24 @@ export default function AddItemPage() {
       .catch(() => {})
   }, [member, collection])
 
-  function getDupeStatus(result: SearchResult): 'owned' | 'wishlist' | null {
+  const dupeMap = useMemo(() => {
+    const byId = new Map<string, 'owned' | 'wishlist'>()
+    const byTitle = new Map<string, 'owned' | 'wishlist'>()
     for (const item of existingItems) {
-      if (item.external_id && item.external_id === result.external_id) {
-        return item.is_wishlist ? 'wishlist' : 'owned'
-      }
+      const status = item.is_wishlist ? 'wishlist' : 'owned'
+      if (item.external_id) byId.set(item.external_id, status)
+      byTitle.set(`${item.title.toLowerCase().trim()}|${item.creator.toLowerCase().trim()}`, status)
+    }
+    return { byId, byTitle }
+  }, [existingItems])
+
+  function getDupeStatus(result: SearchResult): 'owned' | 'wishlist' | null {
+    if (result.external_id) {
+      const s = dupeMap.byId.get(result.external_id)
+      if (s) return s
     }
     const key = `${result.title.toLowerCase().trim()}|${result.creator.toLowerCase().trim()}`
-    for (const item of existingItems) {
-      const itemKey = `${item.title.toLowerCase().trim()}|${item.creator.toLowerCase().trim()}`
-      if (itemKey === key) return item.is_wishlist ? 'wishlist' : 'owned'
-    }
-    return null
+    return dupeMap.byTitle.get(key) ?? null
   }
 
   function handleLangChange(lang: string) {

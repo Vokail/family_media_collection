@@ -6,6 +6,8 @@ import sharp from 'sharp'
 import { randomUUID } from 'crypto'
 import { createServerClient } from '@/lib/supabase-server'
 
+const VALID_COLLECTIONS: CollectionType[] = ['vinyl', 'book', 'comic', 'lego']
+
 export async function POST(request: Request) {
   const form = await request.formData()
   const memberSlug = form.get('memberSlug') as string
@@ -21,39 +23,47 @@ export async function POST(request: Request) {
   if (!memberSlug || !collection || !title) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
   }
-
-  const member = await getMemberBySlug(memberSlug)
-  if (!member) return NextResponse.json({ error: 'Member not found' }, { status: 404 })
-
-  let cover_path: string | null = null
-  if (coverFile && coverFile.size > 0) {
-    const buffer = Buffer.from(await coverFile.arrayBuffer())
-    const resized = await sharp(buffer)
-      .resize(600, 600, { fit: 'inside', withoutEnlargement: true })
-      .jpeg({ quality: 85 })
-      .toBuffer()
-    const db = createServerClient()
-    const path = `manual/${member.id}/${randomUUID()}.jpg`
-    const { error } = await db.storage.from('covers').upload(path, resized, { contentType: 'image/jpeg' })
-    if (!error) cover_path = `covers/${path}`
+  if (!VALID_COLLECTIONS.includes(collection)) {
+    return NextResponse.json({ error: 'Invalid collection' }, { status: 400 })
   }
 
-  const item = await createItem({
-    member_id: member.id,
-    collection,
-    title,
-    creator,
-    year,
-    cover_path,
-    is_wishlist: isWishlist,
-    notes: null,
-    external_id: null,
-    sort_name: null,
-    tracklist: null,
-    description: null,
-    rating: null,
-    isbn,
-  })
+  try {
+    const member = await getMemberBySlug(memberSlug)
+    if (!member) return NextResponse.json({ error: 'Member not found' }, { status: 404 })
 
-  return NextResponse.json(item, { status: 201 })
+    let cover_path: string | null = null
+    if (coverFile && coverFile.size > 0) {
+      const buffer = Buffer.from(await coverFile.arrayBuffer())
+      const resized = await sharp(buffer)
+        .resize(600, 600, { fit: 'inside', withoutEnlargement: true })
+        .jpeg({ quality: 85 })
+        .toBuffer()
+      const db = createServerClient()
+      const path = `manual/${member.id}/${randomUUID()}.jpg`
+      const { error } = await db.storage.from('covers').upload(path, resized, { contentType: 'image/jpeg' })
+      if (error) return NextResponse.json({ error: 'Cover upload failed' }, { status: 500 })
+      cover_path = `covers/${path}`
+    }
+
+    const item = await createItem({
+      member_id: member.id,
+      collection,
+      title,
+      creator,
+      year,
+      cover_path,
+      is_wishlist: isWishlist,
+      notes: null,
+      external_id: null,
+      sort_name: null,
+      tracklist: null,
+      description: null,
+      rating: null,
+      isbn,
+    })
+
+    return NextResponse.json(item, { status: 201 })
+  } catch {
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
 }

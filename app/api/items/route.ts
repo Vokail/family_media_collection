@@ -8,17 +8,22 @@ const VALID_COLLECTIONS: CollectionType[] = ['vinyl', 'book', 'comic', 'lego']
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
-  const slug = searchParams.get('member')!
+  const slug = searchParams.get('member')
   const collection = searchParams.get('collection') as CollectionType
+  if (!slug) return NextResponse.json({ error: 'member param required' }, { status: 400 })
   if (!VALID_COLLECTIONS.includes(collection)) {
     return NextResponse.json({ error: 'Invalid collection' }, { status: 400 })
   }
   const wishlistParam = searchParams.get('wishlist')
   const isWishlist = wishlistParam === null ? undefined : wishlistParam === 'true'
-  const member = await getMemberBySlug(slug)
-  if (!member) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  const items = await listItems(member.id, collection, isWishlist)
-  return NextResponse.json(items)
+  try {
+    const member = await getMemberBySlug(slug)
+    if (!member) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    const items = await listItems(member.id, collection, isWishlist)
+    return NextResponse.json(items)
+  } catch {
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
 }
 
 export async function POST(request: Request) {
@@ -26,6 +31,7 @@ export async function POST(request: Request) {
   const { memberSlug, collection, title, creator, year, cover_url, is_wishlist, external_id, isbn, lang } = body
   if (!title?.trim()) return NextResponse.json({ error: 'Title required' }, { status: 400 })
   if (!VALID_COLLECTIONS.includes(collection)) return NextResponse.json({ error: 'Invalid collection' }, { status: 400 })
+  try {
   const member = await getMemberBySlug(memberSlug)
   if (!member) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
@@ -65,4 +71,7 @@ export async function POST(request: Request) {
   })
   revalidatePath(`/${memberSlug}/${collection}`)
   return NextResponse.json(item, { status: 201 })
+  } catch {
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
 }
