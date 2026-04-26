@@ -33,7 +33,7 @@ export default async function StatsPage({ params }: { params: Promise<{ member: 
     count: owned.filter(i => i.rating === r).length,
   }))
   const ratedCount = owned.filter(i => i.rating != null).length
-  const maxRatingCount = Math.max(...ratingCounts.map(r => r.count), 1)
+  const barMax = Math.max(owned.length, 1)
 
   // Top rated (5 stars, newest first)
   const topRated = owned.filter(i => i.rating === 5).slice(0, 6)
@@ -47,7 +47,6 @@ export default async function StatsPage({ params }: { params: Promise<{ member: 
     }
   }
   const decades = Array.from(decadeMap.entries()).sort(([a], [b]) => a - b)
-  const maxDecadeCount = Math.max(...decades.map(([, c]) => c), 1)
 
   return (
     <main className="min-h-screen p-4 max-w-lg mx-auto">
@@ -94,7 +93,7 @@ export default async function StatsPage({ params }: { params: Promise<{ member: 
                 <div className="flex-1 h-3 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--border)' }}>
                   <div
                     className="h-full rounded-full transition-all"
-                    style={{ width: `${(count / maxRatingCount) * 100}%`, backgroundColor: 'var(--accent)' }}
+                    style={{ width: `${(count / barMax) * 100}%`, backgroundColor: 'var(--accent)' }}
                   />
                 </div>
                 <span className="text-xs w-4 flex-shrink-0" style={{ color: 'var(--text-muted)' }}>{count}</span>
@@ -131,7 +130,7 @@ export default async function StatsPage({ params }: { params: Promise<{ member: 
                 <div className="flex-1 h-3 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--border)' }}>
                   <div
                     className="h-full rounded-full"
-                    style={{ width: `${(count / maxDecadeCount) * 100}%`, backgroundColor: 'var(--accent)' }}
+                    style={{ width: `${(count / barMax) * 100}%`, backgroundColor: 'var(--accent)' }}
                   />
                 </div>
                 <span className="text-xs w-4 flex-shrink-0" style={{ color: 'var(--text-muted)' }}>{count}</span>
