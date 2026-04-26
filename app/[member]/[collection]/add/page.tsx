@@ -93,7 +93,8 @@ export default function AddItemPage() {
     setBarcodeHint(null)
 
     try {
-      const res = await fetch(`/api/barcode?code=${encodeURIComponent(code)}&type=${collection}`, {
+      const lang = collection === 'book' ? comicLang : undefined
+      const res = await fetch(`/api/barcode?code=${encodeURIComponent(code)}&type=${collection}${lang ? `&lang=${lang}` : ''}`, {
         signal: controller.signal,
       })
       if (res.ok) {

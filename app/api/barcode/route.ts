@@ -11,8 +11,9 @@ export async function GET(request: Request) {
 
   if (!code || !type) return NextResponse.json({ error: 'Missing code or type' }, { status: 400 })
 
+  const lang = searchParams.get('lang') ?? undefined
   const result = type === 'vinyl' ? await lookupVinylByBarcode(code)
-    : type === 'book' ? await lookupBookByISBN(code)
+    : type === 'book' ? await lookupBookByISBN(code, lang)
     : type === 'lego' ? await lookupLegoBySetNum(code)
     : await lookupComicByBarcode(code)
 

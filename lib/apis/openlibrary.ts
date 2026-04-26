@@ -117,16 +117,27 @@ async function kbSruByISBN(isbn: string): Promise<SearchResult> {
 }
 
 
-export async function lookupBookByISBN(isbn: string): Promise<SearchResult | null> {
+export async function lookupBookByISBN(isbn: string, lang?: string): Promise<SearchResult | null> {
   try {
-    // Race all three sources — fastest valid result wins
-    const result = await Promise.any([
+    if (lang === 'dutch') {
+      // For Dutch ISBNs:
+      // - Skip olSearchByISBN: it returns work-level data and may surface the English
+      //   original title instead of the Dutch edition title.
+      // - Run kbSruByISBN (Koninklijke Bibliotheek — authoritative for NL editions)
+      //   and edition-level sources in parallel; prefer whichever resolves first.
+      return await Promise.any([
+        kbSruByISBN(isbn),
+        olBibKeysByISBN(isbn),
+        googleBooksByISBN(isbn),
+      ])
+    }
+    // Default: race all sources — fastest valid result wins
+    return await Promise.any([
       olSearchByISBN(isbn),
       olBibKeysByISBN(isbn),
       googleBooksByISBN(isbn),
       kbSruByISBN(isbn),
     ])
-    return result
   } catch {
     return null
   }
