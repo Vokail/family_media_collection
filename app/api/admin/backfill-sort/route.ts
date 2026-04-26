@@ -141,7 +141,7 @@ async function backfillBooks(db: ReturnType<typeof createServerClient>, force: b
     }
     if (isbn) patch.isbn = isbn
 
-    if (force || !item.cover_path) {
+    if (!item.cover_path) {
       const coverUrl = await findBookCoverUrl(worksKey, isbn ?? null)
       if (coverUrl) {
         const path = await downloadCover(coverUrl, item.member_id)
