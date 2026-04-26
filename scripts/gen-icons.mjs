@@ -1,0 +1,53 @@
+import sharp from 'sharp'
+import { writeFileSync } from 'fs'
+
+const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Warm cream background -->
+  <rect width="512" height="512" rx="88" fill="#f5ede0"/>
+
+  <!-- Shelf -->
+  <rect x="56" y="338" width="400" height="30" rx="6" fill="#b86e30"/>
+  <rect x="56" y="338" width="400" height="8" rx="4" fill="#d08040" opacity="0.55"/>
+
+  <!-- Book 1: tall, warm amber -->
+  <rect x="106" y="164" width="74" height="174" rx="5" fill="#a85e20"/>
+  <rect x="113" y="185" width="9" height="130" rx="3" fill="#d08040" opacity="0.45"/>
+  <rect x="113" y="282" width="44" height="5" rx="2" fill="#d08040" opacity="0.3"/>
+
+  <!-- Book 2: shorter, darker brown -->
+  <rect x="190" y="192" width="62" height="146" rx="5" fill="#7b4718"/>
+  <rect x="198" y="212" width="46" height="6" rx="2" fill="#c67c3c" opacity="0.45"/>
+  <rect x="198" y="225" width="33" height="4" rx="2" fill="#c67c3c" opacity="0.3"/>
+  <rect x="198" y="236" width="39" height="4" rx="2" fill="#c67c3c" opacity="0.2"/>
+
+  <!-- Vinyl record: sits on shelf, center at (358, 230) radius 108 → bottom at 338 -->
+  <circle cx="358" cy="230" r="108" fill="#241208"/>
+  <!-- Groove rings -->
+  <circle cx="358" cy="230" r="102" fill="none" stroke="#3a2210" stroke-width="3"/>
+  <circle cx="358" cy="230" r="91"  fill="none" stroke="#3a2210" stroke-width="2"/>
+  <circle cx="358" cy="230" r="80"  fill="none" stroke="#3a2210" stroke-width="1.5"/>
+  <circle cx="358" cy="230" r="69"  fill="none" stroke="#3a2210" stroke-width="1.5"/>
+  <circle cx="358" cy="230" r="58"  fill="none" stroke="#3a2210" stroke-width="1"/>
+  <!-- Label -->
+  <circle cx="358" cy="230" r="42" fill="#c67c3c"/>
+  <circle cx="358" cy="230" r="34" fill="#b05c28" opacity="0.35"/>
+  <line x1="332" y1="223" x2="384" y2="223" stroke="#f5ede0" stroke-width="1.5" opacity="0.4"/>
+  <line x1="332" y1="232" x2="384" y2="232" stroke="#f5ede0" stroke-width="1.5" opacity="0.4"/>
+  <!-- Center hole -->
+  <circle cx="358" cy="230" r="7" fill="#241208"/>
+</svg>`
+
+writeFileSync('public/icon.svg', svg)
+console.log('SVG written')
+
+for (const size of [192, 512]) {
+  await sharp(Buffer.from(svg))
+    .resize(size, size)
+    .png()
+    .toFile(`public/icon-${size}.png`)
+  console.log(`icon-${size}.png written`)
+}
+
+// Apple touch icon (180px, no rounded corners — iOS clips it)
+await sharp(Buffer.from(svg)).resize(180, 180).png().toFile('public/apple-touch-icon.png')
+console.log('apple-touch-icon.png written')
