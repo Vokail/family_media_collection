@@ -159,7 +159,8 @@ describe('fetchBookDescription Dutch language fallback', () => {
   it('falls back to OL when both Dutch Google Books searches return nothing', async () => {
     mockFetch
       .mockResolvedValueOnce({ ok: true, json: async () => ({}) })       // isbn+langRestrict=nl: nothing
-      .mockResolvedValueOnce({ ok: true, json: async () => ({}) })       // title/author+langRestrict=nl: nothing
+      .mockResolvedValueOnce({ ok: true, json: async () => ({}) })       // title/author intitle+inauthor+langRestrict=nl: nothing
+      .mockResolvedValueOnce({ ok: true, json: async () => ({}) })       // plain title+author+langRestrict=nl: nothing
       .mockResolvedValueOnce({                                            // OL isbn→workId lookup
         ok: true,
         json: async () => ({ docs: [{ key: '/works/OL123W' }] }),
