@@ -99,7 +99,7 @@ export default function AddItemPage() {
     } finally {
       if (!controller.signal.aborted) setLoading(false)
     }
-  }, [collection, runSearch])
+  }, [collection])
 
   async function handleAdd(result: SearchResult, isWishlist: boolean) {
     setAdding(result.external_id)

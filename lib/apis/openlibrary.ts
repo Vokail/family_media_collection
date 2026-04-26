@@ -108,16 +108,25 @@ async function tryOLCoverByISBN(isbn: string): Promise<string | null> {
   }
 }
 
-async function tryGoogleBooksCoverByISBN(isbn: string): Promise<string | null> {
-  try {
-    const url = `https://books.google.com/books/content?vid=ISBN${isbn}&printsec=frontcover&img=1&zoom=3`
-    const res = await fetch(url, { method: 'HEAD', signal: AbortSignal.timeout(3000) })
-    if (!res.ok) return null
-    // Google returns a 1px transparent GIF (~43 bytes) when no cover exists
-    const length = parseInt(res.headers.get('content-length') ?? '0')
-    return length > 500 ? url : null
-  } catch {
-    return null
+
+async function kbSruByISBN(isbn: string): Promise<SearchResult> {
+  const url = `https://jsru.kb.nl/sru/sru?operation=searchRetrieve&x-collection=GGC&query=isbn+exact+%22${isbn}%22&recordSchema=dc&maximumRecords=1`
+  const res = await fetch(url, { signal: AbortSignal.timeout(5000) })
+  if (!res.ok) throw new Error('not found')
+  const xml = await res.text()
+  const count = xml.match(/<srw:numberOfRecords>(\d+)<\/srw:numberOfRecords>/)?.[1]
+  if (!count || parseInt(count) === 0) throw new Error('not found')
+  const dc = (tag: string) => xml.match(new RegExp(`<dc:${tag}[^>]*>([^<]+)<\\/dc:${tag}>`, 'i'))?.[1]?.trim() ?? null
+  const title = dc('title')
+  if (!title) throw new Error('not found')
+  return {
+    external_id: `isbn:${isbn}`,
+    isbn,
+    title,
+    creator: dc('creator') ?? 'Unknown',
+    year: dc('date') ? parseInt(dc('date')!) : null,
+    cover_url: null,
+    source: 'openlibrary',
   }
 }
 
@@ -128,6 +137,7 @@ export async function lookupBookByISBN(isbn: string): Promise<SearchResult | nul
       olSearchByISBN(isbn),
       olBibKeysByISBN(isbn),
       googleBooksByISBN(isbn),
+      kbSruByISBN(isbn),
     ])
     // If no cover was returned, try OL cover endpoint directly by ISBN
     if (!result.cover_url) {

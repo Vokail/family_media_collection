@@ -19,13 +19,6 @@ async function headOk(url: string, rejectIfUrlContains?: string): Promise<boolea
   } catch { return false }
 }
 
-async function headOkWithMinSize(url: string, minBytes: number): Promise<boolean> {
-  try {
-    const r = await fetch(url, { method: 'HEAD', signal: AbortSignal.timeout(3000) })
-    if (!r.ok) return false
-    return parseInt(r.headers.get('content-length') ?? '0') > minBytes
-  } catch { return false }
-}
 
 async function findBookCoverUrl(external_id: string | null, isbn: string | null): Promise<string | null> {
   const isbnVal = isbn ?? (external_id?.startsWith('isbn:') ? external_id.slice(5) : null)
