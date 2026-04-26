@@ -133,7 +133,7 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
                   <button onClick={toggleWishlist} className="btn-ghost">
                     {item.is_wishlist ? 'Mark as Owned' : 'Move to Wishlist'}
                   </button>
-                  <button onClick={() => setShowCamera(true)} disabled={uploadingCover} className="btn-ghost text-xs">
+                  <button onClick={() => setShowCamera(true)} disabled={uploadingCover} className="btn-ghost text-xs md:hidden">
                     {uploadingCover ? 'Uploading…' : '📷'}
                   </button>
                   <button onClick={() => coverInputRef.current?.click()} disabled={uploadingCover} className="btn-ghost text-xs">

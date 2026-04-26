@@ -24,7 +24,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
     await db.storage.from('covers').remove([oldKey])
   }
 
-  const path = `${item.member_id}/${randomUUID()}.jpg`
+  const path = `manual/${item.member_id}/${randomUUID()}.jpg`
   const { error } = await db.storage.from('covers').upload(path, resized, { contentType: 'image/jpeg' })
   if (error) return NextResponse.json({ error: 'Upload failed' }, { status: 500 })
 
