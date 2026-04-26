@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase-server'
 import { downloadCover } from '@/lib/cover'
 import { fetchBookDescription } from '@/lib/apis/openlibrary'
+import { fetchComicDescription } from '@/lib/apis/comicvine'
 
 const DISCOGS_BASE = 'https://api.discogs.com'
 const discogsHeaders = () => ({
@@ -169,18 +170,6 @@ async function searchComicExternalId(title: string): Promise<string | null> {
   } catch { return null }
 }
 
-async function fetchComicDescription(externalId: string): Promise<string | null> {
-  try {
-    const url = `https://comicvine.gamespot.com/api/volume/4050-${externalId}/?api_key=${process.env.COMICVINE_API_KEY}&format=json&field_list=deck,description`
-    const res = await fetch(url, { headers: { 'User-Agent': 'FamilyMediaCollection/1.0', Accept: 'application/json' } })
-    if (!res.ok) return null
-    const data = await res.json()
-    if (data.status_code !== 1) return null
-    const deck = data.results?.deck as string | null
-    const raw = data.results?.description as string | null
-    return deck || (raw ? stripHtml(raw).slice(0, 1000) : null)
-  } catch { return null }
-}
 
 async function fetchComicCoverUrl(externalId: string): Promise<string | null> {
   try {
@@ -193,31 +182,51 @@ async function fetchComicCoverUrl(externalId: string): Promise<string | null> {
 }
 
 async function backfillComics(db: ReturnType<typeof createServerClient>, force: boolean) {
-  const { data: allItems } = await db.from('items').select('id, title, external_id, cover_path, member_id').eq('collection', 'comic')
+  const { data: allItems } = await db.from('items').select('id, title, creator, external_id, description, isbn, cover_path, member_id').eq('collection', 'comic')
   const fullItems = force
     ? (allItems ?? [])
-    : (allItems ?? []).filter(i => !i.external_id || !i.cover_path)
+    : (allItems ?? []).filter(i => !i.external_id || !i.cover_path || !i.description)
   const result = { total: fullItems.length, updated: 0 }
   for (const item of fullItems) {
     try {
+      const isIsbnBased = item.external_id && !(/^\d+$/.test(item.external_id))
       let externalId = item.external_id
+
+      // Only search ComicVine for items without any external_id
       if (!externalId) {
         externalId = await searchComicExternalId(item.title)
         await delay(1100)
         if (!externalId) continue
       }
+
       const patch: Record<string, unknown> = { external_id: externalId }
+
       if (!item.cover_path) {
-        const coverUrl = await fetchComicCoverUrl(externalId)
-        await delay(1100)
-        if (coverUrl) {
-          const path = await downloadCover(coverUrl, item.member_id)
-          if (path) patch.cover_path = path
+        // ISBN-based comics (manga) don't have ComicVine cover — skip
+        if (!isIsbnBased) {
+          const coverUrl = await fetchComicCoverUrl(externalId)
+          await delay(1100)
+          if (coverUrl) {
+            const path = await downloadCover(coverUrl, item.member_id)
+            if (path) patch.cover_path = path
+          }
         }
       }
-      const description = await fetchComicDescription(externalId)
-      await delay(1100)
-      if (description) patch.description = description
+
+      if (force || !item.description) {
+        let description: string | null = null
+        if (isIsbnBased) {
+          const inferredLang = item.isbn && (item.isbn.startsWith('90') || item.isbn.startsWith('9789') || item.isbn.startsWith('9790')) ? 'dutch' : null
+          description = await fetchBookDescription(externalId, item.isbn, inferredLang, item.title, item.creator)
+        } else {
+          description = await fetchComicDescription(externalId)
+        }
+        await delay(1100)
+        if (description) patch.description = description
+      }
+
+      if (item.isbn) patch.isbn = item.isbn
+
       if (Object.keys(patch).length > 1) {
         await db.from('items').update(patch).eq('id', item.id)
         result.updated++
