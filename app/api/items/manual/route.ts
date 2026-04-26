@@ -15,6 +15,7 @@ export async function POST(request: Request) {
   const yearRaw = form.get('year') as string
   const year = yearRaw ? parseInt(yearRaw) : null
   const isWishlist = form.get('is_wishlist') === 'true'
+  const isbn = (form.get('isbn') as string)?.trim() || null
   const coverFile = form.get('cover') as File | null
 
   if (!memberSlug || !collection || !title) {
@@ -50,7 +51,8 @@ export async function POST(request: Request) {
     sort_name: null,
     tracklist: null,
     description: null,
-    isbn: null,
+    rating: null,
+    isbn,
   })
 
   return NextResponse.json(item, { status: 201 })

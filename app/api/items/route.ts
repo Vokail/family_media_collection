@@ -60,6 +60,7 @@ export async function POST(request: Request) {
     external_id: external_id ?? null,
     isbn: isbn ?? null,
     description: description ?? null,
+    rating: null,
   })
   revalidatePath(`/${memberSlug}/${collection}`)
   return NextResponse.json(item, { status: 201 })

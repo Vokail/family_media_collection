@@ -6,7 +6,7 @@ import type { Item, CollectionType, Member } from '@/lib/types'
 
 const PULL_THRESHOLD = 72
 
-type SortMode = 'added' | 'creator' | 'title' | 'year'
+type SortMode = 'added' | 'creator' | 'title' | 'year' | 'rating'
 
 const TABS: { label: string; value: CollectionType }[] = [
   { label: 'Vinyl', value: 'vinyl' },
@@ -39,6 +39,7 @@ function sortItems(items: Item[], mode: SortMode): Item[] {
   if (mode === 'creator') return copy.sort((a, b) => sortKey(a.creator, a.sort_name).localeCompare(sortKey(b.creator, b.sort_name)))
   if (mode === 'title') return copy.sort((a, b) => a.title.toLowerCase().localeCompare(b.title.toLowerCase()))
   if (mode === 'year') return copy.sort((a, b) => (a.year ?? 9999) - (b.year ?? 9999))
+  if (mode === 'rating') return copy.sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0))
   return copy // 'added' — already newest-first from DB
 }
 
@@ -253,6 +254,7 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
             <option value="creator">{sortCreatorLabel(collection)}</option>
             <option value="title">Title</option>
             <option value="year">Year</option>
+            {collection === 'book' && <option value="rating">Rating</option>}
           </select>
         </div>
       </div>

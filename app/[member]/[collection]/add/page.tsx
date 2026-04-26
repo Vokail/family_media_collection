@@ -37,6 +37,7 @@ export default function AddItemPage() {
   const [manualTitle, setManualTitle] = useState('')
   const [manualCreator, setManualCreator] = useState('')
   const [manualYear, setManualYear] = useState('')
+  const [manualIsbn, setManualIsbn] = useState('')
   const [manualCover, setManualCover] = useState<File | null>(null)
   const [addingManual, setAddingManual] = useState(false)
   const [showManualCamera, setShowManualCamera] = useState(false)
@@ -100,7 +101,9 @@ export default function AddItemPage() {
       if (res.ok) {
         setResults([await res.json()])
       } else {
-        setBarcodeHint('Barcode not found in database — search by title below.')
+        setBarcodeHint('Barcode not found — fill in the details below to save it for future updates.')
+        if (/^\d{10,13}$/.test(code)) setManualIsbn(code)
+        setShowManual(true)
       }
     } catch (e) {
       if ((e as Error).name !== 'AbortError') {
@@ -143,6 +146,7 @@ export default function AddItemPage() {
     body.append('creator', manualCreator.trim())
     body.append('year', manualYear)
     body.append('is_wishlist', String(isWishlist))
+    if (manualIsbn) body.append('isbn', manualIsbn)
     if (manualCover) body.append('cover', manualCover)
     await fetch('/api/items/manual', { method: 'POST', body })
     setAddingManual(false)
@@ -221,6 +225,12 @@ export default function AddItemPage() {
               <label className="label mb-1 block">Year</label>
               <input className="input" type="number" value={manualYear} onChange={e => setManualYear(e.target.value)} placeholder="e.g. 2023" />
             </div>
+            {(collection === 'book' || collection === 'comic' || manualIsbn) && (
+              <div>
+                <label className="label mb-1 block">ISBN (for future auto-fill)</label>
+                <input className="input font-mono text-sm" value={manualIsbn} onChange={e => setManualIsbn(e.target.value)} placeholder="e.g. 9781234567890" />
+              </div>
+            )}
             <div>
               <label className="label mb-1 block">Cover image (optional)</label>
               <div className="flex items-center gap-2">

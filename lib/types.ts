@@ -28,6 +28,7 @@ export interface Item {
   external_id: string | null
   isbn: string | null
   description: string | null
+  rating: number | null
   created_at: string
 }
 
