@@ -45,7 +45,7 @@ export async function fetchBookDescription(externalId: string): Promise<string |
 }
 
 export async function lookupBookByISBN(isbn: string): Promise<SearchResult | null> {
-  // Try search-by-ISBN first — fast and reliable, returns works key
+  // 1. OpenLibrary search-by-ISBN — returns works key for description backfill
   try {
     const res = await fetch(`https://openlibrary.org/search.json?isbn=${isbn}&fields=key,title,author_name,first_publish_year,cover_i&limit=1`)
     if (res.ok) {
@@ -63,9 +63,30 @@ export async function lookupBookByISBN(isbn: string): Promise<SearchResult | nul
         }
       }
     }
-  } catch { /* fall through to books API */ }
+  } catch { /* fall through */ }
 
-  // Fallback: books API (richer cover + publish date data)
+  // 2. Google Books — comprehensive ISBN database, no API key needed
+  try {
+    const res = await fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}&maxResults=1`)
+    if (res.ok) {
+      const data = await res.json()
+      const vol = data.items?.[0]?.volumeInfo
+      if (vol) {
+        const cover = vol.imageLinks?.thumbnail?.replace('http:', 'https:') ?? null
+        return {
+          external_id: `isbn:${isbn}`,
+          isbn,
+          title: vol.title as string,
+          creator: (vol.authors as string[])?.[0] ?? 'Unknown',
+          year: vol.publishedDate ? parseInt(vol.publishedDate) : null,
+          cover_url: cover,
+          source: 'openlibrary',
+        }
+      }
+    }
+  } catch { /* fall through */ }
+
+  // 3. OpenLibrary books API — slowest but most detailed
   try {
     const res = await fetch(`https://openlibrary.org/api/books?bibkeys=ISBN:${isbn}&format=json&jscmd=data`)
     if (!res.ok) return null
