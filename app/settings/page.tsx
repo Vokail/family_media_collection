@@ -6,13 +6,17 @@ import PasswordField from '@/components/PasswordField'
 function BackfillButton() {
   const [status, setStatus] = useState<'idle' | 'running' | 'done' | 'error'>('idle')
   const [result, setResult] = useState('')
+  const [force, setForce] = useState(false)
 
   async function run() {
     setStatus('running')
-    const res = await fetch('/api/admin/backfill-sort')
+    setResult('')
+    const res = await fetch(`/api/admin/backfill-sort${force ? '?force=true' : ''}`)
     const data = await res.json()
     if (res.ok) {
-      setResult(data.message ?? `Updated ${data.updated} of ${data.total} items`)
+      const parts = Object.entries(data.summary as Record<string, { total: number; updated: number }>)
+        .map(([k, v]) => `${k}: ${v.updated}/${v.total}`)
+      setResult(parts.join(' · ') || 'Nothing to update')
       setStatus('done')
     } else {
       setResult(data.error ?? 'Something went wrong')
@@ -21,7 +25,11 @@ function BackfillButton() {
   }
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-3">
+      <label className="flex items-center gap-2 text-sm cursor-pointer">
+        <input type="checkbox" checked={force} onChange={e => setForce(e.target.checked)} className="rounded" />
+        Force re-fetch all items (even if already filled)
+      </label>
       <button onClick={run} disabled={status === 'running'} className="btn-ghost text-sm self-start">
         {status === 'running' ? 'Running…' : 'Run backfill'}
       </button>
@@ -87,8 +95,8 @@ export default function SettingsPage() {
       </section>
 
       <section className="card p-6 flex flex-col gap-4">
-        <h2 className="font-serif text-lg font-semibold">Vinyl Sort Names</h2>
-        <p className="subtitle text-sm">Fetch correct Discogs sort names for vinyl items that are missing one. Takes ~2 seconds per item.</p>
+        <h2 className="font-serif text-lg font-semibold">Data Backfill</h2>
+        <p className="subtitle text-sm">Re-fetch missing data from external APIs: sort names + tracklists for vinyl, descriptions for books. Takes ~2 seconds per item.</p>
         <BackfillButton />
       </section>
     </main>
