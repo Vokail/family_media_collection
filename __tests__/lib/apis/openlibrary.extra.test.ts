@@ -6,10 +6,13 @@ const mockFetch = fetch as jest.Mock
 beforeEach(() => mockFetch.mockReset())
 
 describe('fetchBookDescription', () => {
-  it('returns null when externalId does not start with /works/', async () => {
+  it('returns null when externalId is isbn: format and no sources have a description', async () => {
+    // Google Books: no items; OL ISBN search: no works key found
+    mockFetch
+      .mockResolvedValueOnce({ ok: true, json: async () => ({}) })  // Google Books: no items
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ docs: [] }) })  // OL ISBN search: no results
     const result = await fetchBookDescription('isbn:9780441013593')
     expect(result).toBeNull()
-    expect(mockFetch).not.toHaveBeenCalled()
   })
 
   it('returns a plain string description', async () => {
@@ -97,5 +100,54 @@ describe('googleBooksByISBN (source field and https upgrade)', () => {
     const result = await lookupBookByISBN('0000000001')
     expect(result?.cover_url).toMatch(/^https:/)
     expect(result?.source).toBe('google')
+  })
+})
+
+describe('lookupBookByISBN with lang=dutch', () => {
+  it('skips olSearchByISBN and uses KB SRU when lang is dutch', async () => {
+    const { lookupBookByISBN } = await import('@/lib/apis/openlibrary')
+
+    // Dutch path: 3 racers (kbSru, olBibKeys, google) — no olSearch
+    mockFetch
+      .mockResolvedValueOnce({                       // kbSruByISBN wins
+        ok: true,
+        text: async () => `
+          <srw:numberOfRecords>1</srw:numberOfRecords>
+          <dc:title>De Kleine Prins</dc:title>
+          <dc:creator>Antoine de Saint-Exupéry</dc:creator>
+          <dc:date>1966</dc:date>
+        `,
+      })
+      .mockResolvedValueOnce({ ok: false })          // olBibKeysByISBN
+      .mockResolvedValueOnce({ ok: false })          // googleBooksByISBN
+
+    const result = await lookupBookByISBN('9789021615417', 'dutch')
+    expect(result).not.toBeNull()
+    expect(result!.title).toBe('De Kleine Prins')
+    // olSearchByISBN must NOT have been called (only 3 fetch calls for 3 racers)
+    expect(mockFetch).toHaveBeenCalledTimes(3)
+  })
+
+  it('falls back to edition-level sources when KB SRU fails', async () => {
+    const { lookupBookByISBN } = await import('@/lib/apis/openlibrary')
+
+    mockFetch
+      .mockResolvedValueOnce({ ok: false })          // kbSruByISBN fails
+      .mockResolvedValueOnce({                       // olBibKeysByISBN succeeds
+        ok: true,
+        json: async () => ({
+          'ISBN:9789021615417': {
+            title: 'De Kleine Prins',
+            authors: [{ name: 'Antoine de Saint-Exupéry' }],
+            publish_date: '1966',
+            cover: {},
+          },
+        }),
+      })
+      .mockResolvedValueOnce({ ok: false })          // googleBooksByISBN
+
+    const result = await lookupBookByISBN('9789021615417', 'dutch')
+    expect(result).not.toBeNull()
+    expect(result!.title).toBe('De Kleine Prins')
   })
 })
