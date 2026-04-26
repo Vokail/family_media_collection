@@ -1,6 +1,6 @@
 'use client'
 import Image from 'next/image'
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import type { Item, Track } from '@/lib/types'
 
 interface Props {
@@ -15,6 +15,8 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
   const [open, setOpen] = useState(false)
   const [notes, setNotes] = useState(item.notes ?? '')
   const [savingNotes, setSavingNotes] = useState(false)
+  const [uploadingCover, setUploadingCover] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const coverSrc = item.cover_path
     ? `${supabaseUrl}/storage/v1/object/public/${item.cover_path}`
     : null
@@ -37,6 +39,17 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
     })
     if (res.ok) onUpdate(await res.json())
     setSavingNotes(false)
+  }
+
+  async function handleCoverUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploadingCover(true)
+    const form = new FormData()
+    form.append('cover', file)
+    const res = await fetch(`/api/items/${item.id}/cover`, { method: 'POST', body: form })
+    if (res.ok) onUpdate(await res.json())
+    setUploadingCover(false)
   }
 
   async function handleDelete() {
@@ -101,12 +114,26 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
                     {savingNotes ? 'Saving…' : 'Save note'}
                   </button>
                 </div>
-                <div className="flex gap-3 justify-center">
+                <div className="flex gap-3 justify-center flex-wrap">
                   <button onClick={toggleWishlist} className="btn-ghost">
                     {item.is_wishlist ? 'Mark as Owned' : 'Move to Wishlist'}
                   </button>
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploadingCover}
+                    className="btn-ghost text-xs"
+                  >
+                    {uploadingCover ? 'Uploading…' : coverSrc ? 'Replace cover' : 'Upload cover'}
+                  </button>
                   <button onClick={handleDelete} className="btn-ghost text-red-500">Delete</button>
                 </div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleCoverUpload}
+                />
               </>
             ) : (
               notes && <p className="subtitle text-sm text-center italic">&ldquo;{notes}&rdquo;</p>

@@ -150,20 +150,25 @@ async function backfillBooks(db: ReturnType<typeof createServerClient>, force: b
     if (!worksKey) {
       worksKey = await searchBookExternalId(item.title, item.creator)
       await delay(300)
-      if (!worksKey) continue
+      // Don't skip — we can still try cover by ISBN even if OL has no works entry
     }
 
-    const patch: Record<string, unknown> = { external_id: worksKey }
-    if (!item.description) {
-      const description = await fetchBookDescription(worksKey)
-      await delay(300)
-      if (description) patch.description = description
-    }
-    if (!isbn) {
-      isbn = await fetchBookIsbn(worksKey)
-      await delay(300)
+    const patch: Record<string, unknown> = {}
+    if (worksKey) patch.external_id = worksKey
+
+    if (worksKey) {
+      if (!item.description) {
+        const description = await fetchBookDescription(worksKey)
+        await delay(300)
+        if (description) patch.description = description
+      }
+      if (!isbn) {
+        isbn = await fetchBookIsbn(worksKey)
+        await delay(300)
+      }
     }
     if (isbn) patch.isbn = isbn
+
     if (!item.cover_path) {
       const coverUrl = await findBookCoverUrl(worksKey, isbn ?? null)
       if (coverUrl) {
@@ -172,7 +177,7 @@ async function backfillBooks(db: ReturnType<typeof createServerClient>, force: b
       }
     }
 
-    if (Object.keys(patch).length > 1) {
+    if (Object.keys(patch).length > 0) {
       await db.from('items').update(patch).eq('id', item.id)
       result.updated++
     }
