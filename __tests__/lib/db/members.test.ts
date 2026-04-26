@@ -11,8 +11,8 @@ jest.mock('@/lib/supabase-server', () => ({
 import { listMembers, getMemberBySlug } from '@/lib/db/members'
 
 const MEMBERS = [
-  { id: 'uuid-1', name: 'Alice', slug: 'alice' },
-  { id: 'uuid-2', name: 'Bob', slug: 'bob' },
+  { id: 'uuid-1', name: 'Ewart', slug: 'ewart' },
+  { id: 'uuid-2', name: 'Marieke', slug: 'marieke' },
 ]
 
 beforeEach(() => {
@@ -50,9 +50,9 @@ describe('getMemberBySlug', () => {
     mockSelect.mockReturnValue({ eq: mockEq })
     mockFrom.mockReturnValue({ select: mockSelect })
 
-    const result = await getMemberBySlug('alice')
+    const result = await getMemberBySlug('ewart')
     expect(result).toEqual(MEMBERS[0])
-    expect(mockEq).toHaveBeenCalledWith('slug', 'alice')
+    expect(mockEq).toHaveBeenCalledWith('slug', 'ewart')
   })
 
   it('returns null when member not found', async () => {

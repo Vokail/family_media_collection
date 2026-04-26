@@ -24,7 +24,7 @@ const mockListItems = listItems as jest.Mock
 const mockCreateItem = createItem as jest.Mock
 const mockGetMember = getMemberBySlug as jest.Mock
 
-const MEMBER = { id: 'member-uuid', name: 'Alice', slug: 'alice' }
+const MEMBER = { id: 'member-uuid', name: 'Ewart', slug: 'ewart' }
 const ITEM = {
   id: 'item-uuid', member_id: 'member-uuid', collection: 'vinyl',
   title: 'Abbey Road', creator: 'The Beatles', year: 1969,
@@ -39,7 +39,7 @@ beforeEach(() => {
 
 describe('GET /api/items', () => {
   it('returns 400 for invalid collection', async () => {
-    const req = new Request('http://localhost/api/items?member=alice&collection=invalid')
+    const req = new Request('http://localhost/api/items?member=ewart&collection=invalid')
     const res = await GET(req)
     expect(res.status).toBe(400)
   })
@@ -54,7 +54,7 @@ describe('GET /api/items', () => {
   it('returns items list for valid member and collection', async () => {
     mockGetMember.mockResolvedValue(MEMBER)
     mockListItems.mockResolvedValue([ITEM])
-    const req = new Request('http://localhost/api/items?member=alice&collection=vinyl')
+    const req = new Request('http://localhost/api/items?member=ewart&collection=vinyl')
     const res = await GET(req)
     expect(res.status).toBe(200)
     const data = await res.json()
@@ -65,7 +65,7 @@ describe('GET /api/items', () => {
   it('passes isWishlist=true when wishlist param is set', async () => {
     mockGetMember.mockResolvedValue(MEMBER)
     mockListItems.mockResolvedValue([])
-    const req = new Request('http://localhost/api/items?member=alice&collection=vinyl&wishlist=true')
+    const req = new Request('http://localhost/api/items?member=ewart&collection=vinyl&wishlist=true')
     await GET(req)
     expect(mockListItems).toHaveBeenCalledWith('member-uuid', 'vinyl', true)
   })
@@ -76,7 +76,7 @@ describe('POST /api/items', () => {
     const req = new Request('http://localhost/api/items', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ memberSlug: 'alice', collection: 'vinyl', title: '' }),
+      body: JSON.stringify({ memberSlug: 'ewart', collection: 'vinyl', title: '' }),
     })
     const res = await POST(req)
     expect(res.status).toBe(400)
@@ -86,7 +86,7 @@ describe('POST /api/items', () => {
     const req = new Request('http://localhost/api/items', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ memberSlug: 'alice', collection: 'stamps', title: 'Test' }),
+      body: JSON.stringify({ memberSlug: 'ewart', collection: 'stamps', title: 'Test' }),
     })
     const res = await POST(req)
     expect(res.status).toBe(400)
@@ -110,7 +110,7 @@ describe('POST /api/items', () => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        memberSlug: 'alice', collection: 'vinyl',
+        memberSlug: 'ewart', collection: 'vinyl',
         title: 'Abbey Road', creator: 'The Beatles', year: 1969,
       }),
     })

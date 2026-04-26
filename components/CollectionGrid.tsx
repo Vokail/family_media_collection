@@ -44,6 +44,18 @@ function sortItems(items: Item[], mode: SortMode): Item[] {
 }
 
 interface YearGroup { label: string; shortKey: string; items: Item[] }
+interface RatingGroup { label: string; key: string; items: Item[] }
+
+function buildRatingGroups(items: Item[]): RatingGroup[] {
+  const groups: RatingGroup[] = []
+  for (let r = 5; r >= 1; r--) {
+    const g = items.filter(i => i.rating === r)
+    if (g.length > 0) groups.push({ label: '★'.repeat(r), key: String(r), items: g })
+  }
+  const unrated = items.filter(i => !i.rating)
+  if (unrated.length > 0) groups.push({ label: 'Unrated', key: '0', items: unrated })
+  return groups
+}
 
 function buildYearGroups(items: Item[]): YearGroup[] {
   const withYear = items.filter(i => i.year != null)
@@ -147,6 +159,7 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
   const sorted = sortItems(filtered, sort)
   const byCreator = sort === 'creator'
   const byYear = sort === 'year'
+  const byRating = sort === 'rating'
   const byLego = byCreator && collection === 'lego'
 
   // Build groups when sorted by creator
@@ -165,12 +178,15 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
   }
 
   const yearGroups: YearGroup[] = byYear ? buildYearGroups(sorted) : []
+  const ratingGroups: RatingGroup[] = byRating ? buildRatingGroups(sorted) : []
 
   const sidebarKeys = byCreator
     ? byLego
       ? creatorGroups.map(g => g.letter.slice(0, 4))  // abbreviated theme for sidebar
       : creatorGroups.map(g => g.letter)
-    : yearGroups.map(g => g.shortKey)
+    : byYear
+    ? yearGroups.map(g => g.shortKey)
+    : []
 
   function scrollTo(key: string) {
     sectionRefs.current[key]?.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -254,7 +270,7 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
             <option value="creator">{sortCreatorLabel(collection)}</option>
             <option value="title">Title</option>
             <option value="year">Year</option>
-            {collection === 'book' && <option value="rating">Rating</option>}
+            <option value="rating">Rating</option>
           </select>
         </div>
       </div>
@@ -332,6 +348,24 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
                 ))}
               </div>
             )}
+          </>
+        ) : byRating ? (
+          <>
+            {ratingGroups.map(g => (
+              <div key={g.key} className="mb-6">
+                <h3
+                  className="font-serif text-lg font-bold mb-2 px-1"
+                  style={{ color: g.key === '0' ? 'var(--text-muted)' : 'var(--accent)' }}
+                >
+                  {g.label}
+                </h3>
+                <div className={GRID}>
+                  {g.items.map(item => (
+                    <ItemCard key={item.id} item={item} isEditor={isEditor} onUpdate={handleUpdate} onDelete={handleDelete} supabaseUrl={supabaseUrl} />
+                  ))}
+                </div>
+              </div>
+            ))}
           </>
         ) : (
           <div className={GRID}>
