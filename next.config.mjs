@@ -18,6 +18,10 @@ const nextConfig = {
         protocol: 'https',
         hostname: 'comicvine.gamespot.com',
       },
+      {
+        protocol: 'https',
+        hostname: 'books.google.com',
+      },
     ],
   },
 }
