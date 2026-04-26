@@ -127,7 +127,7 @@ async function backfillBooks(db: ReturnType<typeof createServerClient>, force: b
 
     if (worksKey) {
       if (!item.description) {
-        const description = await fetchBookDescription(worksKey)
+        const description = await fetchBookDescription(worksKey, isbn)
         await delay(300)
         if (description) patch.description = description
       }
