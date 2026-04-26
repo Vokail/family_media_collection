@@ -62,7 +62,7 @@ async function fetchDiscogsRelease(id: string) {
 }
 
 async function backfillVinyl(db: ReturnType<typeof createServerClient>, force: boolean) {
-  const q = db.from('items').select('id, creator, title, external_id, cover_path, member_id').eq('collection', 'vinyl')
+  const q = db.from('items').select('id, creator, title, external_id, cover_path, member_id, sort_name, tracklist').eq('collection', 'vinyl')
   const { data: allItems } = await q
   const items = force
     ? (allItems ?? [])
