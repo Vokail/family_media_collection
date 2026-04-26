@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import PasswordField from '@/components/PasswordField'
 
@@ -58,6 +58,105 @@ function BackfillButton() {
         {status === 'running' ? 'Running…' : 'Run backfill'}
       </button>
       {result && <p className={`text-sm ${status === 'error' ? 'text-red-500' : 'text-green-600'}`}>{result}</p>}
+    </div>
+  )
+}
+
+function BackupSection() {
+  const [exportStatus, setExportStatus] = useState<'idle' | 'running' | 'done' | 'error'>('idle')
+  const [importStatus, setImportStatus] = useState<'idle' | 'running' | 'done' | 'error'>('idle')
+  const [importResult, setImportResult] = useState('')
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  async function handleExport() {
+    setExportStatus('running')
+    try {
+      const res = await fetch('/api/admin/export')
+      if (!res.ok) throw new Error('Export failed')
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `collection-backup-${new Date().toISOString().slice(0, 10)}.json`
+      a.click()
+      URL.revokeObjectURL(url)
+      setExportStatus('done')
+    } catch {
+      setExportStatus('error')
+    }
+  }
+
+  async function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setImportStatus('running')
+    setImportResult('')
+    try {
+      const text = await file.text()
+      const json = JSON.parse(text)
+      const res = await fetch('/api/admin/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(json),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setImportResult(`Imported ${data.imported} items, skipped ${data.skipped} duplicates.`)
+        setImportStatus('done')
+      } else {
+        setImportResult(data.error ?? 'Import failed')
+        setImportStatus('error')
+      }
+    } catch {
+      setImportResult('Could not read or parse the file.')
+      setImportStatus('error')
+    }
+    if (fileRef.current) fileRef.current.value = ''
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-2">
+        <p className="subtitle text-sm">
+          Downloads a JSON file with all items, members, and cover images embedded.
+          Store it somewhere safe (Google Drive, iCloud, etc.).
+        </p>
+        <button
+          onClick={handleExport}
+          disabled={exportStatus === 'running'}
+          className="btn-ghost text-sm self-start"
+        >
+          {exportStatus === 'running' ? 'Preparing download…' : 'Download backup'}
+        </button>
+        {exportStatus === 'done' && <p className="text-green-600 text-sm">Download started.</p>}
+        {exportStatus === 'error' && <p className="text-red-500 text-sm">Export failed — try again.</p>}
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <p className="subtitle text-sm">
+          Restore from a backup file. Existing items are skipped (no duplicates).
+          Cover images are re-uploaded automatically.
+        </p>
+        <input
+          ref={fileRef}
+          type="file"
+          accept=".json,application/json"
+          className="hidden"
+          onChange={handleImport}
+        />
+        <button
+          onClick={() => fileRef.current?.click()}
+          disabled={importStatus === 'running'}
+          className="btn-ghost text-sm self-start"
+        >
+          {importStatus === 'running' ? 'Importing…' : 'Restore from backup'}
+        </button>
+        {importResult && (
+          <p className={`text-sm ${importStatus === 'error' ? 'text-red-500' : 'text-green-600'}`}>
+            {importResult}
+          </p>
+        )}
+      </div>
     </div>
   )
 }
@@ -122,6 +221,11 @@ export default function SettingsPage() {
         <h2 className="font-serif text-lg font-semibold">Data Backfill</h2>
         <p className="subtitle text-sm">Fetches missing data from external APIs for each collection type. Only fills gaps unless Force is enabled. Takes ~1–2 seconds per item.</p>
         <BackfillButton />
+      </section>
+
+      <section className="card p-6 flex flex-col gap-4">
+        <h2 className="font-serif text-lg font-semibold">Backup & Restore</h2>
+        <BackupSection />
       </section>
     </main>
   )
