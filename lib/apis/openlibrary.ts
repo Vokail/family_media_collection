@@ -47,7 +47,7 @@ export async function fetchBookDescription(externalId: string): Promise<string |
 export async function lookupBookByISBN(isbn: string): Promise<SearchResult | null> {
   // 1. OpenLibrary search-by-ISBN — returns works key for description backfill
   try {
-    const res = await fetch(`https://openlibrary.org/search.json?isbn=${isbn}&fields=key,title,author_name,first_publish_year,cover_i&limit=1`)
+    const res = await fetch(`https://openlibrary.org/search.json?isbn=${isbn}&fields=key,title,author_name,first_publish_year,cover_i&limit=1`, { signal: AbortSignal.timeout(5000) })
     if (res.ok) {
       const data = await res.json()
       const doc = data.docs?.[0]
@@ -67,7 +67,7 @@ export async function lookupBookByISBN(isbn: string): Promise<SearchResult | nul
 
   // 2. Google Books — comprehensive ISBN database, no API key needed
   try {
-    const res = await fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}&maxResults=1`)
+    const res = await fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}&maxResults=1`, { signal: AbortSignal.timeout(5000) })
     if (res.ok) {
       const data = await res.json()
       const vol = data.items?.[0]?.volumeInfo
@@ -88,7 +88,7 @@ export async function lookupBookByISBN(isbn: string): Promise<SearchResult | nul
 
   // 3. OpenLibrary books API — slowest but most detailed
   try {
-    const res = await fetch(`https://openlibrary.org/api/books?bibkeys=ISBN:${isbn}&format=json&jscmd=data`)
+    const res = await fetch(`https://openlibrary.org/api/books?bibkeys=ISBN:${isbn}&format=json&jscmd=data`, { signal: AbortSignal.timeout(5000) })
     if (!res.ok) return null
     const data = await res.json()
     const book = data[`ISBN:${isbn}`]

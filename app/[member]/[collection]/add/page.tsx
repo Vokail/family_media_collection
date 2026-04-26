@@ -1,6 +1,6 @@
 'use client'
 import { useParams, useRouter } from 'next/navigation'
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import BarcodeScanner from '@/components/BarcodeScanner'
 import SearchResults from '@/components/SearchResults'
 import type { SearchResult, CollectionType } from '@/lib/types'
@@ -30,6 +30,7 @@ export default function AddItemPage() {
   const [comicLang, setComicLang] = useState('dutch')
   const [offset, setOffset] = useState(0)
   const [lastQuery, setLastQuery] = useState('')
+  const barcodeAbort = useRef<AbortController | null>(null)
 
   useEffect(() => {
     const saved = localStorage.getItem(langStorageKey(collection))
@@ -71,17 +72,31 @@ export default function AddItemPage() {
   }, [collection, comicLang, lastQuery, offset])
 
   const handleBarcodeDetected = useCallback(async (code: string) => {
+    barcodeAbort.current?.abort()
+    const controller = new AbortController()
+    barcodeAbort.current = controller
+
     setScanning(false)
     setLoading(true)
-    const res = await fetch(`/api/barcode?code=${encodeURIComponent(code)}&type=${collection}`)
-    if (res.ok) {
-      const result: SearchResult = await res.json()
-      setResults([result])
-      setLoading(false)
-    } else {
-      setQuery(code)
-      setLoading(false)
-      await runSearch(code)
+    setResults([])
+
+    try {
+      const res = await fetch(`/api/barcode?code=${encodeURIComponent(code)}&type=${collection}`, {
+        signal: controller.signal,
+      })
+      if (res.ok) {
+        setResults([await res.json()])
+      } else {
+        setQuery(code)
+        await runSearch(code)
+      }
+    } catch (e) {
+      if ((e as Error).name !== 'AbortError') {
+        setQuery(code)
+        await runSearch(code)
+      }
+    } finally {
+      if (!controller.signal.aborted) setLoading(false)
     }
   }, [collection, runSearch])
 
