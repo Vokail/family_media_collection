@@ -222,7 +222,7 @@ export default function AddItemPage() {
             <div>
               <label className="label mb-1 block">Cover image (optional)</label>
               <div className="flex items-center gap-2">
-                <button onClick={() => setShowManualCamera(true)} className="btn-ghost text-xs">📷</button>
+                <button onClick={() => setShowManualCamera(true)} className="btn-ghost text-xs md:hidden">📷</button>
                 <button onClick={() => manualFileRef.current?.click()} className="btn-ghost text-xs">
                   {manualCover ? manualCover.name : 'Library…'}
                 </button>

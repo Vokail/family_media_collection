@@ -32,7 +32,7 @@ export async function POST(request: Request) {
       .jpeg({ quality: 85 })
       .toBuffer()
     const db = createServerClient()
-    const path = `${member.id}/${randomUUID()}.jpg`
+    const path = `manual/${member.id}/${randomUUID()}.jpg`
     const { error } = await db.storage.from('covers').upload(path, resized, { contentType: 'image/jpeg' })
     if (!error) cover_path = `covers/${path}`
   }
