@@ -86,7 +86,7 @@ export default function AddItemPage() {
     setLoading(true)
     setOffset(0)
     setLastQuery(q)
-    const lang = collection === 'book' ? comicLang : undefined
+    const lang = (collection === 'book' || collection === 'comic') ? comicLang : undefined
     const url = `/api/search?q=${encodeURIComponent(q)}&type=${collection}${lang ? `&lang=${lang}` : ''}`
     const res = await fetch(url)
     setResults(res.ok ? await res.json() : [])
@@ -96,7 +96,7 @@ export default function AddItemPage() {
   const loadMore = useCallback(async () => {
     const nextOffset = offset + 20
     setLoadingMore(true)
-    const lang = collection === 'book' ? comicLang : undefined
+    const lang = (collection === 'book' || collection === 'comic') ? comicLang : undefined
     const url = `/api/search?q=${encodeURIComponent(lastQuery)}&type=${collection}&offset=${nextOffset}${lang ? `&lang=${lang}` : ''}`
     const res = await fetch(url)
     if (res.ok) {
@@ -122,7 +122,7 @@ export default function AddItemPage() {
     setBarcodeHint(null)
 
     try {
-      const lang = collection === 'book' ? comicLang : undefined
+      const lang = (collection === 'book' || collection === 'comic') ? comicLang : undefined
       const res = await fetch(`/api/barcode?code=${encodeURIComponent(code)}&type=${collection}${lang ? `&lang=${lang}` : ''}`, {
         signal: controller.signal,
       })
@@ -190,7 +190,7 @@ export default function AddItemPage() {
         <h1 className="font-serif text-xl font-bold">Add {collectionLabel}</h1>
       </div>
 
-      {collection === 'book' && (
+      {(collection === 'book' || collection === 'comic') && (
         <div className="flex gap-2 mb-3 flex-wrap">
           {COMIC_LANGUAGES.map(l => (
             <button
