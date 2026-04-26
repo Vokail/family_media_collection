@@ -4,10 +4,10 @@ import { useRouter } from 'next/navigation'
 import PasswordField from '@/components/PasswordField'
 
 const BACKFILL_TYPES = [
-  { value: 'vinyl', label: 'Vinyl', hint: 'sort name + tracklist' },
-  { value: 'book', label: 'Books', hint: 'description' },
-  { value: 'comic', label: 'Comics', hint: 'description' },
-  { value: 'lego', label: 'Lego', hint: 'theme + parts count' },
+  { value: 'vinyl', label: 'Vinyl', hint: 'artist sort name, tracklist, cover' },
+  { value: 'book', label: 'Books', hint: 'description, ISBN, cover (OL · Google Books · KB)' },
+  { value: 'comic', label: 'Comics', hint: 'description, cover (ComicVine)' },
+  { value: 'lego', label: 'Lego', hint: 'theme, part count, year, cover (Rebrickable)' },
 ]
 
 function BackfillButton() {
@@ -120,7 +120,7 @@ export default function SettingsPage() {
 
       <section className="card p-6 flex flex-col gap-4">
         <h2 className="font-serif text-lg font-semibold">Data Backfill</h2>
-        <p className="subtitle text-sm">Re-fetch missing data from external APIs: sort names + tracklists for vinyl, descriptions for books. Takes ~2 seconds per item.</p>
+        <p className="subtitle text-sm">Fetches missing data from external APIs for each collection type. Only fills gaps unless Force is enabled. Takes ~1–2 seconds per item.</p>
         <BackfillButton />
       </section>
     </main>
