@@ -91,11 +91,9 @@ async function googleBooksByISBN(isbn: string): Promise<SearchResult> {
     creator: (vol.authors as string[])?.[0] ?? 'Unknown',
     year: vol.publishedDate ? parseInt(vol.publishedDate) : null,
     cover_url: vol.imageLinks?.thumbnail?.replace('http:', 'https:') ?? null,
-    source: 'openlibrary',
+    source: 'google' as SearchResult['source'],
   }
 }
-
-
 
 async function kbSruByISBN(isbn: string): Promise<SearchResult> {
   const url = `https://jsru.kb.nl/sru/sru?operation=searchRetrieve&x-collection=GGC&query=isbn+exact+%22${isbn}%22&recordSchema=dc&maximumRecords=1`
@@ -112,7 +110,7 @@ async function kbSruByISBN(isbn: string): Promise<SearchResult> {
     isbn,
     title,
     creator: dc('creator') ?? 'Unknown',
-    year: dc('date') ? parseInt(dc('date')!) : null,
+    year: (() => { const d = dc('date'); return d ? parseInt(d) : null })(),
     cover_url: null,
     source: 'openlibrary',
   }

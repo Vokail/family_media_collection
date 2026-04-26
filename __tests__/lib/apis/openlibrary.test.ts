@@ -38,24 +38,34 @@ describe('searchBooks', () => {
 
 describe('lookupBookByISBN', () => {
   it('returns a result for a valid ISBN', async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
-        'ISBN:9780441013593': {
-          title: 'Dune',
-          authors: [{ name: 'Frank Herbert' }],
-          publish_date: '1965',
-          cover: { large: 'https://covers.openlibrary.org/b/id/12345-L.jpg' },
-        }
+    // 4 racers fire concurrently: olSearch, olBibKeys, google, kbSru (in order)
+    mockFetch
+      .mockResolvedValueOnce({ ok: false })                          // olSearchByISBN fails
+      .mockResolvedValueOnce({                                        // olBibKeysByISBN succeeds
+        ok: true,
+        json: async () => ({
+          'ISBN:9780441013593': {
+            title: 'Dune',
+            authors: [{ name: 'Frank Herbert' }],
+            publish_date: '1965',
+            cover: { large: 'https://covers.openlibrary.org/b/id/12345-L.jpg' },
+          }
+        })
       })
-    })
+      .mockResolvedValueOnce({ ok: false })                          // googleBooksByISBN fails
+      .mockResolvedValueOnce({ ok: false })                          // kbSruByISBN fails
     const result = await lookupBookByISBN('9780441013593')
     expect(result).not.toBeNull()
     expect(result!.title).toBe('Dune')
   })
 
   it('returns null when ISBN not found', async () => {
-    mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({}) })
+    // All 4 racers must fail for Promise.any to reject
+    mockFetch
+      .mockResolvedValueOnce({ ok: false })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({}) })
+      .mockResolvedValueOnce({ ok: false })
+      .mockResolvedValueOnce({ ok: false })
     const result = await lookupBookByISBN('0000000000')
     expect(result).toBeNull()
   })

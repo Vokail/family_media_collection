@@ -43,7 +43,7 @@ export interface SearchResult {
   creator: string
   year: number | null
   cover_url: string | null
-  source: 'openlibrary' | 'discogs' | 'comicvine' | 'rebrickable'
+  source: 'openlibrary' | 'discogs' | 'comicvine' | 'rebrickable' | 'google'
 }
 
 export interface SessionData {

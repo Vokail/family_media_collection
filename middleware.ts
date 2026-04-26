@@ -18,6 +18,9 @@ export async function middleware(request: NextRequest) {
   })
 
   if (!session.role) {
+    if (pathname.startsWith('/api/')) {
+      return NextResponse.json({ error: 'Unauthenticated' }, { status: 401 })
+    }
     return NextResponse.redirect(new URL('/', request.url))
   }
 

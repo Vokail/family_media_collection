@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase-server'
 import { downloadCover } from '@/lib/cover'
+import { fetchBookDescription } from '@/lib/apis/openlibrary'
 
 const DISCOGS_BASE = 'https://api.discogs.com'
 const discogsHeaders = () => ({
@@ -80,18 +81,6 @@ async function backfillVinyl(db: ReturnType<typeof createServerClient>, force: b
 }
 
 // --- Books ---
-async function fetchBookDescription(externalId: string): Promise<string | null> {
-  try {
-    if (!externalId?.startsWith('/works/')) return null
-    const res = await fetch(`https://openlibrary.org${externalId}.json`)
-    if (!res.ok) return null
-    const data = await res.json()
-    const desc = data.description
-    if (!desc) return null
-    return typeof desc === 'string' ? desc : (desc.value as string) ?? null
-  } catch { return null }
-}
-
 async function searchBookExternalId(title: string, creator: string): Promise<string | null> {
   try {
     const q = encodeURIComponent(`${title} ${creator}`)

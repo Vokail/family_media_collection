@@ -5,11 +5,8 @@ create table members (
   slug text not null unique
 );
 
-insert into members (name, slug) values
-  ('Alice',   'alice'),
-  ('Bob', 'bob'),
-  ('Carol',   'carol'),
-  ('Dave',    'dave');
+-- Add your family members here, e.g.:
+-- insert into members (name, slug) values ('Alice', 'alice'), ('Bob', 'bob');
 
 -- Items
 create table items (
