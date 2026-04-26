@@ -28,17 +28,34 @@ export async function searchBooks(query: string, lang?: string, offset = 0): Pro
   return (data.docs ?? []).map(mapDoc)
 }
 
-export async function fetchBookDescription(externalId: string): Promise<string | null> {
+export async function fetchBookDescription(externalId: string, isbn?: string | null): Promise<string | null> {
+  const isbnVal = isbn ?? (externalId.startsWith('isbn:') ? externalId.slice(5) : null)
+
+  // Try Google Books first — descriptions are edition-specific and free of OL wiki markup
+  if (isbnVal) {
+    try {
+      const res = await fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${isbnVal}&maxResults=1`, { signal: AbortSignal.timeout(5000) })
+      if (res.ok) {
+        const data = await res.json()
+        const desc = data.items?.[0]?.volumeInfo?.description as string | undefined
+        if (desc?.trim()) return desc.trim()
+      }
+    } catch { /* fall through to OL */ }
+  }
+
+  // Fallback: OpenLibrary works description
   try {
-    // externalId is either "/works/OL1234W" or "isbn:..."
     const workId = externalId.startsWith('/works/') ? externalId : null
     if (!workId) return null
-    const res = await fetch(`https://openlibrary.org${workId}.json`)
+    const res = await fetch(`https://openlibrary.org${workId}.json`, { signal: AbortSignal.timeout(5000) })
     if (!res.ok) return null
     const data = await res.json()
     const desc = data.description
     if (!desc) return null
-    return typeof desc === 'string' ? desc : (desc.value as string) ?? null
+    const raw = typeof desc === 'string' ? desc : (desc.value as string) ?? null
+    if (!raw) return null
+    // Strip OL internal wiki-style links (e.g. [[/works/OL123W|title]] or /authors/OL456A)
+    return raw.replace(/\[\[\/[^\]|]+\|([^\]]+)\]\]/g, '$1').replace(/\[https?:\/\/\S+ ([^\]]+)\]/g, '$1').trim()
   } catch {
     return null
   }

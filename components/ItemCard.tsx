@@ -113,7 +113,7 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
               <p className="text-center text-xs font-mono" style={{ color: 'var(--text-muted)' }}>ISBN {item.isbn}</p>
             )}
             {item.description && (
-              <p className="text-sm leading-relaxed" style={{ color: 'var(--text-muted)' }}>{item.description}</p>
+              <p className="text-sm leading-relaxed break-words" style={{ color: 'var(--text-muted)', overflowWrap: 'break-word', wordBreak: 'break-word' }}>{item.description}</p>
             )}
             {isEditor ? (
               <>

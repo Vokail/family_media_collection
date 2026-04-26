@@ -36,7 +36,7 @@ export async function POST(request: Request) {
       ? import('@/lib/apis/discogs').then(m => m.fetchVinylRelease(external_id))
       : Promise.resolve(null),
     collection === 'book' && external_id
-      ? import('@/lib/apis/openlibrary').then(m => m.fetchBookDescription(external_id))
+      ? import('@/lib/apis/openlibrary').then(m => m.fetchBookDescription(external_id, isbn))
       : Promise.resolve(null),
   ])
 
