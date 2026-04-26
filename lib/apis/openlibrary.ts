@@ -11,12 +11,6 @@ function mapDoc(doc: Record<string, unknown>): SearchResult {
   }
 }
 
-const OL_LANG_CODES: Record<string, string> = {
-  dutch: 'dut',
-  english: 'eng',
-  french: 'fre',
-  german: 'ger',
-}
 
 export async function searchBooks(query: string, _lang?: string, offset = 0): Promise<SearchResult[]> {
   // Don't filter by language — OL language tagging is inconsistent and would hide valid results
