@@ -3,6 +3,33 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import PasswordField from '@/components/PasswordField'
 
+function BackfillButton() {
+  const [status, setStatus] = useState<'idle' | 'running' | 'done' | 'error'>('idle')
+  const [result, setResult] = useState('')
+
+  async function run() {
+    setStatus('running')
+    const res = await fetch('/api/admin/backfill-sort')
+    const data = await res.json()
+    if (res.ok) {
+      setResult(data.message ?? `Updated ${data.updated} of ${data.total} items`)
+      setStatus('done')
+    } else {
+      setResult(data.error ?? 'Something went wrong')
+      setStatus('error')
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <button onClick={run} disabled={status === 'running'} className="btn-ghost text-sm self-start">
+        {status === 'running' ? 'Running…' : 'Run backfill'}
+      </button>
+      {result && <p className={`text-sm ${status === 'error' ? 'text-red-500' : 'text-green-600'}`}>{result}</p>}
+    </div>
+  )
+}
+
 export default function SettingsPage() {
   const router = useRouter()
   const [pinError, setPinError] = useState('')
@@ -57,6 +84,12 @@ export default function SettingsPage() {
           onSubmit={v => updateCredential('family_password_hash', v, setPassError, setPassSuccess)}
         />
         {passSuccess && <p className="text-green-600 text-sm">Password updated successfully.</p>}
+      </section>
+
+      <section className="card p-6 flex flex-col gap-4">
+        <h2 className="font-serif text-lg font-semibold">Vinyl Sort Names</h2>
+        <p className="subtitle text-sm">Fetch correct Discogs sort names for vinyl items that are missing one. Takes ~2 seconds per item.</p>
+        <BackfillButton />
       </section>
     </main>
   )

@@ -29,6 +29,12 @@ async function fetchSortName(creator: string, title: string): Promise<string | n
 }
 
 export async function GET() {
+  const { getSession } = await import('@/lib/session')
+  const session = await getSession()
+  if (session.role !== 'editor') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
   const db = createServerClient()
 
   // Get all vinyl items without a sort_name
