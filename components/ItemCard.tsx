@@ -78,6 +78,9 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
             )}
             <h2 className="font-serif text-xl font-bold text-center">{item.title}</h2>
             <p className="text-center subtitle">{item.creator}{item.year ? ` · ${item.year}` : ''}</p>
+            {item.collection === 'lego' && item.external_id && (
+              <p className="text-center text-xs font-mono" style={{ color: 'var(--text-muted)' }}>#{item.external_id}</p>
+            )}
             {isEditor ? (
               <>
                 <div>

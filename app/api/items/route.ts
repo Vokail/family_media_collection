@@ -41,6 +41,7 @@ export async function POST(request: Request) {
     notes: null,
     tracklist: vinylRelease?.tracklist?.length ? vinylRelease.tracklist : null,
     sort_name: vinylRelease?.sortName ?? null,
+    external_id: external_id ?? null,
   })
   revalidatePath(`/${memberSlug}/${collection}`)
   return NextResponse.json(item, { status: 201 })

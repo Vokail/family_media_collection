@@ -25,6 +25,7 @@ export interface Item {
   notes: string | null
   tracklist: Track[] | null
   sort_name: string | null
+  external_id: string | null
   created_at: string
 }
 

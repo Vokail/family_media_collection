@@ -13,12 +13,11 @@ const TABS: { label: string; value: CollectionType }[] = [
   { label: 'Lego', value: 'lego' },
 ]
 
-const SORT_OPTIONS: { value: SortMode; label: string }[] = [
-  { value: 'added', label: 'Date added' },
-  { value: 'creator', label: 'Artist / Author' },
-  { value: 'title', label: 'Title' },
-  { value: 'year', label: 'Year' },
-]
+function sortCreatorLabel(collection: CollectionType): string {
+  if (collection === 'lego') return 'Theme'
+  if (collection === 'book') return 'Author'
+  return 'Artist'
+}
 
 const GRID = 'grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6'
 
@@ -106,13 +105,15 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
   const sorted = sortItems(filtered, sort)
   const byCreator = sort === 'creator'
   const byYear = sort === 'year'
+  const byLego = byCreator && collection === 'lego'
 
   // Build groups when sorted by creator
   const creatorGroups: { letter: string; items: Item[] }[] = []
   if (byCreator) {
     const map = new Map<string, Item[]>()
     for (const item of sorted) {
-      const k = indexKey(item.creator, item.sort_name)
+      // Lego: group by full theme name; others: by first letter
+      const k = byLego ? item.creator : indexKey(item.creator, item.sort_name)
       if (!map.has(k)) map.set(k, [])
       map.get(k)!.push(item)
     }
@@ -123,7 +124,11 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
 
   const yearGroups: YearGroup[] = byYear ? buildYearGroups(sorted) : []
 
-  const sidebarKeys = byCreator ? creatorGroups.map(g => g.letter) : yearGroups.map(g => g.shortKey)
+  const sidebarKeys = byCreator
+    ? byLego
+      ? creatorGroups.map(g => g.letter.slice(0, 4))  // abbreviated theme for sidebar
+      : creatorGroups.map(g => g.letter)
+    : yearGroups.map(g => g.shortKey)
 
   function scrollTo(key: string) {
     sectionRefs.current[key]?.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -171,7 +176,10 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
             onChange={e => setSort(e.target.value as SortMode)}
             className="input py-1 px-2 text-sm w-auto"
           >
-            {SORT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+            <option value="added">Date added</option>
+            <option value="creator">{sortCreatorLabel(collection)}</option>
+            <option value="title">Title</option>
+            <option value="year">Year</option>
           </select>
         </div>
       </div>
