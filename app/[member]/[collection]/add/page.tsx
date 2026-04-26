@@ -126,6 +126,7 @@ export default function AddItemPage() {
         is_wishlist: isWishlist,
         external_id: result.external_id,
         isbn: result.isbn ?? null,
+        lang: collection === 'book' ? comicLang : undefined,
       }),
     })
     setAdding(null)

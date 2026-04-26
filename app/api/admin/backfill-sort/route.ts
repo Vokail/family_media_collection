@@ -127,7 +127,9 @@ async function backfillBooks(db: ReturnType<typeof createServerClient>, force: b
 
     if (worksKey) {
       if (!item.description) {
-        const description = await fetchBookDescription(worksKey, isbn)
+        // Infer language from ISBN prefix: Dutch ISBNs start with 90- or 978-90
+        const inferredLang = isbn && (isbn.startsWith('90') || isbn.startsWith('978-90') || isbn.startsWith('9789') || isbn.startsWith('9790')) ? 'dutch' : null
+        const description = await fetchBookDescription(worksKey, isbn, inferredLang)
         await delay(300)
         if (description) patch.description = description
       }

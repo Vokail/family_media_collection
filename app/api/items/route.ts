@@ -22,7 +22,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   const body = await request.json()
-  const { memberSlug, collection, title, creator, year, cover_url, is_wishlist, external_id, isbn } = body
+  const { memberSlug, collection, title, creator, year, cover_url, is_wishlist, external_id, isbn, lang } = body
   if (!title?.trim()) return NextResponse.json({ error: 'Title required' }, { status: 400 })
   if (!VALID_COLLECTIONS.includes(collection)) return NextResponse.json({ error: 'Invalid collection' }, { status: 400 })
   const member = await getMemberBySlug(memberSlug)
@@ -36,7 +36,7 @@ export async function POST(request: Request) {
       ? import('@/lib/apis/discogs').then(m => m.fetchVinylRelease(external_id))
       : Promise.resolve(null),
     collection === 'book' && external_id
-      ? import('@/lib/apis/openlibrary').then(m => m.fetchBookDescription(external_id, isbn))
+      ? import('@/lib/apis/openlibrary').then(m => m.fetchBookDescription(external_id, isbn, lang))
       : Promise.resolve(null),
   ])
 
