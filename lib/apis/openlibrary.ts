@@ -108,18 +108,6 @@ async function tryOLCoverByISBN(isbn: string): Promise<string | null> {
   }
 }
 
-async function tryGoogleBooksCoverByISBN(isbn: string): Promise<string | null> {
-  try {
-    const url = `https://books.google.com/books/content?vid=ISBN${isbn}&printsec=frontcover&img=1&zoom=3`
-    const res = await fetch(url, { method: 'HEAD', signal: AbortSignal.timeout(3000) })
-    if (!res.ok) return null
-    // Google returns a 1px transparent GIF (~43 bytes) when no cover exists
-    const length = parseInt(res.headers.get('content-length') ?? '0')
-    return length > 500 ? url : null
-  } catch {
-    return null
-  }
-}
 
 export async function lookupBookByISBN(isbn: string): Promise<SearchResult | null> {
   try {
