@@ -38,6 +38,14 @@ export async function searchComics(query: string, lang?: string, offset = 0): Pr
 }
 
 export async function lookupComicByBarcode(barcode: string): Promise<SearchResult | null> {
+  // Comic/manga volumes have ISBN barcodes — try book lookup first
+  if (/^\d{10,13}$/.test(barcode)) {
+    try {
+      const { lookupBookByISBN } = await import('./openlibrary')
+      const book = await lookupBookByISBN(barcode)
+      if (book) return { ...book, source: 'comicvine' }
+    } catch { /* fall through */ }
+  }
   const results = await searchComics(barcode)
   return results[0] ?? null
 }
