@@ -22,7 +22,7 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="h-screen overflow-hidden flex flex-col items-center justify-center gap-6 p-6">
+    <main className="fixed inset-0 flex flex-col items-center justify-center gap-6 p-6">
       <h1 className="text-3xl font-serif font-bold">Our Collection</h1>
       <p className="subtitle">Enter the family password or view PIN</p>
       <PasswordField onSubmit={handleLogin} error={error} placeholder="Password or PIN" />
