@@ -28,6 +28,12 @@ export async function POST(request: Request) {
   const member = await getMemberBySlug(memberSlug)
   if (!member) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
+  const comicDescription = collection === 'comic' && external_id
+    ? /^\d+$/.test(external_id)
+      ? import('@/lib/apis/comicvine').then(m => m.fetchComicDescription(external_id))
+      : import('@/lib/apis/openlibrary').then(m => m.fetchBookDescription(external_id, isbn, lang, title, creator))
+    : Promise.resolve(null)
+
   const [cover_path, vinylRelease, description] = await Promise.all([
     cover_url
       ? import('@/lib/cover').then(m => m.downloadCover(cover_url, member.id))
@@ -37,7 +43,7 @@ export async function POST(request: Request) {
       : Promise.resolve(null),
     collection === 'book' && external_id
       ? import('@/lib/apis/openlibrary').then(m => m.fetchBookDescription(external_id, isbn, lang, title, creator))
-      : Promise.resolve(null),
+      : comicDescription,
   ])
 
   const item = await createItem({
