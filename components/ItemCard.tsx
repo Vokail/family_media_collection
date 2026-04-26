@@ -115,9 +115,9 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
           </div>
         )}
         {item.rating && (
-          <div className="absolute bottom-1 left-0 right-0 flex justify-center gap-0.5">
+          <div className="absolute bottom-0 left-0 right-0 flex justify-center gap-0.5 pb-1.5 pt-3 rounded-b-lg" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.65) 0%, transparent 100%)' }}>
             {[1,2,3,4,5].map(s => (
-              <span key={s} className="text-xs leading-none" style={{ color: s <= item.rating! ? 'var(--accent)' : 'rgba(255,255,255,0.3)', textShadow: '0 1px 2px rgba(0,0,0,0.8)' }}>★</span>
+              <span key={s} className="text-sm leading-none drop-shadow" style={{ color: s <= item.rating! ? '#f5a623' : 'rgba(255,255,255,0.35)' }}>★</span>
             ))}
           </div>
         )}
@@ -147,9 +147,7 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
             {item.description && (
               <p className="text-sm leading-relaxed break-words" style={{ color: 'var(--text-muted)', overflowWrap: 'break-word', wordBreak: 'break-word' }}>{item.description}</p>
             )}
-            {item.collection === 'book' && (
-              <StarRating rating={item.rating} onRate={isEditor ? setRating : undefined} />
-            )}
+            <StarRating rating={item.rating} onRate={isEditor ? setRating : undefined} />
             {isEditor ? (
               <>
                 <div>
