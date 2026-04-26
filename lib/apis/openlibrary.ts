@@ -95,18 +95,6 @@ async function googleBooksByISBN(isbn: string): Promise<SearchResult> {
   }
 }
 
-async function tryOLCoverByISBN(isbn: string): Promise<string | null> {
-  try {
-    const url = `https://covers.openlibrary.org/b/isbn/${isbn}-L.jpg`
-    const res = await fetch(url, { method: 'HEAD', signal: AbortSignal.timeout(3000) })
-    if (!res.ok) return null
-    // OL redirects missing covers to /b/id/-1-L.jpg (placeholder)
-    if (res.url.includes('-1-L.jpg') || res.url.includes('id=-1')) return null
-    return url
-  } catch {
-    return null
-  }
-}
 
 
 async function kbSruByISBN(isbn: string): Promise<SearchResult> {
@@ -139,10 +127,6 @@ export async function lookupBookByISBN(isbn: string): Promise<SearchResult | nul
       googleBooksByISBN(isbn),
       kbSruByISBN(isbn),
     ])
-    // If no cover was returned, try OL cover endpoint directly by ISBN
-    if (!result.cover_url) {
-      result.cover_url = await tryOLCoverByISBN(isbn)
-    }
     return result
   } catch {
     return null

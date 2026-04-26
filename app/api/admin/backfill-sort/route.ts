@@ -10,26 +10,15 @@ const discogsHeaders = () => ({
 
 async function delay(ms: number) { return new Promise(r => setTimeout(r, ms)) }
 
-async function headOk(url: string, rejectIfUrlContains?: string): Promise<boolean> {
-  try {
-    const r = await fetch(url, { method: 'HEAD', signal: AbortSignal.timeout(3000) })
-    if (!r.ok) return false
-    if (rejectIfUrlContains && r.url.includes(rejectIfUrlContains)) return false
-    return true
-  } catch { return false }
-}
-
-
 async function findBookCoverUrl(external_id: string | null, isbn: string | null): Promise<string | null> {
   const isbnVal = isbn ?? (external_id?.startsWith('isbn:') ? external_id.slice(5) : null)
+  // Only use covers explicitly returned by APIs — avoids bad/black placeholder images
   if (isbnVal) {
-    const olUrl = `https://covers.openlibrary.org/b/isbn/${isbnVal}-L.jpg`
-    if (await headOk(olUrl, '-1-L.jpg')) return olUrl
-  }
-  if (external_id?.startsWith('/works/')) {
-    const olid = external_id.replace('/works/', '')
-    const url = `https://covers.openlibrary.org/b/olid/${olid}-L.jpg`
-    if (await headOk(url, '-1-L.jpg')) return url
+    try {
+      const { lookupBookByISBN } = await import('@/lib/apis/openlibrary')
+      const result = await lookupBookByISBN(isbnVal)
+      if (result?.cover_url) return result.cover_url
+    } catch { /* skip */ }
   }
   return null
 }
