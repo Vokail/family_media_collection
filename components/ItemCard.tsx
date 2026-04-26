@@ -93,9 +93,11 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
   }
 
   async function handleDelete() {
-    await fetch(`/api/items/${item.id}`, { method: 'DELETE' })
-    onDelete(item.id)
-    setOpen(false)
+    const res = await fetch(`/api/items/${item.id}`, { method: 'DELETE' })
+    if (res.ok) {
+      onDelete(item.id)
+      setOpen(false)
+    }
   }
 
   return (

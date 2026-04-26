@@ -51,6 +51,12 @@ describe('POST /api/items/manual', () => {
     expect(res.status).toBe(400)
   })
 
+  it('returns 400 for invalid collection', async () => {
+    const req = makeFormRequest({ memberSlug: 'alice', collection: 'stamps', title: 'Test' })
+    const res = await POST(req)
+    expect(res.status).toBe(400)
+  })
+
   it('returns 404 when member is not found', async () => {
     mockGetMember.mockResolvedValue(null)
     const req = makeFormRequest({ memberSlug: 'ghost', collection: 'vinyl', title: 'Test' })
@@ -77,8 +83,24 @@ describe('POST /api/items/manual', () => {
     const res = await POST(req)
     expect(res.status).toBe(201)
     expect(mockUpload).toHaveBeenCalled()
-    const [, patch] = mockCreateItem.mock.calls[0]
-    // cover_path should be set after successful upload
     expect(mockCreateItem.mock.calls[0][0].cover_path).toBeDefined()
+  })
+
+  it('returns 500 when cover upload fails', async () => {
+    mockGetMember.mockResolvedValue(MEMBER)
+    mockUpload.mockResolvedValue({ error: new Error('storage error') })
+    const coverFile = new Blob([Buffer.from('jpeg-data')], { type: 'image/jpeg' })
+    const req = makeFormRequest({ memberSlug: 'alice', collection: 'vinyl', title: 'Handmade', cover: coverFile })
+    const res = await POST(req)
+    expect(res.status).toBe(500)
+    expect(mockCreateItem).not.toHaveBeenCalled()
+  })
+
+  it('returns 500 when DB throws', async () => {
+    mockGetMember.mockResolvedValue(MEMBER)
+    mockCreateItem.mockRejectedValue(new Error('db error'))
+    const req = makeFormRequest({ memberSlug: 'alice', collection: 'vinyl', title: 'Handmade' })
+    const res = await POST(req)
+    expect(res.status).toBe(500)
   })
 })
