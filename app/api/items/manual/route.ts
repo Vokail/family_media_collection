@@ -46,6 +46,11 @@ export async function POST(request: Request) {
     cover_path,
     is_wishlist: isWishlist,
     notes: null,
+    external_id: null,
+    sort_name: null,
+    tracklist: null,
+    description: null,
+    isbn: null,
   })
 
   return NextResponse.json(item, { status: 201 })
