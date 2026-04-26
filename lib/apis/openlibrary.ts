@@ -44,64 +44,48 @@ export async function fetchBookDescription(externalId: string): Promise<string |
   }
 }
 
+async function olSearchByISBN(isbn: string): Promise<SearchResult> {
+  const res = await fetch(`https://openlibrary.org/search.json?isbn=${isbn}&fields=key,title,author_name,first_publish_year,cover_i&limit=1`, { signal: AbortSignal.timeout(5000) })
+  if (!res.ok) throw new Error('not found')
+  const data = await res.json()
+  const doc = data.docs?.[0]
+  if (!doc) throw new Error('not found')
+  return {
+    external_id: (doc.key as string) ?? `isbn:${isbn}`,
+    isbn,
+    title: doc.title as string,
+    creator: (doc.author_name as string[])?.[0] ?? 'Unknown',
+    year: (doc.first_publish_year as number) ?? null,
+    cover_url: doc.cover_i ? `https://covers.openlibrary.org/b/id/${doc.cover_i}-L.jpg` : null,
+    source: 'openlibrary',
+  }
+}
+
+async function googleBooksByISBN(isbn: string): Promise<SearchResult> {
+  const res = await fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}&maxResults=1`, { signal: AbortSignal.timeout(5000) })
+  if (!res.ok) throw new Error('not found')
+  const data = await res.json()
+  const vol = data.items?.[0]?.volumeInfo
+  if (!vol) throw new Error('not found')
+  return {
+    external_id: `isbn:${isbn}`,
+    isbn,
+    title: vol.title as string,
+    creator: (vol.authors as string[])?.[0] ?? 'Unknown',
+    year: vol.publishedDate ? parseInt(vol.publishedDate) : null,
+    cover_url: vol.imageLinks?.thumbnail?.replace('http:', 'https:') ?? null,
+    source: 'openlibrary',
+  }
+}
+
 export async function lookupBookByISBN(isbn: string): Promise<SearchResult | null> {
-  // 1. OpenLibrary search-by-ISBN — returns works key for description backfill
   try {
-    const res = await fetch(`https://openlibrary.org/search.json?isbn=${isbn}&fields=key,title,author_name,first_publish_year,cover_i&limit=1`, { signal: AbortSignal.timeout(5000) })
-    if (res.ok) {
-      const data = await res.json()
-      const doc = data.docs?.[0]
-      if (doc) {
-        return {
-          external_id: (doc.key as string) ?? `isbn:${isbn}`,
-          isbn,
-          title: doc.title as string,
-          creator: (doc.author_name as string[])?.[0] ?? 'Unknown',
-          year: (doc.first_publish_year as number) ?? null,
-          cover_url: doc.cover_i ? `https://covers.openlibrary.org/b/id/${doc.cover_i}-L.jpg` : null,
-          source: 'openlibrary',
-        }
-      }
-    }
-  } catch { /* fall through */ }
-
-  // 2. Google Books — comprehensive ISBN database, no API key needed
-  try {
-    const res = await fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}&maxResults=1`, { signal: AbortSignal.timeout(5000) })
-    if (res.ok) {
-      const data = await res.json()
-      const vol = data.items?.[0]?.volumeInfo
-      if (vol) {
-        const cover = vol.imageLinks?.thumbnail?.replace('http:', 'https:') ?? null
-        return {
-          external_id: `isbn:${isbn}`,
-          isbn,
-          title: vol.title as string,
-          creator: (vol.authors as string[])?.[0] ?? 'Unknown',
-          year: vol.publishedDate ? parseInt(vol.publishedDate) : null,
-          cover_url: cover,
-          source: 'openlibrary',
-        }
-      }
-    }
-  } catch { /* fall through */ }
-
-  // 3. OpenLibrary books API — slowest but most detailed
-  try {
-    const res = await fetch(`https://openlibrary.org/api/books?bibkeys=ISBN:${isbn}&format=json&jscmd=data`, { signal: AbortSignal.timeout(5000) })
-    if (!res.ok) return null
-    const data = await res.json()
-    const book = data[`ISBN:${isbn}`]
-    if (!book) return null
-    const worksKey: string | null = book.works?.[0]?.key ?? null
-    return {
-      external_id: worksKey ?? `isbn:${isbn}`,
-      isbn,
-      title: book.title,
-      creator: book.authors?.[0]?.name ?? 'Unknown',
-      year: book.publish_date ? parseInt(book.publish_date) : null,
-      cover_url: book.cover?.large ?? null,
-      source: 'openlibrary',
-    }
-  } catch { return null }
+    // Race all three sources — fastest valid result wins
+    return await Promise.any([
+      olSearchByISBN(isbn),
+      googleBooksByISBN(isbn),
+    ])
+  } catch {
+    return null
+  }
 }
