@@ -103,6 +103,89 @@ describe('googleBooksByISBN (source field and https upgrade)', () => {
   })
 })
 
+describe('fetchBookDescription Dutch language fallback', () => {
+  // For Dutch books, the priority is:
+  //   1. isbn + langRestrict=nl (Dutch description for this edition)
+  //   2. title/author + langRestrict=nl (Dutch description by text search)
+  //   3. OL works description (English fallback)
+  // An English isbn result from Google Books is intentionally skipped so
+  // we always try to get a Dutch description first.
+
+  it('uses isbn+langRestrict=nl when Dutch isbn has Dutch description in Google Books', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ items: [{ volumeInfo: { description: 'Nederlandse beschrijving van het isbn.' } }] }),
+    })
+
+    const result = await fetchBookDescription('isbn:9789021615417', '9789021615417', 'dutch', 'De Kleine Prins', 'Antoine de Saint-Exupéry')
+    expect(result).toBe('Nederlandse beschrijving van het isbn.')
+
+    const urls = (mockFetch.mock.calls as [string][]).map(([url]) => url)
+    expect(urls[0]).toContain('langRestrict=nl')
+    expect(urls[0]).toContain('isbn%3A')  // isbn: is encoded in the query
+  })
+
+  it('falls back to title/author+langRestrict=nl when isbn not in Google Books', async () => {
+    mockFetch
+      .mockResolvedValueOnce({ ok: true, json: async () => ({}) })       // isbn+langRestrict=nl: no items
+      .mockResolvedValueOnce({                                            // title/author+langRestrict=nl: wins
+        ok: true,
+        json: async () => ({ items: [{ volumeInfo: { description: 'Een prachtig verhaal over vriendschap.' } }] }),
+      })
+
+    const result = await fetchBookDescription('isbn:9789021615417', '9789021615417', 'dutch', 'De Kleine Prins', 'Antoine de Saint-Exupéry')
+    expect(result).toBe('Een prachtig verhaal over vriendschap.')
+
+    const urls = (mockFetch.mock.calls as [string][]).map(([url]) => url)
+    expect(urls[1]).toContain('langRestrict=nl')
+    expect(urls[1]).toContain('intitle%3A')
+  })
+
+  it('does NOT return an English isbn result when Dutch; tries title/author first', async () => {
+    // isbn in Google Books but only English description → skip it, try Dutch title/author
+    mockFetch
+      .mockResolvedValueOnce({ ok: true, json: async () => ({}) })       // isbn+langRestrict=nl: no Dutch match
+      .mockResolvedValueOnce({                                            // title/author+langRestrict=nl: Dutch wins
+        ok: true,
+        json: async () => ({ items: [{ volumeInfo: { description: 'Nederlandse beschrijving via titel.' } }] }),
+      })
+
+    const result = await fetchBookDescription('isbn:9789021615417', '9789021615417', 'dutch', 'De Kleine Prins', 'Antoine de Saint-Exupéry')
+    expect(result).toBe('Nederlandse beschrijving via titel.')
+    // Only 2 fetch calls — no unrestricted isbn call in between
+    expect(mockFetch).toHaveBeenCalledTimes(2)
+  })
+
+  it('falls back to OL when both Dutch Google Books searches return nothing', async () => {
+    mockFetch
+      .mockResolvedValueOnce({ ok: true, json: async () => ({}) })       // isbn+langRestrict=nl: nothing
+      .mockResolvedValueOnce({ ok: true, json: async () => ({}) })       // title/author+langRestrict=nl: nothing
+      .mockResolvedValueOnce({                                            // OL isbn→workId lookup
+        ok: true,
+        json: async () => ({ docs: [{ key: '/works/OL123W' }] }),
+      })
+      .mockResolvedValueOnce({                                            // OL works description
+        ok: true,
+        json: async () => ({ description: 'English description from OL.' }),
+      })
+
+    const result = await fetchBookDescription('isbn:9789021615417', '9789021615417', 'dutch', 'De Kleine Prins', 'Antoine de Saint-Exupéry')
+    expect(result).toBe('English description from OL.')
+  })
+
+  it('does not call Google Books at all when lang is not set', async () => {
+    // Only OL works fetch should be called — no Google Books calls
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ description: 'Sci-fi epic.' }),
+    })
+
+    const result = await fetchBookDescription('/works/OL1234W', null, null, 'Dune', 'Frank Herbert')
+    expect(result).toBe('Sci-fi epic.')
+    expect(mockFetch).toHaveBeenCalledTimes(1)
+  })
+})
+
 describe('lookupBookByISBN with lang=dutch', () => {
   it('skips olSearchByISBN and uses KB SRU when lang is dutch', async () => {
     const { lookupBookByISBN } = await import('@/lib/apis/openlibrary')

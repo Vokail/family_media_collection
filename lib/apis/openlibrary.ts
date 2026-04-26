@@ -69,15 +69,23 @@ export async function fetchBookDescription(
     }
   }
 
-  // 1. Google Books by ISBN
-  if (resolvedIsbn) {
+  // Google Books: for non-English languages, always restrict to the target language
+  // so we never accidentally return an English description for a Dutch/French/German book.
+  if (resolvedIsbn && gbLang) {
+    // 1a. isbn + langRestrict (preferred: edition-specific Dutch/French/German description)
+    try {
+      const desc = await googleBooksDescription(`isbn:${resolvedIsbn}`, gbLang)
+      if (desc) return desc
+    } catch { /* fall through */ }
+  } else if (resolvedIsbn) {
+    // 1b. isbn without restriction (English / language-neutral books)
     try {
       const desc = await googleBooksDescription(`isbn:${resolvedIsbn}`)
       if (desc) return desc
     } catch { /* fall through */ }
   }
 
-  // 2. Google Books by title + author with language restriction (when ISBN gave nothing)
+  // 2. title + author with langRestrict (broader search, still language-restricted)
   if (gbLang && title) {
     try {
       const q = creator ? `intitle:${title} inauthor:${creator}` : `intitle:${title}`
