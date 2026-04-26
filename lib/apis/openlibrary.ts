@@ -51,8 +51,11 @@ export async function lookupBookByISBN(isbn: string): Promise<SearchResult | nul
   const data = await res.json()
   const book = data[`ISBN:${isbn}`]
   if (!book) return null
+  // Prefer /works/ key as external_id so description backfill works; fall back to isbn:
+  const worksKey: string | null = book.works?.[0]?.key ?? null
   return {
-    external_id: `isbn:${isbn}`,
+    external_id: worksKey ?? `isbn:${isbn}`,
+    isbn,
     title: book.title,
     creator: book.authors?.[0]?.name ?? 'Unknown',
     year: book.publish_date ? parseInt(book.publish_date) : null,

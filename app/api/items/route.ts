@@ -17,7 +17,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   const body = await request.json()
-  const { memberSlug, collection, title, creator, year, cover_url, is_wishlist, external_id } = body
+  const { memberSlug, collection, title, creator, year, cover_url, is_wishlist, external_id, isbn } = body
   const member = await getMemberBySlug(memberSlug)
   if (!member) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
@@ -45,6 +45,7 @@ export async function POST(request: Request) {
     tracklist: vinylRelease?.tracklist?.length ? vinylRelease.tracklist : null,
     sort_name: vinylRelease?.sortName ?? null,
     external_id: external_id ?? null,
+    isbn: isbn ?? null,
     description: description ?? null,
   })
   revalidatePath(`/${memberSlug}/${collection}`)

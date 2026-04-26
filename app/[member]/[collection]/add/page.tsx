@@ -99,6 +99,7 @@ export default function AddItemPage() {
         cover_url: result.cover_url,
         is_wishlist: isWishlist,
         external_id: result.external_id,
+        isbn: result.isbn ?? null,
       }),
     })
     setAdding(null)

@@ -26,6 +26,7 @@ export interface Item {
   tracklist: Track[] | null
   sort_name: string | null
   external_id: string | null
+  isbn: string | null
   description: string | null
   created_at: string
 }
@@ -37,6 +38,7 @@ export interface Setting {
 
 export interface SearchResult {
   external_id: string
+  isbn?: string | null
   title: string
   creator: string
   year: number | null
