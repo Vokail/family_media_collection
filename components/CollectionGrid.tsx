@@ -182,11 +182,13 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
 
   const sidebarKeys = byCreator
     ? byLego
-      ? creatorGroups.map(g => g.letter.slice(0, 4))  // abbreviated theme for sidebar
+      ? creatorGroups.map(g => g.letter.slice(0, 3))
       : creatorGroups.map(g => g.letter)
     : byYear
     ? yearGroups.map(g => g.shortKey)
     : []
+
+  const hasSidebar = sidebarKeys.length > 0
 
   function scrollTo(key: string) {
     sectionRefs.current[key]?.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -276,7 +278,7 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
       </div>
 
       {/* Grid — flat or grouped */}
-      <div className="relative">
+      <div className={`relative ${hasSidebar ? 'pr-8' : ''}`}>
         {byCreator ? (
           <>
             {creatorGroups.map(g => (
@@ -299,12 +301,12 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
               </div>
             ))}
             {sidebarKeys.length > 0 && (
-              <div className="fixed right-1 top-1/2 -translate-y-1/2 flex flex-col z-20 select-none">
+              <div className="fixed right-1 top-1/2 -translate-y-1/2 flex flex-col z-20 select-none rounded-full py-1 px-0.5" style={{ backgroundColor: 'color-mix(in srgb, var(--bg-card) 85%, transparent)', backdropFilter: 'blur(8px)', boxShadow: '0 1px 6px var(--shadow)' }}>
                 {sidebarKeys.map(k => (
                   <button
                     key={k}
                     onClick={() => scrollTo(k)}
-                    className="text-xs font-bold leading-tight px-1 py-0.5"
+                    className="text-xs font-bold leading-tight px-1.5 py-0.5"
                     style={{ color: 'var(--accent)' }}
                   >
                     {k}
@@ -335,12 +337,12 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
               </div>
             ))}
             {sidebarKeys.length > 0 && (
-              <div className="fixed right-1 top-1/2 -translate-y-1/2 flex flex-col z-20 select-none">
+              <div className="fixed right-1 top-1/2 -translate-y-1/2 flex flex-col z-20 select-none rounded-full py-1 px-0.5" style={{ backgroundColor: 'color-mix(in srgb, var(--bg-card) 85%, transparent)', backdropFilter: 'blur(8px)', boxShadow: '0 1px 6px var(--shadow)' }}>
                 {sidebarKeys.map(k => (
                   <button
                     key={k}
                     onClick={() => scrollTo(k)}
-                    className="text-xs font-bold leading-tight px-1 py-0.5"
+                    className="text-xs font-bold leading-tight px-1.5 py-0.5"
                     style={{ color: 'var(--accent)' }}
                   >
                     {k}
