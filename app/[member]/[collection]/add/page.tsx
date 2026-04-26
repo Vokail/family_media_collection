@@ -144,7 +144,7 @@ export default function AddItemPage() {
 
       <SearchResults results={results} onAdd={handleAdd} adding={adding} />
 
-      {results.length > 0 && collection === 'book' && (
+      {results.length > 0 && (
         <div className="flex justify-center mt-4">
           <button onClick={loadMore} disabled={loadingMore} className="btn-ghost text-sm px-6">
             {loadingMore ? 'Loading…' : 'Load more results'}

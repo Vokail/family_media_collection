@@ -12,9 +12,9 @@ export async function GET(request: Request) {
 
   const lang = searchParams.get('lang') ?? undefined
   const offset = parseInt(searchParams.get('offset') ?? '0')
-  const results = type === 'vinyl' ? await searchVinyl(q)
+  const results = type === 'vinyl' ? await searchVinyl(q, offset)
     : type === 'book' ? await searchBooks(q, lang, offset)
-    : await searchComics(q)
+    : await searchComics(q, lang, offset)
 
   const seen = new Set<string>()
   const unique = results.filter(r => {

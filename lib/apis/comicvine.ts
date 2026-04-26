@@ -14,11 +14,11 @@ const LANG_TERMS: Record<string, string> = {
   german: 'German',
 }
 
-export async function searchComics(query: string, lang?: string): Promise<SearchResult[]> {
+export async function searchComics(query: string, lang?: string, offset = 0): Promise<SearchResult[]> {
   const q = lang && lang !== 'all' && LANG_TERMS[lang]
     ? `${query} ${LANG_TERMS[lang]}`
     : query
-  const url = `${BASE}/search/?api_key=${process.env.COMICVINE_API_KEY}&format=json&query=${encodeURIComponent(q)}&resources=volume&field_list=id,name,start_year,image,publisher&limit=10`
+  const url = `${BASE}/search/?api_key=${process.env.COMICVINE_API_KEY}&format=json&query=${encodeURIComponent(q)}&resources=volume&field_list=id,name,start_year,image,publisher&limit=20&offset=${offset}`
   try {
     const res = await fetch(url, { headers: CV_HEADERS })
     if (!res.ok) return []
