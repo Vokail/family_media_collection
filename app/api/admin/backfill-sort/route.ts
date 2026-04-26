@@ -126,16 +126,17 @@ async function backfillBooks(db: ReturnType<typeof createServerClient>, force: b
     if (worksKey) patch.external_id = worksKey
 
     if (worksKey) {
+      // Fetch isbn first so description lookup can use it for Google Books
+      if (!isbn) {
+        isbn = await fetchBookIsbn(worksKey)
+        await delay(300)
+      }
       if (!item.description) {
         // Infer language from ISBN prefix: Dutch ISBNs start with 90- or 978-90
         const inferredLang = isbn && (isbn.startsWith('90') || isbn.startsWith('978-90') || isbn.startsWith('9789') || isbn.startsWith('9790')) ? 'dutch' : null
         const description = await fetchBookDescription(worksKey, isbn, inferredLang, item.title, item.creator)
         await delay(300)
         if (description) patch.description = description
-      }
-      if (!isbn) {
-        isbn = await fetchBookIsbn(worksKey)
-        await delay(300)
       }
     }
     if (isbn) patch.isbn = isbn
