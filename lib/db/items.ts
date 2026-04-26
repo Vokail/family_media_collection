@@ -38,17 +38,13 @@ export async function listAllItems(memberId: string): Promise<Item[]> {
   return data
 }
 
-export async function listWishlistItems(): Promise<(Item & { member_name: string; member_slug: string })[]> {
+export async function listWishlistItems(): Promise<Item[]> {
   const db = createServerClient()
   const { data, error } = await db
     .from('items')
-    .select('*, members(name, slug)')
+    .select('*')
     .eq('is_wishlist', true)
     .order('created_at', { ascending: false })
   if (error) throw error
-  return (data ?? []).map((row: Item & { members: { name: string; slug: string } | null }) => ({
-    ...row,
-    member_name: row.members?.name ?? '',
-    member_slug: row.members?.slug ?? '',
-  }))
+  return data ?? []
 }

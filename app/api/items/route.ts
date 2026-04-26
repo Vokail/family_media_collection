@@ -13,7 +13,8 @@ export async function GET(request: Request) {
   if (!VALID_COLLECTIONS.includes(collection)) {
     return NextResponse.json({ error: 'Invalid collection' }, { status: 400 })
   }
-  const isWishlist = searchParams.get('wishlist') === 'true'
+  const wishlistParam = searchParams.get('wishlist')
+  const isWishlist = wishlistParam === null ? undefined : wishlistParam === 'true'
   const member = await getMemberBySlug(slug)
   if (!member) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   const items = await listItems(member.id, collection, isWishlist)
