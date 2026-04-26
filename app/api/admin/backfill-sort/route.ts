@@ -96,26 +96,31 @@ async function backfillBooks(db: ReturnType<typeof createServerClient>, force: b
   const { data: allItems } = await db.from('items').select('id, title, creator, external_id, description, isbn').eq('collection', 'book')
   const fullItems = force
     ? (allItems ?? [])
-    : (allItems ?? []).filter(i => !i.external_id || !i.description || !i.isbn)
+    : (allItems ?? []).filter(i => !i.description || !i.isbn)
   const result = { total: fullItems.length, updated: 0 }
   for (const item of fullItems) {
-    let externalId = item.external_id
-    if (!externalId) {
-      externalId = await searchBookExternalId(item.title, item.creator)
+    let worksKey = item.external_id?.startsWith('/works/') ? item.external_id : null
+    let isbn = item.isbn ?? (item.external_id?.startsWith('isbn:') ? item.external_id.slice(5) : null)
+
+    // Resolve works key if we only have isbn: or nothing
+    if (!worksKey) {
+      worksKey = await searchBookExternalId(item.title, item.creator)
       await delay(300)
-      if (!externalId) continue
+      if (!worksKey) continue
     }
-    const patch: Record<string, unknown> = { external_id: externalId }
+
+    const patch: Record<string, unknown> = { external_id: worksKey }
     if (!item.description) {
-      const description = await fetchBookDescription(externalId)
+      const description = await fetchBookDescription(worksKey)
       await delay(300)
       if (description) patch.description = description
     }
-    if (!item.isbn && externalId.startsWith('/works/')) {
-      const isbn = await fetchBookIsbn(externalId)
+    if (!isbn) {
+      isbn = await fetchBookIsbn(worksKey)
       await delay(300)
-      if (isbn) patch.isbn = isbn
     }
+    if (isbn) patch.isbn = isbn
+
     if (Object.keys(patch).length > 1) {
       await db.from('items').update(patch).eq('id', item.id)
       result.updated++
