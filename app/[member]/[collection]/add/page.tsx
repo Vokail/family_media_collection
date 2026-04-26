@@ -24,9 +24,12 @@ export default function AddItemPage() {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<SearchResult[]>([])
   const [loading, setLoading] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [adding, setAdding] = useState<string | null>(null)
   const [scanning, setScanning] = useState(false)
   const [comicLang, setComicLang] = useState('dutch')
+  const [offset, setOffset] = useState(0)
+  const [lastQuery, setLastQuery] = useState('')
 
   useEffect(() => {
     const saved = localStorage.getItem(langStorageKey(collection))
@@ -41,12 +44,31 @@ export default function AddItemPage() {
   const runSearch = useCallback(async (q: string) => {
     if (!q.trim()) return
     setLoading(true)
-    const lang = collection === 'comic' ? comicLang : undefined
+    setOffset(0)
+    setLastQuery(q)
+    const lang = collection === 'book' ? comicLang : undefined
     const url = `/api/search?q=${encodeURIComponent(q)}&type=${collection}${lang ? `&lang=${lang}` : ''}`
     const res = await fetch(url)
     setResults(res.ok ? await res.json() : [])
     setLoading(false)
   }, [collection, comicLang])
+
+  const loadMore = useCallback(async () => {
+    const nextOffset = offset + 20
+    setLoadingMore(true)
+    const lang = collection === 'book' ? comicLang : undefined
+    const url = `/api/search?q=${encodeURIComponent(lastQuery)}&type=${collection}&offset=${nextOffset}${lang ? `&lang=${lang}` : ''}`
+    const res = await fetch(url)
+    if (res.ok) {
+      const more: SearchResult[] = await res.json()
+      setResults(prev => {
+        const existingIds = new Set(prev.map(r => r.external_id))
+        return [...prev, ...more.filter(r => !existingIds.has(r.external_id))]
+      })
+      setOffset(nextOffset)
+    }
+    setLoadingMore(false)
+  }, [collection, comicLang, lastQuery, offset])
 
   const handleBarcodeDetected = useCallback(async (code: string) => {
     setScanning(false)
@@ -121,6 +143,14 @@ export default function AddItemPage() {
       </div>
 
       <SearchResults results={results} onAdd={handleAdd} adding={adding} />
+
+      {results.length > 0 && collection === 'book' && (
+        <div className="flex justify-center mt-4">
+          <button onClick={loadMore} disabled={loadingMore} className="btn-ghost text-sm px-6">
+            {loadingMore ? 'Loading…' : 'Load more results'}
+          </button>
+        </div>
+      )}
 
       {scanning && <BarcodeScanner onDetected={handleBarcodeDetected} onClose={() => setScanning(false)} />}
     </main>

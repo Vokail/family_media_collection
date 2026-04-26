@@ -11,8 +11,9 @@ export async function GET(request: Request) {
   if (!q || !type) return NextResponse.json({ error: 'Missing q or type' }, { status: 400 })
 
   const lang = searchParams.get('lang') ?? undefined
+  const offset = parseInt(searchParams.get('offset') ?? '0')
   const results = type === 'vinyl' ? await searchVinyl(q)
-    : type === 'book' ? await searchBooks(q, lang)
+    : type === 'book' ? await searchBooks(q, lang, offset)
     : await searchComics(q)
 
   const seen = new Set<string>()
