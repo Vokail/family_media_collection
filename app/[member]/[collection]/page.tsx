@@ -25,7 +25,8 @@ export default async function CollectionPage({
     <main className="min-h-screen p-4 max-w-2xl lg:max-w-4xl xl:max-w-6xl mx-auto">
       <div className="flex items-center gap-3 mb-6">
         <Link href="/members" className="btn-ghost text-sm">← Members</Link>
-        <h1 className="font-serif text-xl font-bold">{member.name}</h1>
+        <h1 className="font-serif text-xl font-bold flex-1">{member.name}</h1>
+        <Link href={`/${slug}/stats`} className="btn-ghost text-xs">Stats</Link>
       </div>
       <CollectionGrid
         member={member}

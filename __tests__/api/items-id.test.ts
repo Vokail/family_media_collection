@@ -59,6 +59,19 @@ describe('PATCH /api/items/[id]', () => {
     expect(mockUpdateItem).toHaveBeenCalledWith('item-uuid', { is_wishlist: true })
   })
 
+  it('patches rating and passes it to updateItem', async () => {
+    const updated = { ...ITEM, rating: 4 }
+    mockUpdateItem.mockResolvedValue(updated)
+    const req = new Request('http://localhost/api/items/item-uuid', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rating: 4 }),
+    })
+    const res = await PATCH(req, buildParams('item-uuid'))
+    expect(res.status).toBe(200)
+    expect(mockUpdateItem).toHaveBeenCalledWith('item-uuid', { rating: 4 })
+  })
+
   it('ignores keys not in the allowlist', async () => {
     mockUpdateItem.mockResolvedValue(ITEM)
     const req = new Request('http://localhost/api/items/item-uuid', {
