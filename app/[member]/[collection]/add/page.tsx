@@ -32,6 +32,13 @@ export default function AddItemPage() {
   const [offset, setOffset] = useState(0)
   const [lastQuery, setLastQuery] = useState('')
   const barcodeAbort = useRef<AbortController | null>(null)
+  const [showManual, setShowManual] = useState(false)
+  const [manualTitle, setManualTitle] = useState('')
+  const [manualCreator, setManualCreator] = useState('')
+  const [manualYear, setManualYear] = useState('')
+  const [manualCover, setManualCover] = useState<File | null>(null)
+  const [addingManual, setAddingManual] = useState(false)
+  const manualFileRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     const saved = localStorage.getItem(langStorageKey(collection))
@@ -122,6 +129,22 @@ export default function AddItemPage() {
     window.location.href = `/${member}/${collection}`
   }
 
+  async function handleManualAdd(isWishlist: boolean) {
+    if (!manualTitle.trim()) return
+    setAddingManual(true)
+    const body = new FormData()
+    body.append('memberSlug', member)
+    body.append('collection', collection)
+    body.append('title', manualTitle.trim())
+    body.append('creator', manualCreator.trim())
+    body.append('year', manualYear)
+    body.append('is_wishlist', String(isWishlist))
+    if (manualCover) body.append('cover', manualCover)
+    await fetch('/api/items/manual', { method: 'POST', body })
+    setAddingManual(false)
+    window.location.href = `/${member}/${collection}`
+  }
+
   const collectionLabel = collection === 'vinyl' ? 'Vinyl' : collection === 'book' ? 'Book' : collection === 'lego' ? 'Lego Set' : 'Comic'
 
   return (
@@ -171,6 +194,50 @@ export default function AddItemPage() {
           </button>
         </div>
       )}
+
+      <div className="mt-6 border-t pt-4" style={{ borderColor: 'var(--border)' }}>
+        <button
+          onClick={() => setShowManual(v => !v)}
+          className="btn-ghost text-sm w-full text-center"
+        >
+          {showManual ? 'Hide manual entry' : 'Not found? Add manually'}
+        </button>
+
+        {showManual && (
+          <div className="card p-4 mt-3 flex flex-col gap-3">
+            <div>
+              <label className="label mb-1 block">Title *</label>
+              <input className="input" value={manualTitle} onChange={e => setManualTitle(e.target.value)} placeholder="Title" />
+            </div>
+            <div>
+              <label className="label mb-1 block">{collection === 'vinyl' ? 'Artist' : collection === 'lego' ? 'Theme' : 'Author / Publisher'}</label>
+              <input className="input" value={manualCreator} onChange={e => setManualCreator(e.target.value)} placeholder="Creator" />
+            </div>
+            <div>
+              <label className="label mb-1 block">Year</label>
+              <input className="input" type="number" value={manualYear} onChange={e => setManualYear(e.target.value)} placeholder="e.g. 2023" />
+            </div>
+            <div>
+              <label className="label mb-1 block">Cover image (optional)</label>
+              <div className="flex items-center gap-2">
+                <button onClick={() => manualFileRef.current?.click()} className="btn-ghost text-xs">
+                  {manualCover ? manualCover.name : 'Choose photo…'}
+                </button>
+                {manualCover && <button onClick={() => setManualCover(null)} className="text-xs" style={{ color: 'var(--text-muted)' }}>✕</button>}
+              </div>
+              <input ref={manualFileRef} type="file" accept="image/*" className="hidden" onChange={e => setManualCover(e.target.files?.[0] ?? null)} />
+            </div>
+            <div className="flex gap-2 pt-1">
+              <button onClick={() => handleManualAdd(false)} disabled={addingManual || !manualTitle.trim()} className="btn-primary flex-1">
+                {addingManual ? '…' : 'Add to collection'}
+              </button>
+              <button onClick={() => handleManualAdd(true)} disabled={addingManual || !manualTitle.trim()} className="btn-ghost flex-1">
+                Add to wishlist
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
 
       {scanning && <BarcodeScanner onDetected={handleBarcodeDetected} onClose={() => setScanning(false)} />}
     </main>
