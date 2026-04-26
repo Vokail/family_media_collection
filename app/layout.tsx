@@ -13,7 +13,7 @@ export const metadata: Metadata = {
     title: 'Our Collection',
   },
   icons: {
-    apple: '/apple-touch-icon.png?v=2',
+    apple: '/touch-icon-v2.png',
   },
 }
 
