@@ -12,6 +12,22 @@ interface Props {
   supabaseUrl: string
 }
 
+function StarRating({ rating, onRate }: { rating: number | null; onRate?: (r: number | null) => void }) {
+  return (
+    <div className="flex gap-1 justify-center">
+      {[1, 2, 3, 4, 5].map(star => (
+        <button
+          key={star}
+          onClick={onRate ? () => onRate(star === rating ? null : star) : undefined}
+          disabled={!onRate}
+          className="text-2xl leading-none disabled:cursor-default"
+          style={{ color: star <= (rating ?? 0) ? 'var(--accent)' : 'var(--border)' }}
+        >★</button>
+      ))}
+    </div>
+  )
+}
+
 export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseUrl }: Props) {
   const [open, setOpen] = useState(false)
   const [notes, setNotes] = useState(item.notes ?? '')
@@ -22,6 +38,15 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
   const coverSrc = item.cover_path
     ? `${supabaseUrl}/storage/v1/object/public/${item.cover_path}`
     : null
+
+  async function setRating(rating: number | null) {
+    const res = await fetch(`/api/items/${item.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rating }),
+    })
+    if (res.ok) onUpdate(await res.json())
+  }
 
   async function toggleWishlist() {
     const res = await fetch(`/api/items/${item.id}`, {
@@ -114,6 +139,9 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
             )}
             {item.description && (
               <p className="text-sm leading-relaxed break-words" style={{ color: 'var(--text-muted)', overflowWrap: 'break-word', wordBreak: 'break-word' }}>{item.description}</p>
+            )}
+            {item.collection === 'book' && (
+              <StarRating rating={item.rating} onRate={isEditor ? setRating : undefined} />
             )}
             {isEditor ? (
               <>
