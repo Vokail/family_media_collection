@@ -58,7 +58,7 @@ Run all migrations in sequence:
 |---|---|
 | `001_init.sql` | Full schema: members, items, settings, storage bucket + policy |
 | `002_drop_broad_storage_select_policy.sql` | Security: removes unnecessary broad SELECT policy on covers bucket |
-| `003_items_extended_fields.sql` | No-op on fresh install (columns already in 001); safe to run anyway |
+| `003_items_extended_fields.sql` | No-op on fresh install (columns already in 001); safe to run anyway. Adds: tracklist, sort_name, external_id, isbn, description, rating |
 
 Then add your family members (edit names/slugs to match your family):
 

@@ -7,7 +7,8 @@ alter table items
   add column if not exists sort_name   text,
   add column if not exists external_id text,
   add column if not exists isbn        text,
-  add column if not exists description text;
+  add column if not exists description text,
+  add column if not exists rating      integer check (rating >= 1 and rating <= 5);
 
 -- Expand collection check to include 'lego'
 alter table items drop constraint if exists items_collection_check;

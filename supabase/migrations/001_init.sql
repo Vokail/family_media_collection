@@ -24,6 +24,7 @@ create table items (
   external_id text,
   isbn        text,
   description text,
+  rating      integer check (rating >= 1 and rating <= 5),
   created_at  timestamptz not null default now()
 );
 
