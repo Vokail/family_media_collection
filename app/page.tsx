@@ -17,7 +17,8 @@ export default function LoginPage() {
     if (res.ok) {
       router.push('/members')
     } else {
-      setError('Incorrect password or PIN')
+      const body = await res.json().catch(() => ({}))
+      setError(body.error ?? 'Incorrect password or PIN')
     }
   }
 
