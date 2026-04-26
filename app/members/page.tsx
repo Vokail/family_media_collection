@@ -16,6 +16,7 @@ export default async function MembersPage() {
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-2xl font-serif font-bold">Our Collection</h1>
         <div className="flex gap-2">
+          <Link href="/wishlist" className="btn-ghost text-xs">Wishlist</Link>
           {isEditor && (
             <Link href="/settings" className="btn-ghost text-xs">Settings</Link>
           )}

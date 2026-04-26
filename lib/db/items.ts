@@ -30,3 +30,25 @@ export async function deleteItem(id: string): Promise<void> {
   const { error } = await db.from('items').delete().eq('id', id)
   if (error) throw error
 }
+
+export async function listAllItems(memberId: string): Promise<Item[]> {
+  const db = createServerClient()
+  const { data, error } = await db.from('items').select('*').eq('member_id', memberId).order('created_at', { ascending: false })
+  if (error) throw error
+  return data
+}
+
+export async function listWishlistItems(): Promise<(Item & { member_name: string; member_slug: string })[]> {
+  const db = createServerClient()
+  const { data, error } = await db
+    .from('items')
+    .select('*, members(name, slug)')
+    .eq('is_wishlist', true)
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return (data ?? []).map((row: Item & { members: { name: string; slug: string } | null }) => ({
+    ...row,
+    member_name: row.members?.name ?? '',
+    member_slug: row.members?.slug ?? '',
+  }))
+}

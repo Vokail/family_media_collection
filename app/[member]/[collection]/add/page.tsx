@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 import BarcodeScanner from '@/components/BarcodeScanner'
 import PhotoCapture from '@/components/PhotoCapture'
 import SearchResults from '@/components/SearchResults'
-import type { SearchResult, CollectionType } from '@/lib/types'
+import type { SearchResult, CollectionType, Item } from '@/lib/types'
 
 const COMIC_LANGUAGES = [
   { value: 'dutch', label: 'Nederlands' },
@@ -42,11 +42,33 @@ export default function AddItemPage() {
   const [addingManual, setAddingManual] = useState(false)
   const [showManualCamera, setShowManualCamera] = useState(false)
   const manualFileRef = useRef<HTMLInputElement>(null)
+  const [existingItems, setExistingItems] = useState<Item[]>([])
 
   useEffect(() => {
     const saved = localStorage.getItem(langStorageKey(collection))
     if (saved) setComicLang(saved)
   }, [collection])
+
+  useEffect(() => {
+    fetch(`/api/items?member=${member}&collection=${collection}`)
+      .then(r => r.ok ? r.json() : [])
+      .then(setExistingItems)
+      .catch(() => {})
+  }, [member, collection])
+
+  function getDupeStatus(result: SearchResult): 'owned' | 'wishlist' | null {
+    for (const item of existingItems) {
+      if (item.external_id && item.external_id === result.external_id) {
+        return item.is_wishlist ? 'wishlist' : 'owned'
+      }
+    }
+    const key = `${result.title.toLowerCase().trim()}|${result.creator.toLowerCase().trim()}`
+    for (const item of existingItems) {
+      const itemKey = `${item.title.toLowerCase().trim()}|${item.creator.toLowerCase().trim()}`
+      if (itemKey === key) return item.is_wishlist ? 'wishlist' : 'owned'
+    }
+    return null
+  }
 
   function handleLangChange(lang: string) {
     setComicLang(lang)
@@ -193,7 +215,7 @@ export default function AddItemPage() {
         </button>
       </div>
 
-      <SearchResults results={results} onAdd={handleAdd} adding={adding} />
+      <SearchResults results={results} onAdd={handleAdd} adding={adding} getDupeStatus={getDupeStatus} />
 
       {results.length > 0 && (
         <div className="flex justify-center mt-4">
