@@ -127,7 +127,7 @@ async function backfillBooks(db: ReturnType<typeof createServerClient>, force: b
 
     if (worksKey) {
       // Fetch isbn first so description lookup can use it for Google Books
-      if (force || !isbn) {
+      if (!isbn) {
         isbn = await fetchBookIsbn(worksKey)
         await delay(300)
       }
