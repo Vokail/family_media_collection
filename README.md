@@ -7,11 +7,12 @@ A private family web app for tracking vinyl records, books, and comics — with 
 - **Per-member collections** — each family member has their own collection
 - **4 collection types** — Vinyl, Books, Comics, Lego
 - **Cover art** — auto-fetched from Discogs, OpenLibrary, and ComicVine, resized and stored in Supabase Storage
-- **Barcode scanning** — scan ISBN or vinyl barcodes with your phone camera to add items instantly
+- **Barcode scanning** — scan ISBN or vinyl barcodes with your phone camera to add items instantly; manga/graphic novel ISBN barcodes work for comics too
+- **Descriptions** — books and comics get descriptions auto-fetched on add; language-aware for Dutch/French/German books (Google Books preferred, OpenLibrary fallback)
 - **Vinyl tracklist** — automatically fetched from Discogs when adding a record
 - **Wishlist** — toggle items between owned and wishlist; counts shown on each tab
 - **Sorting** — by artist/author (with A–Z index sidebar), title, year (with decade grouping), or date added
-- **Language filter** — book searches default to Dutch, with English, French, and German options
+- **Language filter** — controls which description language is fetched (Dutch default); does not restrict search results
 - **Two-tier access** — view PIN for read-only browsing, family password for full edit access
 - **PWA** — installable on iPhone via Safari → Add to Home Screen
 - **Dark mode** — automatic, follows OS setting
