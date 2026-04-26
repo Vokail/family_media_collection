@@ -43,7 +43,7 @@ h1, h2, h3 { font-family: 'Lora', Georgia, serif; }
   .btn-primary:hover { background-color: var(--accent-hover); }
 
   .btn-ghost {
-    @apply px-4 py-1.5 rounded-full text-sm font-medium transition-colors;
+    @apply inline-flex items-center px-4 py-1.5 rounded-full text-sm font-medium transition-colors;
     color: var(--text-muted);
     border: 1px solid var(--border);
   }
