@@ -15,7 +15,7 @@ export async function GET(request: Request) {
   const result = type === 'vinyl' ? await lookupVinylByBarcode(code)
     : type === 'book' ? await lookupBookByISBN(code, lang)
     : type === 'lego' ? await lookupLegoBySetNum(code)
-    : await lookupComicByBarcode(code)
+    : await lookupComicByBarcode(code, lang)
 
   if (!result) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   return NextResponse.json(result)

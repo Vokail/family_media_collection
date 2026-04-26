@@ -54,15 +54,15 @@ export async function fetchComicDescription(externalId: string): Promise<string 
   } catch { return null }
 }
 
-export async function lookupComicByBarcode(barcode: string): Promise<SearchResult | null> {
-  // Comic/manga volumes have ISBN barcodes — try book lookup first
+export async function lookupComicByBarcode(barcode: string, lang?: string): Promise<SearchResult | null> {
+  // Comic/manga volumes have ISBN barcodes — try book lookup first (passes lang for Dutch KB/Google path)
   if (/^\d{10,13}$/.test(barcode)) {
     try {
       const { lookupBookByISBN } = await import('./openlibrary')
-      const book = await lookupBookByISBN(barcode)
+      const book = await lookupBookByISBN(barcode, lang)
       if (book) return { ...book, source: 'comicvine' }
     } catch { /* fall through */ }
   }
-  const results = await searchComics(barcode)
+  const results = await searchComics(barcode, lang)
   return results[0] ?? null
 }

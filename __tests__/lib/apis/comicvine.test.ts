@@ -60,6 +60,22 @@ describe('lookupComicByBarcode', () => {
     expect(result!.title).toBe('One Piece Vol. 1')
   })
 
+  it('passes lang to lookupBookByISBN for Dutch ISBNs', async () => {
+    // Dutch path calls Promise.any([kbSruByISBN, olBibKeysByISBN, googleBooksByISBN]) — no olSearchByISBN.
+    // The three fetches fire in declaration order (synchronous), so mock order matches.
+    mockFetch
+      .mockResolvedValueOnce({               // kbSruByISBN: success
+        ok: true,
+        text: async () => `<srw:numberOfRecords>1</srw:numberOfRecords><dc:title>Pokémon Vol. 1 (NL)</dc:title><dc:creator>Satoshi Tajiri</dc:creator><dc:date>2024</dc:date>`,
+      })
+      .mockResolvedValueOnce({ ok: false })  // olBibKeysByISBN: fail (Promise.any ignores)
+      .mockResolvedValueOnce({ ok: false })  // googleBooksByISBN: fail (Promise.any ignores)
+
+    const result = await lookupComicByBarcode('9783989680081', 'dutch')
+    expect(result).not.toBeNull()
+    expect(result!.title).toBe('Pokémon Vol. 1 (NL)')
+  })
+
   it('falls back to ComicVine text search when ISBN lookup returns null', async () => {
     // All ISBN sources fail → should call ComicVine search
     mockFetch
