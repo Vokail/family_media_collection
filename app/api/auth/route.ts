@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { headers } from 'next/headers'
-import { getSession } from '@/lib/session'
+import { createSession, getSession } from '@/lib/session'
 import { resolveRole, seedCredentialsIfMissing } from '@/lib/auth'
 
 const MAX_ATTEMPTS = 5
@@ -49,9 +49,7 @@ export async function POST(request: Request) {
   }
 
   attempts.delete(ip) // clear on success
-  const session = await getSession()
-  session.role = role
-  await session.save()
+  await createSession(role)
   return NextResponse.json({ role })
 }
 
