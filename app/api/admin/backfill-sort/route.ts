@@ -78,17 +78,17 @@ async function searchBookExternalId(title: string, creator: string): Promise<str
 }
 
 async function backfillBooks(db: ReturnType<typeof createServerClient>, force: boolean) {
-  const { data: fullItems } = force
-    ? await db.from('items').select('id, title, creator, external_id').eq('collection', 'book')
-    : await db.from('items').select('id, title, creator, external_id').eq('collection', 'book').or('external_id.is.null,description.is.null')
-  const result = { total: fullItems?.length ?? 0, updated: 0 }
-  for (const item of fullItems ?? []) {
+  const { data: allItems } = await db.from('items').select('id, title, creator, external_id, description').eq('collection', 'book')
+  const fullItems = force
+    ? (allItems ?? [])
+    : (allItems ?? []).filter(i => !i.external_id || !i.description)
+  const result = { total: fullItems.length, updated: 0 }
+  for (const item of fullItems) {
     let externalId = item.external_id
     if (!externalId) {
       externalId = await searchBookExternalId(item.title, item.creator)
       await delay(300)
       if (!externalId) continue
-      await db.from('items').update({ external_id: externalId }).eq('id', item.id)
     }
     const description = await fetchBookDescription(externalId)
     await delay(300)
@@ -151,10 +151,21 @@ async function backfillComics(db: ReturnType<typeof createServerClient>, force: 
 }
 
 // --- Lego ---
+async function searchLegoSetNum(title: string): Promise<string | null> {
+  try {
+    const res = await fetch(`https://rebrickable.com/api/v3/lego/sets/?search=${encodeURIComponent(title)}&page_size=1&key=${process.env.REBRICKABLE_API_KEY}`)
+    if (!res.ok) return null
+    const data = await res.json()
+    return (data.results?.[0]?.set_num as string) ?? null
+  } catch { return null }
+}
+
 async function backfillLego(db: ReturnType<typeof createServerClient>, force: boolean) {
-  const q = db.from('items').select('id, external_id, creator').eq('collection', 'lego').not('external_id', 'is', null)
-  const { data: items } = force ? await q : await q.is('description', null)
-  const result = { total: items?.length ?? 0, updated: 0 }
+  const { data: allItems } = await db.from('items').select('id, title, external_id, creator, description').eq('collection', 'lego')
+  const items = force
+    ? (allItems ?? [])
+    : (allItems ?? []).filter(i => !i.description)
+  const result = { total: items.length, updated: 0 }
 
   // Fetch themes map once
   const themesMap = new Map<number, string>()
@@ -163,14 +174,20 @@ async function backfillLego(db: ReturnType<typeof createServerClient>, force: bo
     if (tr.ok) { const td = await tr.json(); for (const t of td.results ?? []) themesMap.set(t.id, t.name) }
   } catch { /* ignore */ }
 
-  for (const item of items ?? []) {
+  for (const item of items) {
     try {
-      const res = await fetch(`https://rebrickable.com/api/v3/lego/sets/${encodeURIComponent(item.external_id)}/?key=${process.env.REBRICKABLE_API_KEY}`)
+      let setNum = item.external_id
+      if (!setNum) {
+        setNum = await searchLegoSetNum(item.title)
+        await delay(300)
+        if (!setNum) continue
+      }
+      const res = await fetch(`https://rebrickable.com/api/v3/lego/sets/${encodeURIComponent(setNum)}/?key=${process.env.REBRICKABLE_API_KEY}`)
       if (!res.ok) continue
       const s = await res.json()
       const theme = themesMap.get(s.theme_id as number) ?? item.creator
       const description = s.set_num ? `Set ${s.set_num} · ${s.num_parts} parts` : null
-      await db.from('items').update({ creator: theme, description, year: s.year ?? null }).eq('id', item.id)
+      await db.from('items').update({ creator: theme, description, year: s.year ?? null, external_id: setNum }).eq('id', item.id)
       result.updated++
     } catch { /* skip */ }
     await delay(300)
