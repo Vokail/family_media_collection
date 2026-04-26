@@ -32,16 +32,19 @@ export async function searchVinyl(query: string): Promise<SearchResult[]> {
   return (data.results ?? []).map(mapResult)
 }
 
-export async function fetchVinylTracklist(releaseId: string): Promise<Track[]> {
+export async function fetchVinylRelease(releaseId: string): Promise<{ tracklist: Track[]; sortName: string | null }> {
   const url = `${BASE}/releases/${releaseId}`
   const res = await fetch(url, { headers: headers() })
-  if (!res.ok) return []
+  if (!res.ok) return { tracklist: [], sortName: null }
   const data = await res.json()
-  return (data.tracklist ?? []).map((t: Record<string, unknown>) => ({
+  const tracklist = (data.tracklist ?? []).map((t: Record<string, unknown>) => ({
     position: (t.position as string) || '',
     title: (t.title as string) || '',
     duration: (t.duration as string) || null,
   }))
+  // artists_sort is the Discogs filing name e.g. "Sinatra, Frank" or "Dire Straits"
+  const sortName = (data.artists_sort as string) || null
+  return { tracklist, sortName }
 }
 
 export async function lookupVinylByBarcode(barcode: string): Promise<SearchResult | null> {

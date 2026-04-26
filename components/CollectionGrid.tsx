@@ -21,21 +21,20 @@ const SORT_OPTIONS: { value: SortMode; label: string }[] = [
 
 const GRID = 'grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6'
 
-// Strip leading articles, file under first remaining word.
-// Matches how record stores file band names (Dire Straits → D, The Beatles → B).
-function indexKey(creator: string): string {
-  const stripped = creator.replace(/^(the|a|an)\s+/i, '').trim()
-  const ch = stripped[0]?.toUpperCase() ?? '#'
+// Use Discogs sort_name when available (e.g. "Sinatra, Frank"), else strip leading articles.
+function indexKey(creator: string, sortName?: string | null): string {
+  const base = sortName ?? creator.replace(/^(the|a|an)\s+/i, '').trim()
+  const ch = base[0]?.toUpperCase() ?? '#'
   return /[A-Z]/.test(ch) ? ch : '#'
 }
 
-function sortKey(creator: string): string {
-  return creator.replace(/^(the|a|an)\s+/i, '').trim().toLowerCase()
+function sortKey(creator: string, sortName?: string | null): string {
+  return (sortName ?? creator.replace(/^(the|a|an)\s+/i, '').trim()).toLowerCase()
 }
 
 function sortItems(items: Item[], mode: SortMode): Item[] {
   const copy = [...items]
-  if (mode === 'creator') return copy.sort((a, b) => sortKey(a.creator).localeCompare(sortKey(b.creator)))
+  if (mode === 'creator') return copy.sort((a, b) => sortKey(a.creator, a.sort_name).localeCompare(sortKey(b.creator, b.sort_name)))
   if (mode === 'title') return copy.sort((a, b) => a.title.toLowerCase().localeCompare(b.title.toLowerCase()))
   if (mode === 'year') return copy.sort((a, b) => (a.year ?? 9999) - (b.year ?? 9999))
   return copy // 'added' — already newest-first from DB
@@ -107,7 +106,7 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
   if (byCreator) {
     const map = new Map<string, Item[]>()
     for (const item of sorted) {
-      const k = indexKey(item.creator)
+      const k = indexKey(item.creator, item.sort_name)
       if (!map.has(k)) map.set(k, [])
       map.get(k)!.push(item)
     }

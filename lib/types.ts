@@ -24,6 +24,7 @@ export interface Item {
   is_wishlist: boolean
   notes: string | null
   tracklist: Track[] | null
+  sort_name: string | null
   created_at: string
 }
 
