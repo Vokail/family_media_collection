@@ -29,18 +29,35 @@ export async function searchBooks(query: string, lang?: string, offset = 0): Pro
 }
 
 const OL_LANG_CODES_DESC: Record<string, string> = { dutch: 'dut', french: 'fre', german: 'ger' }
+const GB_LANG_CODES: Record<string, string> = { dutch: 'nl', french: 'fr', german: 'de' }
 
-export async function fetchBookDescription(externalId: string, isbn?: string | null, lang?: string | null): Promise<string | null> {
+async function googleBooksDescription(query: string, langRestrict?: string): Promise<string | null> {
+  const langParam = langRestrict ? `&langRestrict=${langRestrict}` : ''
+  const res = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=1${langParam}`, { signal: AbortSignal.timeout(5000) })
+  if (!res.ok) return null
+  const data = await res.json()
+  const desc = data.items?.[0]?.volumeInfo?.description as string | undefined
+  return desc?.trim() || null
+}
+
+export async function fetchBookDescription(
+  externalId: string,
+  isbn?: string | null,
+  lang?: string | null,
+  title?: string | null,
+  creator?: string | null,
+): Promise<string | null> {
   const workId = externalId.startsWith('/works/') ? externalId : null
   let resolvedIsbn = isbn ?? (externalId.startsWith('isbn:') ? externalId.slice(5) : null)
+  const gbLang = lang && lang !== 'all' && lang !== 'english' ? GB_LANG_CODES[lang] : undefined
 
-  // If we have a non-English language and a works key but no ISBN, find an edition ISBN for that language
+  // For non-English: find a language-specific edition ISBN from OL (when we have works key but no ISBN)
   // so Google Books returns the description in the right language
   if (!resolvedIsbn && workId && lang && lang !== 'all' && lang !== 'english') {
-    const langCode = OL_LANG_CODES_DESC[lang] ?? null
-    if (langCode) {
+    const olLangCode = OL_LANG_CODES_DESC[lang] ?? null
+    if (olLangCode) {
       try {
-        const res = await fetch(`https://openlibrary.org${workId}/editions.json?languages=${langCode}&limit=5`, { signal: AbortSignal.timeout(5000) })
+        const res = await fetch(`https://openlibrary.org${workId}/editions.json?languages=${olLangCode}&limit=5`, { signal: AbortSignal.timeout(5000) })
         if (res.ok) {
           const data = await res.json()
           for (const edition of (data.entries ?? [])) {
@@ -52,20 +69,24 @@ export async function fetchBookDescription(externalId: string, isbn?: string | n
     }
   }
 
-  // Try Google Books first — edition-specific and free of OL wiki markup
+  // 1. Google Books by ISBN
   if (resolvedIsbn) {
     try {
-      const res = await fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${resolvedIsbn}&maxResults=1`, { signal: AbortSignal.timeout(5000) })
-      if (res.ok) {
-        const data = await res.json()
-        const desc = data.items?.[0]?.volumeInfo?.description as string | undefined
-        if (desc?.trim()) return desc.trim()
-      }
-    } catch { /* fall through to OL */ }
+      const desc = await googleBooksDescription(`isbn:${resolvedIsbn}`)
+      if (desc) return desc
+    } catch { /* fall through */ }
   }
 
-  // Fallback: OpenLibrary works description
-  // If we still have no works key, try to resolve one from the ISBN
+  // 2. Google Books by title + author with language restriction (when ISBN gave nothing)
+  if (gbLang && title) {
+    try {
+      const q = creator ? `intitle:${title} inauthor:${creator}` : `intitle:${title}`
+      const desc = await googleBooksDescription(q, gbLang)
+      if (desc) return desc
+    } catch { /* fall through */ }
+  }
+
+  // 3. OpenLibrary works description — resolve works key from ISBN if needed
   let resolvedWorkId = workId
   if (!resolvedWorkId && resolvedIsbn) {
     try {
