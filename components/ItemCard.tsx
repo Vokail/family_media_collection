@@ -2,6 +2,7 @@
 import Image from 'next/image'
 import { useState, useRef } from 'react'
 import type { Item, Track } from '@/lib/types'
+import PhotoCapture from './PhotoCapture'
 
 interface Props {
   item: Item
@@ -16,6 +17,7 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
   const [notes, setNotes] = useState(item.notes ?? '')
   const [savingNotes, setSavingNotes] = useState(false)
   const [uploadingCover, setUploadingCover] = useState(false)
+  const [showCamera, setShowCamera] = useState(false)
   const coverInputRef = useRef<HTMLInputElement>(null)
   const coverSrc = item.cover_path
     ? `${supabaseUrl}/storage/v1/object/public/${item.cover_path}`
@@ -50,15 +52,19 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
     if (res.ok) onUpdate(await res.json())
   }
 
-  async function handleCoverUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
+  async function uploadCoverFile(file: File) {
     setUploadingCover(true)
     const form = new FormData()
     form.append('cover', file)
     const res = await fetch(`/api/items/${item.id}/cover`, { method: 'POST', body: form })
     if (res.ok) onUpdate(await res.json())
     setUploadingCover(false)
+  }
+
+  async function handleCoverUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    await uploadCoverFile(file)
   }
 
   async function handleDelete() {
@@ -127,12 +133,11 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
                   <button onClick={toggleWishlist} className="btn-ghost">
                     {item.is_wishlist ? 'Mark as Owned' : 'Move to Wishlist'}
                   </button>
-                  <button
-                    onClick={() => coverInputRef.current?.click()}
-                    disabled={uploadingCover}
-                    className="btn-ghost text-xs"
-                  >
-                    {uploadingCover ? 'Uploading…' : coverSrc ? 'Replace cover' : 'Upload cover'}
+                  <button onClick={() => setShowCamera(true)} disabled={uploadingCover} className="btn-ghost text-xs">
+                    {uploadingCover ? 'Uploading…' : '📷'}
+                  </button>
+                  <button onClick={() => coverInputRef.current?.click()} disabled={uploadingCover} className="btn-ghost text-xs">
+                    {coverSrc ? 'Replace' : 'Library'}
                   </button>
                   <input
                     ref={coverInputRef}
@@ -169,6 +174,12 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
             </div>
           </div>
         </div>
+      )}
+      {showCamera && (
+        <PhotoCapture
+          onCapture={file => { setShowCamera(false); uploadCoverFile(file) }}
+          onClose={() => setShowCamera(false)}
+        />
       )}
     </>
   )
