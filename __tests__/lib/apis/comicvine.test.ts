@@ -8,6 +8,7 @@ describe('searchComics', () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
       json: async () => ({
+        status_code: 1,
         results: [{
           id: 5555,
           name: 'Watchmen',
@@ -38,7 +39,7 @@ describe('lookupComicByBarcode', () => {
   it('falls back to text search using barcode as query', async () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ results: [{ id: 1, name: 'Some Comic', start_year: '2000', image: null, publisher: null }] })
+      json: async () => ({ status_code: 1, results: [{ id: 1, name: 'Some Comic', start_year: '2000', image: null, publisher: null }] })
     })
     const result = await lookupComicByBarcode('9781401238964')
     expect(result).not.toBeNull()

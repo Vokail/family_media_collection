@@ -4,10 +4,15 @@ import { listItems, createItem } from '@/lib/db/items'
 import { getMemberBySlug } from '@/lib/db/members'
 import type { CollectionType } from '@/lib/types'
 
+const VALID_COLLECTIONS: CollectionType[] = ['vinyl', 'book', 'comic', 'lego']
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const slug = searchParams.get('member')!
   const collection = searchParams.get('collection') as CollectionType
+  if (!VALID_COLLECTIONS.includes(collection)) {
+    return NextResponse.json({ error: 'Invalid collection' }, { status: 400 })
+  }
   const isWishlist = searchParams.get('wishlist') === 'true'
   const member = await getMemberBySlug(slug)
   if (!member) return NextResponse.json({ error: 'Not found' }, { status: 404 })
@@ -18,6 +23,8 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const body = await request.json()
   const { memberSlug, collection, title, creator, year, cover_url, is_wishlist, external_id, isbn } = body
+  if (!title?.trim()) return NextResponse.json({ error: 'Title required' }, { status: 400 })
+  if (!VALID_COLLECTIONS.includes(collection)) return NextResponse.json({ error: 'Invalid collection' }, { status: 400 })
   const member = await getMemberBySlug(memberSlug)
   if (!member) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
@@ -36,7 +43,7 @@ export async function POST(request: Request) {
   const item = await createItem({
     member_id: member.id,
     collection,
-    title,
+    title: title.trim(),
     creator,
     year,
     cover_path,
