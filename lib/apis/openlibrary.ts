@@ -100,9 +100,22 @@ async function tryOLCoverByISBN(isbn: string): Promise<string | null> {
     const url = `https://covers.openlibrary.org/b/isbn/${isbn}-L.jpg`
     const res = await fetch(url, { method: 'HEAD', signal: AbortSignal.timeout(3000) })
     if (!res.ok) return null
-    // OL returns a tiny placeholder (~807 bytes) when no cover exists
+    // OL redirects missing covers to /b/id/-1-L.jpg (placeholder)
+    if (res.url.includes('-1-L.jpg') || res.url.includes('id=-1')) return null
+    return url
+  } catch {
+    return null
+  }
+}
+
+async function tryGoogleBooksCoverByISBN(isbn: string): Promise<string | null> {
+  try {
+    const url = `https://books.google.com/books/content?vid=ISBN${isbn}&printsec=frontcover&img=1&zoom=3`
+    const res = await fetch(url, { method: 'HEAD', signal: AbortSignal.timeout(3000) })
+    if (!res.ok) return null
+    // Google returns a 1px transparent GIF (~43 bytes) when no cover exists
     const length = parseInt(res.headers.get('content-length') ?? '0')
-    return length > 2000 ? url : null
+    return length > 500 ? url : null
   } catch {
     return null
   }
@@ -116,9 +129,9 @@ export async function lookupBookByISBN(isbn: string): Promise<SearchResult | nul
       olBibKeysByISBN(isbn),
       googleBooksByISBN(isbn),
     ])
-    // If no cover was returned, try OL cover endpoint directly by ISBN
+    // If no cover was returned, try direct cover endpoints by ISBN
     if (!result.cover_url) {
-      result.cover_url = await tryOLCoverByISBN(isbn)
+      result.cover_url = await tryOLCoverByISBN(isbn) ?? await tryGoogleBooksCoverByISBN(isbn)
     }
     return result
   } catch {
