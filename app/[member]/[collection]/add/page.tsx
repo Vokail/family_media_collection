@@ -2,6 +2,7 @@
 import { useParams, useRouter } from 'next/navigation'
 import { useState, useCallback, useEffect, useRef } from 'react'
 import BarcodeScanner from '@/components/BarcodeScanner'
+import PhotoCapture from '@/components/PhotoCapture'
 import SearchResults from '@/components/SearchResults'
 import type { SearchResult, CollectionType } from '@/lib/types'
 
@@ -38,6 +39,7 @@ export default function AddItemPage() {
   const [manualYear, setManualYear] = useState('')
   const [manualCover, setManualCover] = useState<File | null>(null)
   const [addingManual, setAddingManual] = useState(false)
+  const [showManualCamera, setShowManualCamera] = useState(false)
   const manualFileRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -220,8 +222,9 @@ export default function AddItemPage() {
             <div>
               <label className="label mb-1 block">Cover image (optional)</label>
               <div className="flex items-center gap-2">
+                <button onClick={() => setShowManualCamera(true)} className="btn-ghost text-xs">📷</button>
                 <button onClick={() => manualFileRef.current?.click()} className="btn-ghost text-xs">
-                  {manualCover ? manualCover.name : 'Choose photo…'}
+                  {manualCover ? manualCover.name : 'Library…'}
                 </button>
                 <input
                   ref={manualFileRef}
@@ -246,6 +249,12 @@ export default function AddItemPage() {
       </div>
 
       {scanning && <BarcodeScanner onDetected={handleBarcodeDetected} onClose={() => setScanning(false)} />}
+      {showManualCamera && (
+        <PhotoCapture
+          onCapture={file => { setManualCover(file); setShowManualCamera(false) }}
+          onClose={() => setShowManualCamera(false)}
+        />
+      )}
     </main>
   )
 }
