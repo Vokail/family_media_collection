@@ -24,7 +24,7 @@ const mockListItems = listItems as jest.Mock
 const mockCreateItem = createItem as jest.Mock
 const mockGetMember = getMemberBySlug as jest.Mock
 
-const MEMBER = { id: 'member-uuid', name: 'Ewart', slug: 'ewart' }
+const MEMBER = { id: 'member-uuid', name: 'Alice', slug: 'alice' }
 const ITEM = {
   id: 'item-uuid', member_id: 'member-uuid', collection: 'vinyl',
   title: 'Abbey Road', creator: 'The Beatles', year: 1969,
@@ -54,7 +54,7 @@ describe('GET /api/items', () => {
   it('returns items list for valid member and collection', async () => {
     mockGetMember.mockResolvedValue(MEMBER)
     mockListItems.mockResolvedValue([ITEM])
-    const req = new Request('http://localhost/api/items?member=ewart&collection=vinyl')
+    const req = new Request('http://localhost/api/items?member=alice&collection=vinyl')
     const res = await GET(req)
     expect(res.status).toBe(200)
     const data = await res.json()
@@ -65,9 +65,17 @@ describe('GET /api/items', () => {
   it('passes isWishlist=true when wishlist param is set', async () => {
     mockGetMember.mockResolvedValue(MEMBER)
     mockListItems.mockResolvedValue([])
-    const req = new Request('http://localhost/api/items?member=ewart&collection=vinyl&wishlist=true')
+    const req = new Request('http://localhost/api/items?member=alice&collection=vinyl&wishlist=true')
     await GET(req)
     expect(mockListItems).toHaveBeenCalledWith('member-uuid', 'vinyl', true)
+  })
+
+  it('passes isWishlist=undefined when wishlist param is absent', async () => {
+    mockGetMember.mockResolvedValue(MEMBER)
+    mockListItems.mockResolvedValue([ITEM])
+    const req = new Request('http://localhost/api/items?member=alice&collection=vinyl')
+    await GET(req)
+    expect(mockListItems).toHaveBeenCalledWith('member-uuid', 'vinyl', undefined)
   })
 })
 

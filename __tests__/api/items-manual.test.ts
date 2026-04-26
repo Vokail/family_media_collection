@@ -25,7 +25,7 @@ import { getMemberBySlug } from '@/lib/db/members'
 const mockCreateItem = createItem as jest.Mock
 const mockGetMember = getMemberBySlug as jest.Mock
 
-const MEMBER = { id: 'member-uuid', name: 'Ewart', slug: 'ewart' }
+const MEMBER = { id: 'member-uuid', name: 'Alice', slug: 'alice' }
 const ITEM = { id: 'item-uuid', title: 'Handmade', member_id: 'member-uuid', collection: 'vinyl' }
 
 function makeFormRequest(fields: Record<string, string | Blob>) {
@@ -46,7 +46,7 @@ beforeEach(() => {
 
 describe('POST /api/items/manual', () => {
   it('returns 400 when required fields are missing', async () => {
-    const req = makeFormRequest({ memberSlug: 'ewart' })
+    const req = makeFormRequest({ memberSlug: 'alice' })
     const res = await POST(req)
     expect(res.status).toBe(400)
   })
@@ -61,7 +61,7 @@ describe('POST /api/items/manual', () => {
   it('creates item without cover and returns 201', async () => {
     mockGetMember.mockResolvedValue(MEMBER)
     mockCreateItem.mockResolvedValue(ITEM)
-    const req = makeFormRequest({ memberSlug: 'ewart', collection: 'vinyl', title: 'Handmade' })
+    const req = makeFormRequest({ memberSlug: 'alice', collection: 'vinyl', title: 'Handmade' })
     const res = await POST(req)
     expect(res.status).toBe(201)
     expect(mockCreateItem).toHaveBeenCalledWith(
@@ -73,7 +73,7 @@ describe('POST /api/items/manual', () => {
     mockGetMember.mockResolvedValue(MEMBER)
     mockCreateItem.mockResolvedValue({ ...ITEM, cover_path: 'covers/manual/member-uuid/uuid.jpg' })
     const coverFile = new Blob([Buffer.from('jpeg-data')], { type: 'image/jpeg' })
-    const req = makeFormRequest({ memberSlug: 'ewart', collection: 'vinyl', title: 'Handmade', cover: coverFile })
+    const req = makeFormRequest({ memberSlug: 'alice', collection: 'vinyl', title: 'Handmade', cover: coverFile })
     const res = await POST(req)
     expect(res.status).toBe(201)
     expect(mockUpload).toHaveBeenCalled()

@@ -1,10 +1,10 @@
 'use client'
 import { useParams, useRouter } from 'next/navigation'
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import BarcodeScanner from '@/components/BarcodeScanner'
 import PhotoCapture from '@/components/PhotoCapture'
 import SearchResults from '@/components/SearchResults'
-import type { SearchResult, CollectionType } from '@/lib/types'
+import type { SearchResult, CollectionType, Item } from '@/lib/types'
 
 const COMIC_LANGUAGES = [
   { value: 'dutch', label: 'Nederlands' },
@@ -42,11 +42,39 @@ export default function AddItemPage() {
   const [addingManual, setAddingManual] = useState(false)
   const [showManualCamera, setShowManualCamera] = useState(false)
   const manualFileRef = useRef<HTMLInputElement>(null)
+  const [existingItems, setExistingItems] = useState<Item[]>([])
 
   useEffect(() => {
     const saved = localStorage.getItem(langStorageKey(collection))
     if (saved) setComicLang(saved)
   }, [collection])
+
+  useEffect(() => {
+    fetch(`/api/items?member=${member}&collection=${collection}`)
+      .then(r => r.ok ? r.json() : [])
+      .then(setExistingItems)
+      .catch(() => {})
+  }, [member, collection])
+
+  const dupeMap = useMemo(() => {
+    const byId = new Map<string, 'owned' | 'wishlist'>()
+    const byTitle = new Map<string, 'owned' | 'wishlist'>()
+    for (const item of existingItems) {
+      const status = item.is_wishlist ? 'wishlist' : 'owned'
+      if (item.external_id) byId.set(item.external_id, status)
+      byTitle.set(`${item.title.toLowerCase().trim()}|${item.creator.toLowerCase().trim()}`, status)
+    }
+    return { byId, byTitle }
+  }, [existingItems])
+
+  function getDupeStatus(result: SearchResult): 'owned' | 'wishlist' | null {
+    if (result.external_id) {
+      const s = dupeMap.byId.get(result.external_id)
+      if (s) return s
+    }
+    const key = `${result.title.toLowerCase().trim()}|${result.creator.toLowerCase().trim()}`
+    return dupeMap.byTitle.get(key) ?? null
+  }
 
   function handleLangChange(lang: string) {
     setComicLang(lang)
@@ -193,7 +221,7 @@ export default function AddItemPage() {
         </button>
       </div>
 
-      <SearchResults results={results} onAdd={handleAdd} adding={adding} />
+      <SearchResults results={results} onAdd={handleAdd} adding={adding} getDupeStatus={getDupeStatus} />
 
       {results.length > 0 && (
         <div className="flex justify-center mt-4">
