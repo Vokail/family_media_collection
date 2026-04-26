@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { updateItem, deleteItem } from '@/lib/db/items'
 import { createServerClient } from '@/lib/supabase-server'
 
-const PATCHABLE_KEYS = ['is_wishlist', 'notes', 'cover_path'] as const
+const PATCHABLE_KEYS = ['is_wishlist', 'notes', 'cover_path', 'rating'] as const
 type PatchKey = typeof PATCHABLE_KEYS[number]
 
 export async function PATCH(
