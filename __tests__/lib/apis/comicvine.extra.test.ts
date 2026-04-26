@@ -6,7 +6,7 @@ const mockFetch = fetch as jest.Mock
 beforeEach(() => mockFetch.mockReset())
 
 describe('lookupComicByBarcode', () => {
-  it('returns the first search result when comics are found', async () => {
+  it('returns the first search result when comics are found (non-numeric barcode)', async () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
       json: async () => ({
@@ -17,24 +17,26 @@ describe('lookupComicByBarcode', () => {
         ],
       }),
     })
-    const result = await lookupComicByBarcode('1234567890')
+    const result = await lookupComicByBarcode('WATCHMEN-001')
     expect(result).not.toBeNull()
     expect(result!.external_id).toBe('111')
     expect(result!.title).toBe('Watchmen')
   })
 
-  it('returns null when the search returns no results', async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ status_code: 1, results: [] }),
-    })
-    const result = await lookupComicByBarcode('0000000000')
+  it('returns null when ISBN and ComicVine both return nothing', async () => {
+    mockFetch
+      .mockResolvedValueOnce({ ok: false })  // olSearchByISBN
+      .mockResolvedValueOnce({ ok: true, json: async () => ({}) })  // olBibKeysByISBN: empty
+      .mockResolvedValueOnce({ ok: false })  // googleBooksByISBN
+      .mockResolvedValueOnce({ ok: false })  // kbSruByISBN
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ status_code: 1, results: [] }) })  // ComicVine: empty
+    const result = await lookupComicByBarcode('0000000000000')
     expect(result).toBeNull()
   })
 
-  it('returns null on fetch failure', async () => {
+  it('returns null on fetch failure for non-numeric barcode', async () => {
     mockFetch.mockResolvedValueOnce({ ok: false })
-    const result = await lookupComicByBarcode('bad')
+    const result = await lookupComicByBarcode('BAD-BARCODE')
     expect(result).toBeNull()
   })
 })
