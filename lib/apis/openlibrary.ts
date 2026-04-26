@@ -28,6 +28,22 @@ export async function searchBooks(query: string, lang?: string, offset = 0): Pro
   return (data.docs ?? []).map(mapDoc)
 }
 
+export async function fetchBookDescription(externalId: string): Promise<string | null> {
+  try {
+    // externalId is either "/works/OL1234W" or "isbn:..."
+    const workId = externalId.startsWith('/works/') ? externalId : null
+    if (!workId) return null
+    const res = await fetch(`https://openlibrary.org${workId}.json`)
+    if (!res.ok) return null
+    const data = await res.json()
+    const desc = data.description
+    if (!desc) return null
+    return typeof desc === 'string' ? desc : (desc.value as string) ?? null
+  } catch {
+    return null
+  }
+}
+
 export async function lookupBookByISBN(isbn: string): Promise<SearchResult | null> {
   const url = `https://openlibrary.org/api/books?bibkeys=ISBN:${isbn}&format=json&jscmd=data`
   const res = await fetch(url)

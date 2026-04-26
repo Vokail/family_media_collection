@@ -21,12 +21,15 @@ export async function POST(request: Request) {
   const member = await getMemberBySlug(memberSlug)
   if (!member) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  const [cover_path, vinylRelease] = await Promise.all([
+  const [cover_path, vinylRelease, description] = await Promise.all([
     cover_url
       ? import('@/lib/cover').then(m => m.downloadCover(cover_url, member.id))
       : Promise.resolve(null),
     collection === 'vinyl' && external_id
       ? import('@/lib/apis/discogs').then(m => m.fetchVinylRelease(external_id))
+      : Promise.resolve(null),
+    collection === 'book' && external_id
+      ? import('@/lib/apis/openlibrary').then(m => m.fetchBookDescription(external_id))
       : Promise.resolve(null),
   ])
 
@@ -42,6 +45,7 @@ export async function POST(request: Request) {
     tracklist: vinylRelease?.tracklist?.length ? vinylRelease.tracklist : null,
     sort_name: vinylRelease?.sortName ?? null,
     external_id: external_id ?? null,
+    description: description ?? null,
   })
   revalidatePath(`/${memberSlug}/${collection}`)
   return NextResponse.json(item, { status: 201 })

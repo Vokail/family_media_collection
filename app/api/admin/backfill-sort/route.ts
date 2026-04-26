@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase-server'
 
 const DISCOGS_BASE = 'https://api.discogs.com'
-const headers = () => ({
+const discogsHeaders = () => ({
   Authorization: `Discogs token=${process.env.DISCOGS_API_KEY}`,
   'User-Agent': 'FamilyMediaCollection/1.0',
 })
@@ -10,19 +10,30 @@ const headers = () => ({
 async function fetchSortName(creator: string, title: string): Promise<string | null> {
   try {
     const q = encodeURIComponent(`${creator} ${title}`)
-    const searchRes = await fetch(`${DISCOGS_BASE}/database/search?q=${q}&type=release&format=vinyl&per_page=3`, { headers: headers() })
+    const searchRes = await fetch(`${DISCOGS_BASE}/database/search?q=${q}&type=release&format=vinyl&per_page=3`, { headers: discogsHeaders() })
     if (!searchRes.ok) return null
     const searchData = await searchRes.json()
     const releaseId = searchData.results?.[0]?.id
     if (!releaseId) return null
-
-    // Small delay to respect Discogs rate limit (60 req/min)
     await new Promise(r => setTimeout(r, 1100))
-
-    const releaseRes = await fetch(`${DISCOGS_BASE}/releases/${releaseId}`, { headers: headers() })
+    const releaseRes = await fetch(`${DISCOGS_BASE}/releases/${releaseId}`, { headers: discogsHeaders() })
     if (!releaseRes.ok) return null
     const releaseData = await releaseRes.json()
     return (releaseData.artists_sort as string) || null
+  } catch {
+    return null
+  }
+}
+
+async function fetchDescription(externalId: string): Promise<string | null> {
+  try {
+    if (!externalId.startsWith('/works/')) return null
+    const res = await fetch(`https://openlibrary.org${externalId}.json`)
+    if (!res.ok) return null
+    const data = await res.json()
+    const desc = data.description
+    if (!desc) return null
+    return typeof desc === 'string' ? desc : (desc.value as string) ?? null
   } catch {
     return null
   }
@@ -36,28 +47,25 @@ export async function GET() {
   }
 
   const db = createServerClient()
+  const summary: Record<string, { total: number; updated: number }> = {}
 
-  // Get all vinyl items without a sort_name
-  const { data: items, error } = await db
-    .from('items')
-    .select('id, creator, title')
-    .eq('collection', 'vinyl')
-    .is('sort_name', null)
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  if (!items?.length) return NextResponse.json({ message: 'Nothing to backfill', updated: 0 })
-
-  const results: { id: string; creator: string; sort_name: string | null }[] = []
-
-  for (const item of items) {
+  // Backfill vinyl sort names
+  const { data: vinylItems } = await db.from('items').select('id, creator, title').eq('collection', 'vinyl').is('sort_name', null)
+  summary.vinyl = { total: vinylItems?.length ?? 0, updated: 0 }
+  for (const item of vinylItems ?? []) {
     const sort_name = await fetchSortName(item.creator, item.title)
-    if (sort_name) {
-      await db.from('items').update({ sort_name }).eq('id', item.id)
-    }
-    results.push({ id: item.id, creator: item.creator, sort_name })
-    // Extra delay between items
+    if (sort_name) { await db.from('items').update({ sort_name }).eq('id', item.id); summary.vinyl.updated++ }
     await new Promise(r => setTimeout(r, 1100))
   }
 
-  return NextResponse.json({ updated: results.filter(r => r.sort_name).length, total: items.length, results })
+  // Backfill book descriptions
+  const { data: bookItems } = await db.from('items').select('id, external_id').eq('collection', 'book').is('description', null).not('external_id', 'is', null)
+  summary.books = { total: bookItems?.length ?? 0, updated: 0 }
+  for (const item of bookItems ?? []) {
+    const description = await fetchDescription(item.external_id)
+    if (description) { await db.from('items').update({ description }).eq('id', item.id); summary.books.updated++ }
+    await new Promise(r => setTimeout(r, 500))
+  }
+
+  return NextResponse.json({ summary })
 }
