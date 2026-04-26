@@ -45,16 +45,37 @@ Hosted on [Vercel](https://vercel.com) (free Hobby plan) with [Supabase](https:/
 | `COMICVINE_API_KEY` | ComicVine API key |
 | `REBRICKABLE_API_KEY` | Rebrickable API key (for Lego sets) |
 
-## Database
+## Database Setup
 
-Run `supabase/migrations/001_init.sql` in the Supabase SQL Editor to create the schema and seed the four family members.
+All migrations live in `supabase/migrations/`. Run them in the Supabase SQL Editor in order.
 
-If upgrading from an earlier version, run these in the Supabase SQL Editor:
+### Fresh installation
+
+Run all migrations in sequence:
+
+| File | What it does |
+|---|---|
+| `001_init.sql` | Full schema: members, items, settings, storage bucket + policy |
+| `002_drop_broad_storage_select_policy.sql` | Security: removes unnecessary broad SELECT policy on covers bucket |
+| `003_items_extended_fields.sql` | No-op on fresh install (columns already in 001); safe to run anyway |
+
+Then add your family members (edit names/slugs to match your family):
+
 ```sql
-ALTER TABLE items ADD COLUMN tracklist jsonb;
-ALTER TABLE items ADD COLUMN sort_name text;
-ALTER TABLE items DROP CONSTRAINT items_collection_check;
-ALTER TABLE items ADD CONSTRAINT items_collection_check CHECK (collection IN ('vinyl','book','comic','lego'));
+insert into members (name, slug) values
+  ('Alice',   'alice'),
+  ('Bob', 'bob'),
+  ('Carol',   'carol'),
+  ('Dave',    'dave');
+```
+
+### Upgrading an existing installation
+
+Run only the migrations you haven't applied yet, in order:
+
+```
+002_drop_broad_storage_select_policy.sql  — if you haven't run it
+003_items_extended_fields.sql             — adds tracklist, sort_name, external_id, isbn, description; expands collection check to include 'lego'
 ```
 
 ## Local Development

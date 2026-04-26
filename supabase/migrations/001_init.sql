@@ -12,13 +12,18 @@ create table members (
 create table items (
   id          uuid primary key default gen_random_uuid(),
   member_id   uuid not null references members(id) on delete cascade,
-  collection  text not null check (collection in ('vinyl','book','comic')),
+  collection  text not null check (collection in ('vinyl','book','comic','lego')),
   title       text not null,
   creator     text not null default '',
   year        integer,
   cover_path  text,
   is_wishlist boolean not null default false,
   notes       text,
+  tracklist   jsonb,
+  sort_name   text,
+  external_id text,
+  isbn        text,
+  description text,
   created_at  timestamptz not null default now()
 );
 
