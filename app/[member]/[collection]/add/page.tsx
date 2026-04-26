@@ -38,6 +38,7 @@ export default function AddItemPage() {
   const [manualYear, setManualYear] = useState('')
   const [manualCover, setManualCover] = useState<File | null>(null)
   const [addingManual, setAddingManual] = useState(false)
+  const manualFileRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     const saved = localStorage.getItem(langStorageKey(collection))
@@ -219,10 +220,16 @@ export default function AddItemPage() {
             <div>
               <label className="label mb-1 block">Cover image (optional)</label>
               <div className="flex items-center gap-2">
-                <label className="btn-ghost text-xs cursor-pointer relative overflow-hidden">
+                <button onClick={() => manualFileRef.current?.click()} className="btn-ghost text-xs">
                   {manualCover ? manualCover.name : 'Choose photo…'}
-                  <input type="file" accept="image/*" onChange={e => setManualCover(e.target.files?.[0] ?? null)} style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }} />
-                </label>
+                </button>
+                <input
+                  ref={manualFileRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={e => setManualCover(e.target.files?.[0] ?? null)}
+                  style={{ position: 'fixed', top: '-100vh', left: 0, opacity: 0, pointerEvents: 'none' }}
+                />
                 {manualCover && <button onClick={() => setManualCover(null)} className="text-xs" style={{ color: 'var(--text-muted)' }}>✕</button>}
               </div>
             </div>
