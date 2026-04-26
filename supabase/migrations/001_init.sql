@@ -30,13 +30,8 @@ create table settings (
   value text not null
 );
 
--- Storage bucket for cover images
+-- Storage bucket for cover images (public = files accessible via URL without a SELECT policy)
 insert into storage.buckets (id, name, public) values ('covers', 'covers', true);
-
--- Allow public read of covers bucket
-create policy "Public read covers"
-  on storage.objects for select
-  using (bucket_id = 'covers');
 
 -- Allow service role to upload/delete covers
 create policy "Service role manages covers"
