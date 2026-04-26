@@ -105,7 +105,8 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
   }, [member.slug, collection])
 
   function onTouchStart(e: React.TouchEvent) {
-    if (window.scrollY === 0) {
+    // iOS can report scrollY as slightly negative during rubber-band, so use <= 0
+    if ((window.scrollY ?? document.documentElement.scrollTop ?? 0) <= 0) {
       touchStartY.current = e.touches[0].clientY
       pulling.current = true
     }
@@ -114,7 +115,8 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
   function onTouchMove(e: React.TouchEvent) {
     if (!pulling.current) return
     const dy = e.touches[0].clientY - touchStartY.current
-    if (dy > 0 && window.scrollY === 0) {
+    if (dy > 0) {
+      // Don't re-check scrollY here — iOS rubber-band makes it non-zero mid-pull
       setPullY(Math.min(dy * 0.5, PULL_THRESHOLD + 20))
     }
   }
