@@ -37,6 +37,23 @@ export async function searchComics(query: string, lang?: string, offset = 0): Pr
   }
 }
 
+function stripHtml(html: string): string {
+  return html.replace(/<[^>]*>/g, '').replace(/&[a-z]+;/gi, ' ').replace(/\s+/g, ' ').trim()
+}
+
+export async function fetchComicDescription(externalId: string): Promise<string | null> {
+  try {
+    const url = `${BASE}/volume/4050-${externalId}/?api_key=${process.env.COMICVINE_API_KEY}&format=json&field_list=deck,description`
+    const res = await fetch(url, { headers: CV_HEADERS, signal: AbortSignal.timeout(9000) })
+    if (!res.ok) return null
+    const data = await res.json()
+    if (data.status_code !== 1) return null
+    const deck = data.results?.deck as string | null
+    const raw = data.results?.description as string | null
+    return deck || (raw ? stripHtml(raw).slice(0, 1000) : null)
+  } catch { return null }
+}
+
 export async function lookupComicByBarcode(barcode: string): Promise<SearchResult | null> {
   // Comic/manga volumes have ISBN barcodes — try book lookup first
   if (/^\d{10,13}$/.test(barcode)) {
