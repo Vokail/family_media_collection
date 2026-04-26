@@ -45,21 +45,42 @@ export async function fetchBookDescription(externalId: string): Promise<string |
 }
 
 export async function lookupBookByISBN(isbn: string): Promise<SearchResult | null> {
-  const url = `https://openlibrary.org/api/books?bibkeys=ISBN:${isbn}&format=json&jscmd=data`
-  const res = await fetch(url)
-  if (!res.ok) return null
-  const data = await res.json()
-  const book = data[`ISBN:${isbn}`]
-  if (!book) return null
-  // Prefer /works/ key as external_id so description backfill works; fall back to isbn:
-  const worksKey: string | null = book.works?.[0]?.key ?? null
-  return {
-    external_id: worksKey ?? `isbn:${isbn}`,
-    isbn,
-    title: book.title,
-    creator: book.authors?.[0]?.name ?? 'Unknown',
-    year: book.publish_date ? parseInt(book.publish_date) : null,
-    cover_url: book.cover?.large ?? null,
-    source: 'openlibrary',
-  }
+  // Try the rich books API first
+  try {
+    const res = await fetch(`https://openlibrary.org/api/books?bibkeys=ISBN:${isbn}&format=json&jscmd=data`)
+    if (res.ok) {
+      const data = await res.json()
+      const book = data[`ISBN:${isbn}`]
+      if (book) {
+        const worksKey: string | null = book.works?.[0]?.key ?? null
+        return {
+          external_id: worksKey ?? `isbn:${isbn}`,
+          isbn,
+          title: book.title,
+          creator: book.authors?.[0]?.name ?? 'Unknown',
+          year: book.publish_date ? parseInt(book.publish_date) : null,
+          cover_url: book.cover?.large ?? null,
+          source: 'openlibrary',
+        }
+      }
+    }
+  } catch { /* fall through to search endpoint */ }
+
+  // Fallback: search by ISBN — faster and more reliable
+  try {
+    const res = await fetch(`https://openlibrary.org/search.json?isbn=${isbn}&fields=key,title,author_name,first_publish_year,cover_i&limit=1`)
+    if (!res.ok) return null
+    const data = await res.json()
+    const doc = data.docs?.[0]
+    if (!doc) return null
+    return {
+      external_id: (doc.key as string) ?? `isbn:${isbn}`,
+      isbn,
+      title: doc.title as string,
+      creator: (doc.author_name as string[])?.[0] ?? 'Unknown',
+      year: (doc.first_publish_year as number) ?? null,
+      cover_url: doc.cover_i ? `https://covers.openlibrary.org/b/id/${doc.cover_i}-L.jpg` : null,
+      source: 'openlibrary',
+    }
+  } catch { return null }
 }
