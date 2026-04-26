@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase-server'
+import { downloadCover } from '@/lib/cover'
 
 const DISCOGS_BASE = 'https://api.discogs.com'
 const discogsHeaders = () => ({
@@ -8,6 +9,39 @@ const discogsHeaders = () => ({
 })
 
 async function delay(ms: number) { return new Promise(r => setTimeout(r, ms)) }
+
+async function headOk(url: string, rejectIfUrlContains?: string): Promise<boolean> {
+  try {
+    const r = await fetch(url, { method: 'HEAD', signal: AbortSignal.timeout(3000) })
+    if (!r.ok) return false
+    if (rejectIfUrlContains && r.url.includes(rejectIfUrlContains)) return false
+    return true
+  } catch { return false }
+}
+
+async function headOkWithMinSize(url: string, minBytes: number): Promise<boolean> {
+  try {
+    const r = await fetch(url, { method: 'HEAD', signal: AbortSignal.timeout(3000) })
+    if (!r.ok) return false
+    return parseInt(r.headers.get('content-length') ?? '0') > minBytes
+  } catch { return false }
+}
+
+async function findBookCoverUrl(external_id: string | null, isbn: string | null): Promise<string | null> {
+  const isbnVal = isbn ?? (external_id?.startsWith('isbn:') ? external_id.slice(5) : null)
+  if (isbnVal) {
+    const olUrl = `https://covers.openlibrary.org/b/isbn/${isbnVal}-L.jpg`
+    if (await headOk(olUrl, '-1-L.jpg')) return olUrl
+    const gUrl = `https://books.google.com/books/content?vid=ISBN${isbnVal}&printsec=frontcover&img=1&zoom=3`
+    if (await headOkWithMinSize(gUrl, 500)) return gUrl
+  }
+  if (external_id?.startsWith('/works/')) {
+    const olid = external_id.replace('/works/', '')
+    const url = `https://covers.openlibrary.org/b/olid/${olid}-L.jpg`
+    if (await headOk(url, '-1-L.jpg')) return url
+  }
+  return null
+}
 
 function stripHtml(html: string): string {
   return html.replace(/<[^>]*>/g, '').replace(/&[a-z]+;/gi, ' ').replace(/\s+/g, ' ').trim()
@@ -28,10 +62,13 @@ async function fetchDiscogsRelease(id: string) {
 }
 
 async function backfillVinyl(db: ReturnType<typeof createServerClient>, force: boolean) {
-  const q = db.from('items').select('id, creator, title, external_id').eq('collection', 'vinyl')
-  const { data: items } = force ? await q : await q.or('sort_name.is.null,tracklist.is.null')
-  const result = { total: items?.length ?? 0, updated: 0 }
-  for (const item of items ?? []) {
+  const q = db.from('items').select('id, creator, title, external_id, cover_path, member_id').eq('collection', 'vinyl')
+  const { data: allItems } = await q
+  const items = force
+    ? (allItems ?? [])
+    : (allItems ?? []).filter(i => !i.sort_name || !i.tracklist || !i.cover_path)
+  const result = { total: items.length, updated: 0 }
+  for (const item of items) {
     try {
       let id = item.external_id
       if (!id) { id = await searchDiscogsId(item.creator, item.title); await delay(1100) }
@@ -43,11 +80,19 @@ async function backfillVinyl(db: ReturnType<typeof createServerClient>, force: b
         title: (t.title as string) || '',
         duration: (t.duration as string) || null,
       }))
-      await db.from('items').update({
+      const patch: Record<string, unknown> = {
         sort_name: (release.artists_sort as string) || null,
         tracklist: tracklist.length ? tracklist : null,
         external_id: item.external_id ?? id,
-      }).eq('id', item.id)
+      }
+      if (!item.cover_path) {
+        const coverUrl = (release.images as { uri: string }[])?.[0]?.uri ?? null
+        if (coverUrl) {
+          const path = await downloadCover(coverUrl, item.member_id)
+          if (path) patch.cover_path = path
+        }
+      }
+      await db.from('items').update(patch).eq('id', item.id)
       result.updated++
     } catch { /* skip */ }
   }
@@ -93,16 +138,15 @@ async function fetchBookIsbn(worksKey: string): Promise<string | null> {
 }
 
 async function backfillBooks(db: ReturnType<typeof createServerClient>, force: boolean) {
-  const { data: allItems } = await db.from('items').select('id, title, creator, external_id, description, isbn').eq('collection', 'book')
+  const { data: allItems } = await db.from('items').select('id, title, creator, external_id, description, isbn, cover_path, member_id').eq('collection', 'book')
   const fullItems = force
     ? (allItems ?? [])
-    : (allItems ?? []).filter(i => !i.description || !i.isbn)
+    : (allItems ?? []).filter(i => !i.description || !i.isbn || !i.cover_path)
   const result = { total: fullItems.length, updated: 0 }
   for (const item of fullItems) {
     let worksKey = item.external_id?.startsWith('/works/') ? item.external_id : null
     let isbn = item.isbn ?? (item.external_id?.startsWith('isbn:') ? item.external_id.slice(5) : null)
 
-    // Resolve works key if we only have isbn: or nothing
     if (!worksKey) {
       worksKey = await searchBookExternalId(item.title, item.creator)
       await delay(300)
@@ -120,6 +164,13 @@ async function backfillBooks(db: ReturnType<typeof createServerClient>, force: b
       await delay(300)
     }
     if (isbn) patch.isbn = isbn
+    if (!item.cover_path) {
+      const coverUrl = await findBookCoverUrl(worksKey, isbn ?? null)
+      if (coverUrl) {
+        const path = await downloadCover(coverUrl, item.member_id)
+        if (path) patch.cover_path = path
+      }
+    }
 
     if (Object.keys(patch).length > 1) {
       await db.from('items').update(patch).eq('id', item.id)
@@ -154,24 +205,44 @@ async function fetchComicDescription(externalId: string): Promise<string | null>
   } catch { return null }
 }
 
+async function fetchComicCoverUrl(externalId: string): Promise<string | null> {
+  try {
+    const url = `https://comicvine.gamespot.com/api/volume/4050-${externalId}/?api_key=${process.env.COMICVINE_API_KEY}&format=json&field_list=image`
+    const res = await fetch(url, { headers: { 'User-Agent': 'FamilyMediaCollection/1.0', Accept: 'application/json' } })
+    if (!res.ok) return null
+    const data = await res.json()
+    return (data.results?.image as Record<string, string>)?.medium_url ?? null
+  } catch { return null }
+}
+
 async function backfillComics(db: ReturnType<typeof createServerClient>, force: boolean) {
-  const { data: fullItems } = force
-    ? await db.from('items').select('id, title, external_id').eq('collection', 'comic')
-    : await db.from('items').select('id, title, external_id').eq('collection', 'comic').or('external_id.is.null,description.is.null')
-  const result = { total: fullItems?.length ?? 0, updated: 0 }
-  for (const item of fullItems ?? []) {
+  const { data: allItems } = await db.from('items').select('id, title, external_id, cover_path, member_id').eq('collection', 'comic')
+  const fullItems = force
+    ? (allItems ?? [])
+    : (allItems ?? []).filter(i => !i.external_id || !i.cover_path)
+  const result = { total: fullItems.length, updated: 0 }
+  for (const item of fullItems) {
     try {
       let externalId = item.external_id
       if (!externalId) {
         externalId = await searchComicExternalId(item.title)
         await delay(1100)
         if (!externalId) continue
-        await db.from('items').update({ external_id: externalId }).eq('id', item.id)
+      }
+      const patch: Record<string, unknown> = { external_id: externalId }
+      if (!item.cover_path) {
+        const coverUrl = await fetchComicCoverUrl(externalId)
+        await delay(1100)
+        if (coverUrl) {
+          const path = await downloadCover(coverUrl, item.member_id)
+          if (path) patch.cover_path = path
+        }
       }
       const description = await fetchComicDescription(externalId)
       await delay(1100)
-      if (description) {
-        await db.from('items').update({ description, external_id: externalId }).eq('id', item.id)
+      if (description) patch.description = description
+      if (Object.keys(patch).length > 1) {
+        await db.from('items').update(patch).eq('id', item.id)
         result.updated++
       }
     } catch { /* skip */ }
@@ -190,7 +261,7 @@ async function searchLegoSetNum(title: string): Promise<string | null> {
 }
 
 async function backfillLego(db: ReturnType<typeof createServerClient>, force: boolean) {
-  const { data: allItems } = await db.from('items').select('id, title, external_id, creator, description').eq('collection', 'lego')
+  const { data: allItems } = await db.from('items').select('id, title, external_id, creator, description, cover_path, member_id').eq('collection', 'lego')
   const items = force
     ? (allItems ?? [])
     : (allItems ?? []).filter(i => !i.description)
@@ -216,7 +287,12 @@ async function backfillLego(db: ReturnType<typeof createServerClient>, force: bo
       const s = await res.json()
       const theme = (themesMap.get(s.theme_id as number) ?? item.creator).replace(/\s+and\s+CUUSOO$/i, '')
       const description = s.set_num ? `Set ${s.set_num} · ${s.num_parts} parts` : null
-      await db.from('items').update({ creator: theme, description, year: s.year ?? null, external_id: setNum }).eq('id', item.id)
+      const patch: Record<string, unknown> = { creator: theme, description, year: s.year ?? null, external_id: setNum }
+      if (!item.cover_path && s.set_img_url) {
+        const path = await downloadCover(s.set_img_url as string, item.member_id)
+        if (path) patch.cover_path = path
+      }
+      await db.from('items').update(patch).eq('id', item.id)
       result.updated++
     } catch { /* skip */ }
     await delay(300)
