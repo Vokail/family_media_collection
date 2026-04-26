@@ -105,7 +105,7 @@ export default function AddItemPage() {
     window.location.href = `/${member}/${collection}`
   }
 
-  const collectionLabel = collection === 'vinyl' ? 'Vinyl' : collection === 'book' ? 'Book' : 'Comic'
+  const collectionLabel = collection === 'vinyl' ? 'Vinyl' : collection === 'book' ? 'Book' : collection === 'lego' ? 'Lego Set' : 'Comic'
 
   return (
     <main className="min-h-screen p-4 max-w-lg md:max-w-2xl mx-auto">

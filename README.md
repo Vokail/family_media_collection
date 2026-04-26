@@ -4,8 +4,8 @@ A private family web app for tracking vinyl records, books, and comics — with 
 
 ## Features
 
-- **4 family members** — Alice, Bob, Carol, Dave, each with their own collection
-- **3 collection types** — Vinyl, Books, Comics
+- **Per-member collections** — each family member has their own collection
+- **4 collection types** — Vinyl, Books, Comics, Lego
 - **Cover art** — auto-fetched from Discogs, OpenLibrary, and ComicVine, resized and stored in Supabase Storage
 - **Barcode scanning** — scan ISBN or vinyl barcodes with your phone camera to add items instantly
 - **Vinyl tracklist** — automatically fetched from Discogs when adding a record
@@ -25,7 +25,7 @@ A private family web app for tracking vinyl records, books, and comics — with 
 - [bcryptjs](https://github.com/dcodeIO/bcrypt.js) — hashed credentials stored in DB
 - [ZXing](https://github.com/zxing-js/browser) — barcode scanning via camera
 - [sharp](https://sharp.pixelplumbing.com) — image resize before upload
-- External APIs: [OpenLibrary](https://openlibrary.org/developers/api), [Discogs](https://www.discogs.com/developers), [ComicVine](https://comicvine.gamespot.com/api/)
+- External APIs: [OpenLibrary](https://openlibrary.org/developers/api), [Discogs](https://www.discogs.com/developers), [ComicVine](https://comicvine.gamespot.com/api/), [Rebrickable](https://rebrickable.com/api/) (Lego)
 
 ## Deployment
 
@@ -43,10 +43,19 @@ Hosted on [Vercel](https://vercel.com) (free Hobby plan) with [Supabase](https:/
 | `INITIAL_FAMILY_PASSWORD` | Password for editor access (seeded on first login) |
 | `DISCOGS_API_KEY` | Discogs API token |
 | `COMICVINE_API_KEY` | ComicVine API key |
+| `REBRICKABLE_API_KEY` | Rebrickable API key (for Lego sets) |
 
 ## Database
 
-Run `supabase/migrations/001_init.sql` in the Supabase SQL Editor to create the schema and seed the four family members. Also run `ALTER TABLE items ADD COLUMN tracklist jsonb;` if upgrading from an earlier version.
+Run `supabase/migrations/001_init.sql` in the Supabase SQL Editor to create the schema and seed the four family members.
+
+If upgrading from an earlier version, run these in the Supabase SQL Editor:
+```sql
+ALTER TABLE items ADD COLUMN tracklist jsonb;
+ALTER TABLE items ADD COLUMN sort_name text;
+ALTER TABLE items DROP CONSTRAINT items_collection_check;
+ALTER TABLE items ADD CONSTRAINT items_collection_check CHECK (collection IN ('vinyl','book','comic','lego'));
+```
 
 ## Local Development
 

@@ -58,7 +58,7 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
           />
         ) : (
           <div className="placeholder-tile w-full h-full text-2xl" style={{ color: 'var(--text-muted)' }}>
-            {item.collection === 'vinyl' ? '🎵' : item.collection === 'book' ? '📚' : '🦸'}
+            {item.collection === 'vinyl' ? '🎵' : item.collection === 'book' ? '📚' : item.collection === 'lego' ? '🧱' : '🦸'}
           </div>
         )}
       </button>

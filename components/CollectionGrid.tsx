@@ -10,6 +10,7 @@ const TABS: { label: string; value: CollectionType }[] = [
   { label: 'Vinyl', value: 'vinyl' },
   { label: 'Books', value: 'book' },
   { label: 'Comics', value: 'comic' },
+  { label: 'Lego', value: 'lego' },
 ]
 
 const SORT_OPTIONS: { value: SortMode; label: string }[] = [

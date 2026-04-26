@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { searchBooks } from '@/lib/apis/openlibrary'
 import { searchVinyl } from '@/lib/apis/discogs'
 import { searchComics } from '@/lib/apis/comicvine'
+import { searchLego } from '@/lib/apis/rebrickable'
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
@@ -14,6 +15,7 @@ export async function GET(request: Request) {
   const offset = parseInt(searchParams.get('offset') ?? '0')
   const results = type === 'vinyl' ? await searchVinyl(q, offset)
     : type === 'book' ? await searchBooks(q, lang, offset)
+    : type === 'lego' ? await searchLego(q, offset)
     : await searchComics(q, lang, offset)
 
   const seen = new Set<string>()

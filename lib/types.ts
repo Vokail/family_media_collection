@@ -1,4 +1,4 @@
-export type CollectionType = 'vinyl' | 'book' | 'comic'
+export type CollectionType = 'vinyl' | 'book' | 'comic' | 'lego'
 export type Role = 'viewer' | 'editor'
 
 export interface Member {
@@ -39,7 +39,7 @@ export interface SearchResult {
   creator: string
   year: number | null
   cover_url: string | null
-  source: 'openlibrary' | 'discogs' | 'comicvine'
+  source: 'openlibrary' | 'discogs' | 'comicvine' | 'rebrickable'
 }
 
 export interface SessionData {

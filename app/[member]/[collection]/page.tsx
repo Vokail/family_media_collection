@@ -6,7 +6,7 @@ import CollectionGrid from '@/components/CollectionGrid'
 import Link from 'next/link'
 import type { CollectionType } from '@/lib/types'
 
-const VALID_COLLECTIONS: CollectionType[] = ['vinyl', 'book', 'comic']
+const VALID_COLLECTIONS: CollectionType[] = ['vinyl', 'book', 'comic', 'lego']
 
 export default async function CollectionPage({
   params,

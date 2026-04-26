@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { lookupBookByISBN } from '@/lib/apis/openlibrary'
 import { lookupVinylByBarcode } from '@/lib/apis/discogs'
 import { lookupComicByBarcode } from '@/lib/apis/comicvine'
+import { lookupLegoBySetNum } from '@/lib/apis/rebrickable'
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
@@ -12,6 +13,7 @@ export async function GET(request: Request) {
 
   const result = type === 'vinyl' ? await lookupVinylByBarcode(code)
     : type === 'book' ? await lookupBookByISBN(code)
+    : type === 'lego' ? await lookupLegoBySetNum(code)
     : await lookupComicByBarcode(code)
 
   if (!result) return NextResponse.json({ error: 'Not found' }, { status: 404 })
