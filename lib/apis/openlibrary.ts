@@ -85,10 +85,16 @@ export async function fetchBookDescription(
     } catch { /* fall through */ }
   }
 
-  // 2. title + author with langRestrict (broader search, still language-restricted)
+  // 2. title + author with langRestrict — two attempts: strict operators then plain text
   if (gbLang && title) {
     try {
       const q = creator ? `intitle:${title} inauthor:${creator}` : `intitle:${title}`
+      const desc = await googleBooksDescription(q, gbLang)
+      if (desc) return desc
+    } catch { /* fall through */ }
+    // 2b. Plain query — operator mismatch (e.g. author name format) can suppress results above
+    try {
+      const q = creator ? `${title} ${creator}` : title
       const desc = await googleBooksDescription(q, gbLang)
       if (desc) return desc
     } catch { /* fall through */ }
