@@ -15,8 +15,12 @@ async function getThemes(): Promise<Map<number, string>> {
   return map
 }
 
+function normalizeTheme(name: string): string {
+  return name.replace(/\s+and\s+CUUSOO$/i, '')
+}
+
 function mapSet(s: Record<string, unknown>, themes: Map<number, string>): SearchResult {
-  const theme = themes.get(s.theme_id as number) ?? 'LEGO'
+  const theme = normalizeTheme(themes.get(s.theme_id as number) ?? 'LEGO')
   return {
     external_id: s.set_num as string,
     title: s.name as string,

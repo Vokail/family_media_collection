@@ -209,7 +209,7 @@ async function backfillLego(db: ReturnType<typeof createServerClient>, force: bo
       const res = await fetch(`https://rebrickable.com/api/v3/lego/sets/${encodeURIComponent(setNum)}/?key=${process.env.REBRICKABLE_API_KEY}`)
       if (!res.ok) continue
       const s = await res.json()
-      const theme = themesMap.get(s.theme_id as number) ?? item.creator
+      const theme = (themesMap.get(s.theme_id as number) ?? item.creator).replace(/\s+and\s+CUUSOO$/i, '')
       const description = s.set_num ? `Set ${s.set_num} · ${s.num_parts} parts` : null
       await db.from('items').update({ creator: theme, description, year: s.year ?? null, external_id: setNum }).eq('id', item.id)
       result.updated++
