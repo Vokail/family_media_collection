@@ -33,7 +33,7 @@ const GB_LANG_CODES: Record<string, string> = { dutch: 'nl', french: 'fr', germa
 
 async function googleBooksDescription(query: string, langRestrict?: string): Promise<string | null> {
   const langParam = langRestrict ? `&langRestrict=${langRestrict}` : ''
-  const res = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=1${langParam}`, { signal: AbortSignal.timeout(5000) })
+  const res = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=1${langParam}`, { signal: AbortSignal.timeout(7000) })
   if (!res.ok) return null
   const data = await res.json()
   const desc = data.items?.[0]?.volumeInfo?.description as string | undefined
@@ -57,7 +57,7 @@ export async function fetchBookDescription(
     const olLangCode = OL_LANG_CODES_DESC[lang] ?? null
     if (olLangCode) {
       try {
-        const res = await fetch(`https://openlibrary.org${workId}/editions.json?languages=${olLangCode}&limit=5`, { signal: AbortSignal.timeout(5000) })
+        const res = await fetch(`https://openlibrary.org${workId}/editions.json?languages=${olLangCode}&limit=5`, { signal: AbortSignal.timeout(9000) })
         if (res.ok) {
           const data = await res.json()
           for (const edition of (data.entries ?? [])) {
@@ -90,7 +90,7 @@ export async function fetchBookDescription(
   let resolvedWorkId = workId
   if (!resolvedWorkId && resolvedIsbn) {
     try {
-      const r = await fetch(`https://openlibrary.org/search.json?isbn=${resolvedIsbn}&fields=key&limit=1`, { signal: AbortSignal.timeout(5000) })
+      const r = await fetch(`https://openlibrary.org/search.json?isbn=${resolvedIsbn}&fields=key&limit=1`, { signal: AbortSignal.timeout(9000) })
       if (r.ok) {
         const d = await r.json()
         const key = d.docs?.[0]?.key as string | undefined
@@ -100,7 +100,7 @@ export async function fetchBookDescription(
   }
   if (!resolvedWorkId) return null
   try {
-    const res = await fetch(`https://openlibrary.org${resolvedWorkId}.json`, { signal: AbortSignal.timeout(5000) })
+    const res = await fetch(`https://openlibrary.org${resolvedWorkId}.json`, { signal: AbortSignal.timeout(12000) })
     if (!res.ok) return null
     const data = await res.json()
     const desc = data.description
@@ -115,7 +115,7 @@ export async function fetchBookDescription(
 }
 
 async function olSearchByISBN(isbn: string): Promise<SearchResult> {
-  const res = await fetch(`https://openlibrary.org/search.json?isbn=${isbn}&fields=key,title,author_name,first_publish_year,cover_i&limit=1`, { signal: AbortSignal.timeout(5000) })
+  const res = await fetch(`https://openlibrary.org/search.json?isbn=${isbn}&fields=key,title,author_name,first_publish_year,cover_i&limit=1`, { signal: AbortSignal.timeout(9000) })
   if (!res.ok) throw new Error('not found')
   const data = await res.json()
   const doc = data.docs?.[0]
@@ -132,7 +132,7 @@ async function olSearchByISBN(isbn: string): Promise<SearchResult> {
 }
 
 async function olBibKeysByISBN(isbn: string): Promise<SearchResult> {
-  const res = await fetch(`https://openlibrary.org/api/books?bibkeys=ISBN:${isbn}&format=json&jscmd=data`, { signal: AbortSignal.timeout(5000) })
+  const res = await fetch(`https://openlibrary.org/api/books?bibkeys=ISBN:${isbn}&format=json&jscmd=data`, { signal: AbortSignal.timeout(9000) })
   if (!res.ok) throw new Error('not found')
   const data = await res.json()
   const book = data[`ISBN:${isbn}`]
@@ -167,7 +167,7 @@ async function googleBooksByISBN(isbn: string): Promise<SearchResult> {
 
 async function kbSruByISBN(isbn: string): Promise<SearchResult> {
   const url = `https://jsru.kb.nl/sru/sru?operation=searchRetrieve&x-collection=GGC&query=isbn+exact+%22${isbn}%22&recordSchema=dc&maximumRecords=1`
-  const res = await fetch(url, { signal: AbortSignal.timeout(5000) })
+  const res = await fetch(url, { signal: AbortSignal.timeout(9000) })
   if (!res.ok) throw new Error('not found')
   const xml = await res.text()
   const count = xml.match(/<srw:numberOfRecords>(\d+)<\/srw:numberOfRecords>/)?.[1]

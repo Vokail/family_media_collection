@@ -49,7 +49,7 @@ describe('GET /api/barcode', () => {
     expect(res.status).toBe(200)
     const data = await res.json()
     expect(data.title).toBe('Dune')
-    expect(mockLookupBook).toHaveBeenCalledWith('9780441013593')
+    expect(mockLookupBook).toHaveBeenCalledWith('9780441013593', undefined)
   })
 
   it('returns vinyl result for type=vinyl', async () => {
