@@ -118,27 +118,6 @@ async function kbSruByISBN(isbn: string): Promise<SearchResult> {
   }
 }
 
-async function isbndbByISBN(isbn: string): Promise<SearchResult> {
-  const key = process.env.ISBNDB_API_KEY
-  if (!key) throw new Error('no key')
-  const res = await fetch(`https://api2.isbndb.com/book/${isbn}`, {
-    headers: { Authorization: key },
-    signal: AbortSignal.timeout(5000),
-  })
-  if (!res.ok) throw new Error('not found')
-  const data = await res.json()
-  const book = data.book
-  if (!book) throw new Error('not found')
-  return {
-    external_id: `isbn:${isbn}`,
-    isbn,
-    title: book.title as string,
-    creator: (book.authors as string[])?.[0] ?? 'Unknown',
-    year: book.date_published ? parseInt(book.date_published as string) : null,
-    cover_url: (book.image as string) || null,
-    source: 'openlibrary',
-  }
-}
 
 export async function lookupBookByISBN(isbn: string): Promise<SearchResult | null> {
   try {
@@ -148,7 +127,6 @@ export async function lookupBookByISBN(isbn: string): Promise<SearchResult | nul
       olBibKeysByISBN(isbn),
       googleBooksByISBN(isbn),
       kbSruByISBN(isbn),
-      isbndbByISBN(isbn),
     ])
     return result
   } catch {
