@@ -67,36 +67,85 @@ async function fetchBookDescription(externalId: string): Promise<string | null> 
   } catch { return null }
 }
 
+async function searchBookExternalId(title: string, creator: string): Promise<string | null> {
+  try {
+    const q = encodeURIComponent(`${title} ${creator}`)
+    const res = await fetch(`https://openlibrary.org/search.json?q=${q}&fields=key&limit=1`)
+    if (!res.ok) return null
+    const data = await res.json()
+    return (data.docs?.[0]?.key as string) ?? null
+  } catch { return null }
+}
+
 async function backfillBooks(db: ReturnType<typeof createServerClient>, force: boolean) {
-  const q = db.from('items').select('id, external_id').eq('collection', 'book').not('external_id', 'is', null)
-  const { data: items } = force ? await q : await q.is('description', null)
-  const result = { total: items?.length ?? 0, updated: 0 }
-  for (const item of items ?? []) {
-    const description = await fetchBookDescription(item.external_id)
-    if (description) { await db.from('items').update({ description }).eq('id', item.id); result.updated++ }
+  const { data: fullItems } = force
+    ? await db.from('items').select('id, title, creator, external_id').eq('collection', 'book')
+    : await db.from('items').select('id, title, creator, external_id').eq('collection', 'book').or('external_id.is.null,description.is.null')
+  const result = { total: fullItems?.length ?? 0, updated: 0 }
+  for (const item of fullItems ?? []) {
+    let externalId = item.external_id
+    if (!externalId) {
+      externalId = await searchBookExternalId(item.title, item.creator)
+      await delay(300)
+      if (!externalId) continue
+      await db.from('items').update({ external_id: externalId }).eq('id', item.id)
+    }
+    const description = await fetchBookDescription(externalId)
     await delay(300)
+    if (description) {
+      await db.from('items').update({ description, external_id: externalId }).eq('id', item.id)
+      result.updated++
+    }
   }
   return result
 }
 
 // --- Comics ---
+async function searchComicExternalId(title: string): Promise<string | null> {
+  try {
+    const url = `https://comicvine.gamespot.com/api/search/?api_key=${process.env.COMICVINE_API_KEY}&format=json&query=${encodeURIComponent(title)}&resources=volume&field_list=id&limit=1`
+    const res = await fetch(url, { headers: { 'User-Agent': 'FamilyMediaCollection/1.0', Accept: 'application/json' } })
+    if (!res.ok) return null
+    const data = await res.json()
+    const id = data.results?.[0]?.id
+    return id ? String(id) : null
+  } catch { return null }
+}
+
+async function fetchComicDescription(externalId: string): Promise<string | null> {
+  try {
+    const url = `https://comicvine.gamespot.com/api/volume/4050-${externalId}/?api_key=${process.env.COMICVINE_API_KEY}&format=json&field_list=deck,description`
+    const res = await fetch(url, { headers: { 'User-Agent': 'FamilyMediaCollection/1.0', Accept: 'application/json' } })
+    if (!res.ok) return null
+    const data = await res.json()
+    if (data.status_code !== 1) return null
+    const deck = data.results?.deck as string | null
+    const raw = data.results?.description as string | null
+    return deck || (raw ? stripHtml(raw).slice(0, 1000) : null)
+  } catch { return null }
+}
+
 async function backfillComics(db: ReturnType<typeof createServerClient>, force: boolean) {
-  const q = db.from('items').select('id, external_id').eq('collection', 'comic').not('external_id', 'is', null)
-  const { data: items } = force ? await q : await q.is('description', null)
-  const result = { total: items?.length ?? 0, updated: 0 }
-  for (const item of items ?? []) {
+  const { data: fullItems } = force
+    ? await db.from('items').select('id, title, external_id').eq('collection', 'comic')
+    : await db.from('items').select('id, title, external_id').eq('collection', 'comic').or('external_id.is.null,description.is.null')
+  const result = { total: fullItems?.length ?? 0, updated: 0 }
+  for (const item of fullItems ?? []) {
     try {
-      const url = `https://comicvine.gamespot.com/api/volume/4050-${item.external_id}/?api_key=${process.env.COMICVINE_API_KEY}&format=json&field_list=deck,description`
-      const res = await fetch(url, { headers: { 'User-Agent': 'FamilyMediaCollection/1.0', Accept: 'application/json' } })
-      if (!res.ok) continue
-      const data = await res.json()
-      if (data.status_code !== 1) continue
-      const deck = data.results?.deck as string | null
-      const raw = data.results?.description as string | null
-      const description = deck || (raw ? stripHtml(raw).slice(0, 1000) : null)
-      if (description) { await db.from('items').update({ description }).eq('id', item.id); result.updated++ }
+      let externalId = item.external_id
+      if (!externalId) {
+        externalId = await searchComicExternalId(item.title)
+        await delay(1100)
+        if (!externalId) continue
+        await db.from('items').update({ external_id: externalId }).eq('id', item.id)
+      }
+      const description = await fetchComicDescription(externalId)
+      await delay(1100)
+      if (description) {
+        await db.from('items').update({ description, external_id: externalId }).eq('id', item.id)
+        result.updated++
+      }
     } catch { /* skip */ }
-    await delay(1100)
   }
   return result
 }
