@@ -59,6 +59,7 @@ Run all migrations in sequence:
 | `001_init.sql` | Full schema: members, items, settings, storage bucket + policy |
 | `002_drop_broad_storage_select_policy.sql` | Security: removes unnecessary broad SELECT policy on covers bucket |
 | `003_items_extended_fields.sql` | No-op on fresh install (columns already in 001); safe to run anyway. Adds: tracklist, sort_name, external_id, isbn, description, rating |
+| `004_items_rating.sql` | No-op on fresh install; adds rating column for installations that ran 003 before rating was introduced |
 
 Then add your family members (edit names/slugs to match your family):
 
@@ -77,6 +78,7 @@ Run only the migrations you haven't applied yet, in order:
 ```
 002_drop_broad_storage_select_policy.sql  — if you haven't run it
 003_items_extended_fields.sql             — adds tracklist, sort_name, external_id, isbn, description; expands collection check to include 'lego'
+004_items_rating.sql                      — adds rating column (if not already present from 003)
 ```
 
 ## Local Development

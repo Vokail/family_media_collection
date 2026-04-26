@@ -100,7 +100,7 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
 
   return (
     <>
-      <button onClick={() => setOpen(true)} className="w-full aspect-square">
+      <button onClick={() => setOpen(true)} className="w-full aspect-square relative">
         {coverSrc ? (
           <Image
             src={coverSrc}
@@ -112,6 +112,13 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
         ) : (
           <div className="placeholder-tile w-full h-full text-2xl" style={{ color: 'var(--text-muted)' }}>
             {item.collection === 'vinyl' ? '🎵' : item.collection === 'book' ? '📚' : item.collection === 'lego' ? '🧱' : '🦸'}
+          </div>
+        )}
+        {item.rating && (
+          <div className="absolute bottom-1 left-0 right-0 flex justify-center gap-0.5">
+            {[1,2,3,4,5].map(s => (
+              <span key={s} className="text-xs leading-none" style={{ color: s <= item.rating! ? 'var(--accent)' : 'rgba(255,255,255,0.3)', textShadow: '0 1px 2px rgba(0,0,0,0.8)' }}>★</span>
+            ))}
           </div>
         )}
       </button>
