@@ -18,10 +18,9 @@ const OL_LANG_CODES: Record<string, string> = {
   german: 'ger',
 }
 
-export async function searchBooks(query: string, lang?: string, offset = 0): Promise<SearchResult[]> {
-  const langCode = lang && lang !== 'all' ? OL_LANG_CODES[lang] : undefined
-  const langParam = langCode ? `&language=${langCode}` : ''
-  const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&fields=key,title,author_name,first_publish_year,cover_i&limit=20&offset=${offset}${langParam}`
+export async function searchBooks(query: string, _lang?: string, offset = 0): Promise<SearchResult[]> {
+  // Don't filter by language — OL language tagging is inconsistent and would hide valid results
+  const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&fields=key,title,author_name,first_publish_year,cover_i&limit=20&offset=${offset}`
   const res = await fetch(url)
   if (!res.ok) return []
   const data = await res.json()
