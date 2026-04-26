@@ -1,6 +1,6 @@
 'use client'
 import Image from 'next/image'
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import type { Item, Track } from '@/lib/types'
 
 interface Props {
@@ -16,6 +16,7 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
   const [notes, setNotes] = useState(item.notes ?? '')
   const [savingNotes, setSavingNotes] = useState(false)
   const [uploadingCover, setUploadingCover] = useState(false)
+  const coverInputRef = useRef<HTMLInputElement>(null)
   const coverSrc = item.cover_path
     ? `${supabaseUrl}/storage/v1/object/public/${item.cover_path}`
     : null
@@ -126,10 +127,20 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
                   <button onClick={toggleWishlist} className="btn-ghost">
                     {item.is_wishlist ? 'Mark as Owned' : 'Move to Wishlist'}
                   </button>
-                  <label className={`btn-ghost text-xs cursor-pointer relative overflow-hidden ${uploadingCover ? 'opacity-50 pointer-events-none' : ''}`}>
+                  <button
+                    onClick={() => coverInputRef.current?.click()}
+                    disabled={uploadingCover}
+                    className="btn-ghost text-xs"
+                  >
                     {uploadingCover ? 'Uploading…' : coverSrc ? 'Replace cover' : 'Upload cover'}
-                    <input type="file" accept="image/*" onChange={handleCoverUpload} style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }} />
-                  </label>
+                  </button>
+                  <input
+                    ref={coverInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleCoverUpload}
+                    style={{ position: 'fixed', top: '-100vh', left: 0, opacity: 0, pointerEvents: 'none' }}
+                  />
                   {coverSrc && (
                     <button onClick={handleRemoveCover} className="btn-ghost text-xs" style={{ color: 'var(--text-muted)' }}>
                       Remove cover
