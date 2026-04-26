@@ -219,9 +219,9 @@ export default function AddItemPage() {
             <div>
               <label className="label mb-1 block">Cover image (optional)</label>
               <div className="flex items-center gap-2">
-                <label className="btn-ghost text-xs cursor-pointer">
+                <label className="btn-ghost text-xs cursor-pointer relative overflow-hidden">
                   {manualCover ? manualCover.name : 'Choose photo…'}
-                  <input type="file" accept="image/*" className="sr-only" onChange={e => setManualCover(e.target.files?.[0] ?? null)} />
+                  <input type="file" accept="image/*" onChange={e => setManualCover(e.target.files?.[0] ?? null)} style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }} />
                 </label>
                 {manualCover && <button onClick={() => setManualCover(null)} className="text-xs" style={{ color: 'var(--text-muted)' }}>✕</button>}
               </div>
