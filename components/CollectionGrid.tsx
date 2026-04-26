@@ -85,6 +85,7 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
   const [isWishlist, setIsWishlist] = useState(false)
   const [items, setItems] = useState(initialItems)
   const [sort, setSort] = useState<SortMode>('creator')
+  const [search, setSearch] = useState('')
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({})
 
   function handleUpdate(updated: Item) {
@@ -96,7 +97,11 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
 
   const ownedCount = items.filter(i => !i.is_wishlist).length
   const wishlistCount = items.filter(i => i.is_wishlist).length
-  const filtered = items.filter(i => i.is_wishlist === isWishlist)
+  const q = search.trim().toLowerCase()
+  const filtered = items.filter(i =>
+    i.is_wishlist === isWishlist &&
+    (!q || i.title.toLowerCase().includes(q) || i.creator.toLowerCase().includes(q))
+  )
   const sorted = sortItems(filtered, sort)
   const byCreator = sort === 'creator'
   const byYear = sort === 'year'
@@ -145,6 +150,14 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
           )
         })}
       </div>
+
+      {/* Search */}
+      <input
+        className="input text-sm py-1.5"
+        placeholder="Search title or artist…"
+        value={search}
+        onChange={e => setSearch(e.target.value)}
+      />
 
       {/* Owned / Wishlist + Sort */}
       <div className="flex items-center gap-2 flex-wrap">
