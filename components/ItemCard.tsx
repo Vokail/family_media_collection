@@ -1,6 +1,6 @@
 'use client'
 import Image from 'next/image'
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import type { Item, Track } from '@/lib/types'
 
 interface Props {
@@ -16,7 +16,6 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
   const [notes, setNotes] = useState(item.notes ?? '')
   const [savingNotes, setSavingNotes] = useState(false)
   const [uploadingCover, setUploadingCover] = useState(false)
-  const fileInputRef = useRef<HTMLInputElement>(null)
   const coverSrc = item.cover_path
     ? `${supabaseUrl}/storage/v1/object/public/${item.cover_path}`
     : null
@@ -127,13 +126,10 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
                   <button onClick={toggleWishlist} className="btn-ghost">
                     {item.is_wishlist ? 'Mark as Owned' : 'Move to Wishlist'}
                   </button>
-                  <button
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={uploadingCover}
-                    className="btn-ghost text-xs"
-                  >
+                  <label className={`btn-ghost text-xs cursor-pointer ${uploadingCover ? 'opacity-50 pointer-events-none' : ''}`}>
                     {uploadingCover ? 'Uploading…' : coverSrc ? 'Replace cover' : 'Upload cover'}
-                  </button>
+                    <input type="file" accept="image/*" className="sr-only" onChange={handleCoverUpload} />
+                  </label>
                   {coverSrc && (
                     <button onClick={handleRemoveCover} className="btn-ghost text-xs" style={{ color: 'var(--text-muted)' }}>
                       Remove cover
@@ -141,13 +137,6 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
                   )}
                   <button onClick={handleDelete} className="btn-ghost text-red-500">Delete</button>
                 </div>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handleCoverUpload}
-                />
               </>
             ) : (
               notes && <p className="subtitle text-sm text-center italic">&ldquo;{notes}&rdquo;</p>
