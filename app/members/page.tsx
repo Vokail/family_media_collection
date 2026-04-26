@@ -1,14 +1,17 @@
 export const dynamic = 'force-dynamic'
 
-import { listMembers } from '@/lib/db/members'
+import { listMembers, listMemberItemCounts } from '@/lib/db/members'
 import MemberCard from '@/components/MemberCard'
 import LogoutButton from '@/components/LogoutButton'
 import Link from 'next/link'
 import { getSession } from '@/lib/session'
 
 export default async function MembersPage() {
-  const members = await listMembers()
-  const session = await getSession()
+  const [members, memberCounts, session] = await Promise.all([
+    listMembers(),
+    listMemberItemCounts(),
+    getSession(),
+  ])
   const isEditor = session.role === 'editor'
 
   return (
@@ -24,7 +27,7 @@ export default async function MembersPage() {
         </div>
       </div>
       <div className="grid grid-cols-2 gap-4">
-        {members.map(m => <MemberCard key={m.id} member={m} />)}
+        {members.map(m => <MemberCard key={m.id} member={m} counts={memberCounts[m.id]} />)}
       </div>
     </main>
   )

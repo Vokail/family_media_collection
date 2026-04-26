@@ -3,6 +3,8 @@ import Image from 'next/image'
 import { useState, useRef } from 'react'
 import type { Item, Track } from '@/lib/types'
 import PhotoCapture from './PhotoCapture'
+import { useToast } from './Toast'
+import { isNew } from '@/lib/utils'
 
 interface Props {
   item: Item
@@ -29,15 +31,18 @@ function StarRating({ rating, onRate }: { rating: number | null; onRate?: (r: nu
 }
 
 export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseUrl }: Props) {
+  const toast = useToast()
   const [open, setOpen] = useState(false)
   const [notes, setNotes] = useState(item.notes ?? '')
   const [savingNotes, setSavingNotes] = useState(false)
   const [uploadingCover, setUploadingCover] = useState(false)
   const [showCamera, setShowCamera] = useState(false)
+  const [imgLoaded, setImgLoaded] = useState(false)
   const coverInputRef = useRef<HTMLInputElement>(null)
   const coverSrc = item.cover_path
     ? `${supabaseUrl}/storage/v1/object/public/${item.cover_path}`
     : null
+  const showNewBadge = item.created_at ? isNew(item.created_at) : false
 
   async function setRating(rating: number | null) {
     const res = await fetch(`/api/items/${item.id}`, {
@@ -49,12 +54,19 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
   }
 
   async function toggleWishlist() {
+    onUpdate({ ...item, is_wishlist: !item.is_wishlist })
     const res = await fetch(`/api/items/${item.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ is_wishlist: !item.is_wishlist }),
     })
-    if (res.ok) onUpdate(await res.json())
+    if (res.ok) {
+      onUpdate(await res.json())
+      toast.show(item.is_wishlist ? 'Moved to collection' : 'Added to wishlist')
+    } else {
+      onUpdate(item)
+      toast.show('Could not update item', 'error')
+    }
   }
 
   async function saveNotes() {
@@ -95,8 +107,11 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
   async function handleDelete() {
     const res = await fetch(`/api/items/${item.id}`, { method: 'DELETE' })
     if (res.ok) {
+      toast.show('Item deleted')
       onDelete(item.id)
       setOpen(false)
+    } else {
+      toast.show('Could not delete item', 'error')
     }
   }
 
@@ -104,13 +119,21 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
     <>
       <button onClick={() => setOpen(true)} className="w-full aspect-square relative">
         {coverSrc ? (
-          <Image
-            src={coverSrc}
-            alt={item.title}
-            width={200}
-            height={200}
-            className="w-full h-full object-cover rounded-lg shadow-md"
-          />
+          <div className="relative w-full h-full rounded-lg overflow-hidden shadow-md">
+            <div
+              className="absolute inset-0 animate-pulse"
+              style={{ backgroundColor: 'var(--border)', opacity: imgLoaded ? 0 : 1, transition: 'opacity 0.3s' }}
+            />
+            <Image
+              src={coverSrc}
+              alt={item.title}
+              width={200}
+              height={200}
+              className="w-full h-full object-cover"
+              onLoad={() => setImgLoaded(true)}
+              style={{ opacity: imgLoaded ? 1 : 0, transition: 'opacity 0.3s' }}
+            />
+          </div>
         ) : (
           <div className="placeholder-tile w-full h-full text-2xl" style={{ color: 'var(--text-muted)' }}>
             {item.collection === 'vinyl' ? '🎵' : item.collection === 'book' ? '📚' : item.collection === 'lego' ? '🧱' : '🦸'}
@@ -121,6 +144,11 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
             {[1,2,3,4,5].map(s => (
               <span key={s} className="text-xs leading-none" style={{ color: s <= item.rating! ? 'var(--accent)' : 'rgba(255,255,255,0.3)', textShadow: '0 1px 2px rgba(0,0,0,0.8)' }}>★</span>
             ))}
+          </div>
+        )}
+        {showNewBadge && (
+          <div className="absolute top-1 right-1 px-1.5 py-0.5 rounded text-white text-[10px] font-bold leading-none" style={{ backgroundColor: 'var(--accent)' }}>
+            NEW
           </div>
         )}
       </button>
