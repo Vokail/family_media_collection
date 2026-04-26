@@ -83,3 +83,7 @@ h1, h2, h3 { font-family: 'Lora', Georgia, serif; }
     @apply rounded-lg flex items-center justify-center aspect-square;
   }
 }
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
