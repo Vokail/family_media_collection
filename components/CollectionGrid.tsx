@@ -21,20 +21,16 @@ const SORT_OPTIONS: { value: SortMode; label: string }[] = [
 
 const GRID = 'grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6'
 
-// Strip leading articles, then use last word for two-word names (First Last → Last),
-// first word for everything else. Matches vinyl/book filing conventions.
+// Strip leading articles, file under first remaining word.
+// Matches how record stores file band names (Dire Straits → D, The Beatles → B).
 function indexKey(creator: string): string {
   const stripped = creator.replace(/^(the|a|an)\s+/i, '').trim()
-  const words = stripped.split(/\s+/)
-  const word = words.length === 2 ? words[1] : words[0]
-  const ch = word?.[0]?.toUpperCase() ?? '#'
+  const ch = stripped[0]?.toUpperCase() ?? '#'
   return /[A-Z]/.test(ch) ? ch : '#'
 }
 
 function sortKey(creator: string): string {
-  const stripped = creator.replace(/^(the|a|an)\s+/i, '').trim()
-  const words = stripped.split(/\s+/)
-  return (words.length === 2 ? words[1] + ' ' + words[0] : stripped).toLowerCase()
+  return creator.replace(/^(the|a|an)\s+/i, '').trim().toLowerCase()
 }
 
 function sortItems(items: Item[], mode: SortMode): Item[] {

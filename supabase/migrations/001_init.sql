@@ -6,10 +6,10 @@ create table members (
 );
 
 insert into members (name, slug) values
-  ('Member1',   'member1'),
-  ('Member2', 'member2'),
-  ('Member3',   'member3'),
-  ('Member4',    'member4');
+  ('Alice',   'alice'),
+  ('Bob', 'bob'),
+  ('Carol',   'carol'),
+  ('Dave',    'dave');
 
 -- Items
 create table items (

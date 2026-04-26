@@ -4,7 +4,7 @@ A private family web app for tracking vinyl records, books, and comics — with 
 
 ## Features
 
-- **4 family members** — Member1, Member2, Member3, Member4, each with their own collection
+- **4 family members** — Alice, Bob, Carol, Dave, each with their own collection
 - **3 collection types** — Vinyl, Books, Comics
 - **Cover art** — auto-fetched from Discogs, OpenLibrary, and ComicVine, resized and stored in Supabase Storage
 - **Barcode scanning** — scan ISBN or vinyl barcodes with your phone camera to add items instantly
