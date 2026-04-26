@@ -126,9 +126,9 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
                   <button onClick={toggleWishlist} className="btn-ghost">
                     {item.is_wishlist ? 'Mark as Owned' : 'Move to Wishlist'}
                   </button>
-                  <label className={`btn-ghost text-xs cursor-pointer ${uploadingCover ? 'opacity-50 pointer-events-none' : ''}`}>
+                  <label className={`btn-ghost text-xs cursor-pointer relative overflow-hidden ${uploadingCover ? 'opacity-50 pointer-events-none' : ''}`}>
                     {uploadingCover ? 'Uploading…' : coverSrc ? 'Replace cover' : 'Upload cover'}
-                    <input type="file" accept="image/*" className="sr-only" onChange={handleCoverUpload} />
+                    <input type="file" accept="image/*" onChange={handleCoverUpload} style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }} />
                   </label>
                   {coverSrc && (
                     <button onClick={handleRemoveCover} className="btn-ghost text-xs" style={{ color: 'var(--text-muted)' }}>
