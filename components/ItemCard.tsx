@@ -41,13 +41,13 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
   const [imgLoaded, setImgLoaded] = useState(false)
   const imgRef = useRef<HTMLImageElement>(null)
   const coverInputRef = useRef<HTMLInputElement>(null)
+  const coverSrc = item.cover_path
+    ? `${supabaseUrl}/storage/v1/object/public/${item.cover_path}`
+    : null
 
   useEffect(() => {
     if (imgRef.current?.complete) setImgLoaded(true)
   }, [coverSrc])
-  const coverSrc = item.cover_path
-    ? `${supabaseUrl}/storage/v1/object/public/${item.cover_path}`
-    : null
   const showNewBadge = item.created_at ? isNew(item.created_at) : false
 
   async function setRating(rating: number | null) {
