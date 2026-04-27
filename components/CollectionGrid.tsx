@@ -272,8 +272,8 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
 
       {/* Owned / Wishlist + Sort */}
       <div className="flex items-center gap-2 flex-wrap">
-        <button className={`btn-ghost ${!isWishlist ? 'active' : ''}`} onClick={() => { setIsWishlist(false); localStorage.setItem(tabStorageKey, 'owned') }}>Owned <span className="opacity-70">({ownedCount})</span></button>
-        <button className={`btn-ghost ${isWishlist ? 'active' : ''}`} onClick={() => { setIsWishlist(true); localStorage.setItem(tabStorageKey, 'wishlist') }}>Wishlist <span className="opacity-70">({wishlistCount})</span></button>
+        <button className={`btn-ghost ${!isWishlist ? 'active' : ''}`} onClick={() => { setIsWishlist(false); localStorage.setItem(tabStorageKey, 'owned') }}>Owned<span className="opacity-70 hidden sm:inline"> ({ownedCount})</span></button>
+        <button className={`btn-ghost ${isWishlist ? 'active' : ''}`} onClick={() => { setIsWishlist(true); localStorage.setItem(tabStorageKey, 'wishlist') }}>Wishlist<span className="opacity-70 hidden sm:inline"> ({wishlistCount})</span></button>
         <div className="ml-auto flex items-center gap-2">
           <span className="label hidden sm:inline">Sort</span>
           <select
