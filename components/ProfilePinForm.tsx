@@ -17,7 +17,11 @@ export default function ProfilePinForm({ memberId, memberName }: Props) {
     setError('')
     setSuccess(false)
     if (pin.length < 4) {
-      setError('PIN must be at least 4 characters')
+      setError('PIN must be at least 4 digits')
+      return
+    }
+    if (!/^\d+$/.test(pin)) {
+      setError('PIN must contain digits only')
       return
     }
     setLoading(true)
@@ -44,10 +48,11 @@ export default function ProfilePinForm({ memberId, memberName }: Props) {
       </div>
       <form onSubmit={handleSubmit} className="flex flex-col gap-3">
         <div>
-          <label className="label mb-1 block">New PIN (min 4 characters)</label>
+          <label className="label mb-1 block">New PIN (min 4 digits)</label>
           <input
             type="password"
             inputMode="numeric"
+            pattern="[0-9]*"
             className="input"
             placeholder="New PIN"
             value={pin}

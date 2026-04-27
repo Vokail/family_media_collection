@@ -1,5 +1,6 @@
 'use client'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams } from 'next/navigation'
+import Link from 'next/link'
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import BarcodeScanner from '@/components/BarcodeScanner'
 import PhotoCapture from '@/components/PhotoCapture'
@@ -19,7 +20,6 @@ const langStorageKey = (col: string) => `search_lang_${col}`
 
 export default function AddItemPage() {
   const params = useParams()
-  const router = useRouter()
   const member = params.member as string
   const collection = params.collection as CollectionType
 
@@ -233,7 +233,7 @@ export default function AddItemPage() {
   return (
     <main className="min-h-screen p-4 max-w-lg md:max-w-2xl mx-auto">
       <div className="flex items-center gap-3 mb-6">
-        <button onClick={() => router.back()} className="btn-ghost text-sm">← Back</button>
+        <Link href={`/${member}/${collection}`} className="btn-ghost text-sm">← Back</Link>
         <h1 className="font-serif text-xl font-bold">Add {collectionLabel}</h1>
       </div>
 

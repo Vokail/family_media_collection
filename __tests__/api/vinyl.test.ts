@@ -28,11 +28,13 @@ describe('GET /api/vinyl/[id]', () => {
     expect(res.status).toBe(401)
   })
 
-  it('returns release data for authenticated users', async () => {
+  it('returns release data including genres and styles for authenticated users', async () => {
     mockGetSession.mockResolvedValue({ role: 'viewer' })
     mockFetchRelease.mockResolvedValue({
       tracklist: [{ position: 'A1', title: 'Track 1', duration: '3:00' }],
       sortName: 'Floyd, Pink',
+      genres: 'Rock',
+      styles: 'Psychedelic Rock, Progressive Rock',
     })
     const [req, ctx] = makeGet('12345')
     const res = await GET(req, ctx)
@@ -40,6 +42,19 @@ describe('GET /api/vinyl/[id]', () => {
     const data = await res.json()
     expect(data.sortName).toBe('Floyd, Pink')
     expect(data.tracklist).toHaveLength(1)
+    expect(data.genres).toBe('Rock')
+    expect(data.styles).toBe('Psychedelic Rock, Progressive Rock')
     expect(mockFetchRelease).toHaveBeenCalledWith('12345')
+  })
+
+  it('returns release data for any authenticated role (editor)', async () => {
+    mockGetSession.mockResolvedValue({ role: 'editor' })
+    mockFetchRelease.mockResolvedValue({ tracklist: [], sortName: null, genres: null, styles: null })
+    const [req, ctx] = makeGet('99999')
+    const res = await GET(req, ctx)
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    expect(data.genres).toBeNull()
+    expect(data.styles).toBeNull()
   })
 })

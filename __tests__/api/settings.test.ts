@@ -84,6 +84,14 @@ describe('PATCH /api/settings — member_pin target', () => {
     expect(res.status).toBe(400)
   })
 
+  it('returns 400 when newValue contains non-digit characters', async () => {
+    mockGetSession.mockResolvedValue({ role: 'editor' })
+    const res = await PATCH(makePatch({ target: 'member_pin', newValue: 'abcd', memberId: 'member-1' }))
+    expect(res.status).toBe(400)
+    const data = await res.json()
+    expect(data.error).toMatch(/digit/i)
+  })
+
   it('allows editor to update any member PIN', async () => {
     mockGetSession.mockResolvedValue({ role: 'editor' })
     const res = await PATCH(makePatch({ target: 'member_pin', newValue: '5678', memberId: 'member-1' }))
@@ -91,11 +99,11 @@ describe('PATCH /api/settings — member_pin target', () => {
     expect(mockUpdateMemberPin).toHaveBeenCalledWith('member-1', '5678')
   })
 
-  it('allows member to update their own PIN', async () => {
+  it('allows member to update their own PIN with digits only', async () => {
     mockGetSession.mockResolvedValue({ role: 'member', editableMemberId: 'member-1' })
-    const res = await PATCH(makePatch({ target: 'member_pin', newValue: 'mypin', memberId: 'member-1' }))
+    const res = await PATCH(makePatch({ target: 'member_pin', newValue: '1234', memberId: 'member-1' }))
     expect(res.status).toBe(200)
-    expect(mockUpdateMemberPin).toHaveBeenCalledWith('member-1', 'mypin')
+    expect(mockUpdateMemberPin).toHaveBeenCalledWith('member-1', '1234')
   })
 
   it('forbids member from updating another member PIN', async () => {

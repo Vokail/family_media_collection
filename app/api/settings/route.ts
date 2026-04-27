@@ -11,7 +11,10 @@ export async function PATCH(request: Request) {
   if (target === 'member_pin') {
     if (!memberId) return NextResponse.json({ error: 'memberId required' }, { status: 400 })
     if (!newValue || newValue.length < 4) {
-      return NextResponse.json({ error: 'Must be at least 4 characters' }, { status: 400 })
+      return NextResponse.json({ error: 'Must be at least 4 digits' }, { status: 400 })
+    }
+    if (!/^\d+$/.test(newValue)) {
+      return NextResponse.json({ error: 'PIN must contain digits only' }, { status: 400 })
     }
     // Members can only update their own PIN; editors can update any
     if (session.role === 'member') {
