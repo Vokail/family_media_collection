@@ -13,7 +13,7 @@ A private family web app for tracking vinyl records, books, and comics — with 
 - **Wishlist** — toggle items between owned and wishlist; counts shown on each tab
 - **Sorting** — by artist/author (with A–Z index sidebar), title, year (with decade grouping), or date added
 - **Language filter** — controls which description language is fetched (Dutch default); does not restrict search results
-- **Two-tier access** — view PIN for read-only browsing, family password for full edit access
+- **Three-tier access** — view PIN for read-only browsing, per-member PIN for editing your own collection only, family password for full admin access
 - **PWA** — installable on iPhone via Safari → Add to Home Screen
 - **Dark mode** — automatic, follows OS setting
 - **Keep-alive cron** — pings Supabase every 5 days to prevent cold starts
@@ -60,6 +60,7 @@ Run all migrations in sequence:
 | `002_drop_broad_storage_select_policy.sql` | Security: removes unnecessary broad SELECT policy on covers bucket |
 | `003_items_extended_fields.sql` | No-op on fresh install (columns already in 001); safe to run anyway. Adds: tracklist, sort_name, external_id, isbn, description, rating |
 | `004_items_rating.sql` | No-op on fresh install; adds rating column for installations that ran 003 before rating was introduced |
+| `005_member_pins.sql` | Adds `pin_hash` column to members table for per-member PIN login |
 
 Then add your family members (edit names/slugs to match your family):
 
@@ -79,6 +80,7 @@ Run only the migrations you haven't applied yet, in order:
 002_drop_broad_storage_select_policy.sql  — if you haven't run it
 003_items_extended_fields.sql             — adds tracklist, sort_name, external_id, isbn, description; expands collection check to include 'lego'
 004_items_rating.sql                      — adds rating column (if not already present from 003)
+005_member_pins.sql                       — adds pin_hash column to members for per-member PIN login
 ```
 
 ## Local Development
