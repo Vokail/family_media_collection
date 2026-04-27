@@ -15,6 +15,9 @@ jest.mock('@/lib/db/items', () => ({
   updateItem: jest.fn(),
   deleteItem: jest.fn(),
 }))
+jest.mock('@/lib/session', () => ({
+  getSession: jest.fn().mockResolvedValue({ role: 'editor' }),
+}))
 
 import { PATCH, DELETE } from '@/app/api/items/[id]/route'
 import { updateItem, deleteItem } from '@/lib/db/items'

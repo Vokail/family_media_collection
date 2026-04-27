@@ -83,14 +83,14 @@ describe('POST /api/auth', () => {
   })
 
   it('returns role and clears lockout on correct password', async () => {
-    mockResolveRole.mockResolvedValue('viewer')
+    mockResolveRole.mockResolvedValue({ role: 'viewer' })
     mockCreateSession.mockResolvedValue(undefined)
     const res = await POST(makePostRequest({ password: '1234' }))
     expect(res.status).toBe(200)
     const body = await res.json()
     expect(body.role).toBe('viewer')
     expect(mockClearAttempts).toHaveBeenCalled()
-    expect(mockCreateSession).toHaveBeenCalledWith('viewer')
+    expect(mockCreateSession).toHaveBeenCalledWith('viewer', undefined)
   })
 })
 

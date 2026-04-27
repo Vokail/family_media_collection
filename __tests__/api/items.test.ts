@@ -15,6 +15,9 @@ jest.mock('@/lib/apis/openlibrary', () => ({
   fetchBookDescription: jest.fn().mockResolvedValue(null),
 }))
 jest.mock('next/cache', () => ({ revalidatePath: jest.fn() }))
+jest.mock('@/lib/session', () => ({
+  getSession: jest.fn().mockResolvedValue({ role: 'editor' }),
+}))
 
 import { GET, POST } from '@/app/api/items/route'
 import { listItems, createItem } from '@/lib/db/items'
