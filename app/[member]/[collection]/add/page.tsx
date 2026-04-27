@@ -165,6 +165,8 @@ export default function AddItemPage() {
         external_id: result.external_id,
         isbn: result.isbn ?? null,
         lang: collection === 'book' ? comicLang : undefined,
+        genres: result.genres ?? null,
+        styles: result.styles ?? null,
       }),
     })
     setAdding(null)

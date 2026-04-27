@@ -211,6 +211,16 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
             {item.description && (
               <p className="text-sm leading-relaxed break-words" style={{ color: 'var(--text-muted)', overflowWrap: 'break-word', wordBreak: 'break-word' }}>{item.description}</p>
             )}
+            {item.collection === 'vinyl' && (item.genres || item.styles) && (
+              <div className="flex flex-wrap gap-1.5 justify-center">
+                {item.genres && item.genres.split(', ').map(g => (
+                  <span key={g} className="text-xs px-2.5 py-1 rounded-full font-medium" style={{ backgroundColor: 'color-mix(in srgb, var(--accent) 15%, var(--bg-card))', color: 'var(--accent)' }}>{g}</span>
+                ))}
+                {item.styles && item.styles.split(', ').map(s => (
+                  <span key={s} className="text-xs px-2.5 py-1 rounded-full" style={{ backgroundColor: 'var(--border)', color: 'var(--text)' }}>{s}</span>
+                ))}
+              </div>
+            )}
             <StarRating rating={item.rating} onRate={isEditor ? setRating : undefined} />
             {isEditor ? (
               <>

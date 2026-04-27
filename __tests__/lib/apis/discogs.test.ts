@@ -29,7 +29,7 @@ describe('searchVinyl', () => {
     })
   })
 
-  it('includes format, label, country and catno when present', async () => {
+  it('includes format, label, country, catno, genres and styles when present', async () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
       json: async () => ({
@@ -42,6 +42,8 @@ describe('searchVinyl', () => {
           label: ['Apple Records', 'Parlophone'],
           country: 'UK',
           catno: 'PCS 7088',
+          genre: ['Rock'],
+          style: ['Psychedelic Rock', 'Classic Rock'],
         }]
       })
     })
@@ -52,6 +54,8 @@ describe('searchVinyl', () => {
       label: 'Apple Records', // first label
       country: 'UK',
       catno: 'PCS 7088',
+      genres: 'Rock',
+      styles: 'Psychedelic Rock, Classic Rock',
     })
   })
 
@@ -81,27 +85,33 @@ describe('lookupVinylByBarcode', () => {
 })
 
 describe('fetchVinylRelease', () => {
-  it('returns tracklist and sortName from a release', async () => {
+  it('returns tracklist, sortName, genres and styles from a release', async () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
       json: async () => ({
         artists_sort: 'Beatles, The',
+        genres: ['Rock'],
+        styles: ['Psychedelic Rock', 'Classic Rock'],
         tracklist: [
           { position: 'A1', title: 'Come Together', duration: '4:20' },
           { position: 'A2', title: 'Something', duration: '3:03' },
         ],
       })
     })
-    const { tracklist, sortName } = await fetchVinylRelease('12345')
+    const { tracklist, sortName, genres, styles } = await fetchVinylRelease('12345')
     expect(sortName).toBe('Beatles, The')
+    expect(genres).toBe('Rock')
+    expect(styles).toBe('Psychedelic Rock, Classic Rock')
     expect(tracklist).toHaveLength(2)
     expect(tracklist[0]).toMatchObject({ position: 'A1', title: 'Come Together', duration: '4:20' })
   })
 
-  it('returns empty tracklist and null sortName on failure', async () => {
+  it('returns nulls and empty tracklist on failure', async () => {
     mockFetch.mockResolvedValueOnce({ ok: false })
-    const { tracklist, sortName } = await fetchVinylRelease('99999')
+    const { tracklist, sortName, genres, styles } = await fetchVinylRelease('99999')
     expect(tracklist).toEqual([])
     expect(sortName).toBeNull()
+    expect(genres).toBeNull()
+    expect(styles).toBeNull()
   })
 })

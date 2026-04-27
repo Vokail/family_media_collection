@@ -56,6 +56,12 @@ function VinylDetailModal({ result, onClose }: DetailModalProps) {
             {result.label && <span className="text-xs px-2.5 py-1 rounded-full" style={{ backgroundColor: 'var(--border)', color: 'var(--text-muted)' }}>{result.label}</span>}
             {result.country && <span className="text-xs px-2.5 py-1 rounded-full" style={{ backgroundColor: 'var(--border)', color: 'var(--text-muted)' }}>{result.country}</span>}
             {result.catno && <span className="text-xs px-2.5 py-1 rounded-full font-mono" style={{ backgroundColor: 'var(--border)', color: 'var(--text-muted)' }}>{result.catno}</span>}
+            {result.genres && result.genres.split(', ').map(g => (
+              <span key={g} className="text-xs px-2.5 py-1 rounded-full font-medium" style={{ backgroundColor: 'color-mix(in srgb, var(--accent) 15%, var(--bg-card))', color: 'var(--accent)' }}>{g}</span>
+            ))}
+            {result.styles && result.styles.split(', ').map(s => (
+              <span key={s} className="text-xs px-2.5 py-1 rounded-full" style={{ backgroundColor: 'var(--border)', color: 'var(--text)' }}>{s}</span>
+            ))}
           </div>
 
           {/* Tracklist — always rendered so the modal doesn't shift when data loads */}

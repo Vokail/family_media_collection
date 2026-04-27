@@ -17,6 +17,8 @@ function mapResult(r: Record<string, unknown>): SearchResult {
   const formats = r.format as string[] | undefined
   const labels = r.label as string[] | undefined
   const catnos = r.catno as string | undefined
+  const genres = r.genre as string[] | undefined
+  const styles = r.style as string[] | undefined
   return {
     external_id: String(r.id),
     title,
@@ -28,6 +30,8 @@ function mapResult(r: Record<string, unknown>): SearchResult {
     label: labels?.[0] ?? null,
     country: (r.country as string) || null,
     catno: catnos || null,
+    genres: genres?.join(', ') || null,
+    styles: styles?.join(', ') || null,
   }
 }
 
@@ -40,10 +44,15 @@ export async function searchVinyl(query: string, offset = 0): Promise<SearchResu
   return (data.results ?? []).map(mapResult)
 }
 
-export async function fetchVinylRelease(releaseId: string): Promise<{ tracklist: Track[]; sortName: string | null }> {
+export async function fetchVinylRelease(releaseId: string): Promise<{
+  tracklist: Track[]
+  sortName: string | null
+  genres: string | null
+  styles: string | null
+}> {
   const url = `${BASE}/releases/${releaseId}`
   const res = await fetch(url, { headers: headers() })
-  if (!res.ok) return { tracklist: [], sortName: null }
+  if (!res.ok) return { tracklist: [], sortName: null, genres: null, styles: null }
   const data = await res.json()
   const tracklist = (data.tracklist ?? []).map((t: Record<string, unknown>) => ({
     position: (t.position as string) || '',
@@ -52,7 +61,9 @@ export async function fetchVinylRelease(releaseId: string): Promise<{ tracklist:
   }))
   // artists_sort is the Discogs filing name e.g. "Sinatra, Frank" or "Dire Straits"
   const sortName = (data.artists_sort as string) || null
-  return { tracklist, sortName }
+  const genres = (data.genres as string[])?.join(', ') || null
+  const styles = (data.styles as string[])?.join(', ') || null
+  return { tracklist, sortName, genres, styles }
 }
 
 export async function lookupVinylByBarcode(barcode: string): Promise<SearchResult | null> {

@@ -60,6 +60,8 @@ export async function POST(request: Request) {
       description: null,
       rating: null,
       isbn,
+      genres: null,
+      styles: null,
     })
 
     return NextResponse.json(item, { status: 201 })

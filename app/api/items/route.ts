@@ -29,7 +29,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   const body = await request.json()
-  const { memberSlug, collection, title, creator, year, cover_url, is_wishlist, external_id, isbn, lang } = body
+  const { memberSlug, collection, title, creator, year, cover_url, is_wishlist, external_id, isbn, lang, genres, styles } = body
   if (!title?.trim()) return NextResponse.json({ error: 'Title required' }, { status: 400 })
   if (!VALID_COLLECTIONS.includes(collection)) return NextResponse.json({ error: 'Invalid collection' }, { status: 400 })
   try {
@@ -72,6 +72,9 @@ export async function POST(request: Request) {
     isbn: isbn ?? null,
     description: description ?? null,
     rating: null,
+    // Genre/style from Discogs: prefer release-level data, fall back to search result
+    genres: vinylRelease?.genres ?? genres ?? null,
+    styles: vinylRelease?.styles ?? styles ?? null,
   })
   revalidatePath(`/${memberSlug}/${collection}`)
   return NextResponse.json(item, { status: 201 })

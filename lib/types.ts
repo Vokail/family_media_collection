@@ -29,6 +29,8 @@ export interface Item {
   isbn: string | null
   description: string | null
   rating: number | null
+  genres: string | null
+  styles: string | null
   created_at: string
 }
 
@@ -51,6 +53,8 @@ export interface SearchResult {
   country?: string | null      // e.g. "UK"
   catno?: string | null        // e.g. "CBS 32100"
   description?: string | null  // short subtitle / series info
+  genres?: string | null       // e.g. "Rock, Electronic"
+  styles?: string | null       // e.g. "New Wave, Synth-pop"
 }
 
 export interface SessionData {

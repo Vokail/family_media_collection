@@ -41,11 +41,11 @@ async function fetchDiscogsRelease(id: string) {
 }
 
 async function backfillVinyl(db: ReturnType<typeof createServerClient>, force: boolean) {
-  const q = db.from('items').select('id, creator, title, external_id, cover_path, member_id, sort_name, tracklist').eq('collection', 'vinyl')
+  const q = db.from('items').select('id, creator, title, external_id, cover_path, member_id, sort_name, tracklist, genres, styles').eq('collection', 'vinyl')
   const { data: allItems } = await q
   const items = force
     ? (allItems ?? [])
-    : (allItems ?? []).filter(i => !i.sort_name || !i.tracklist || !i.cover_path)
+    : (allItems ?? []).filter(i => !i.sort_name || !i.tracklist || !i.cover_path || !i.genres)
   const result = { total: items.length, updated: 0 }
   for (const item of items) {
     try {
@@ -63,6 +63,8 @@ async function backfillVinyl(db: ReturnType<typeof createServerClient>, force: b
         sort_name: (release.artists_sort as string) || null,
         tracklist: tracklist.length ? tracklist : null,
         external_id: item.external_id ?? id,
+        genres: (release.genres as string[])?.join(', ') || null,
+        styles: (release.styles as string[])?.join(', ') || null,
       }
       if (!item.cover_path) {
         const coverUrl = (release.images as { uri: string }[])?.[0]?.uri ?? null
