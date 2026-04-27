@@ -31,17 +31,12 @@ self.addEventListener('fetch', e => {
     return
   }
 
-  // Stale-while-revalidate for page navigations — load cached instantly, update in background
+  // Always fetch page navigations from network — HTML must be fresh for correct icon/meta resolution
+  // Falls back to cache only when fully offline
   if (request.mode === 'navigate') {
     e.respondWith(
-      caches.open(CACHE).then(cache =>
-        cache.match(request).then(cached => {
-          const networkFetch = fetch(request).then(res => {
-            if (res.ok) cache.put(request, res.clone())
-            return res
-          }).catch(() => cached)
-          return cached ?? networkFetch
-        })
+      fetch(request).catch(() =>
+        caches.match(request).then(cached => cached ?? caches.match('/members'))
       )
     )
   }
