@@ -9,12 +9,14 @@ A private family web app for tracking vinyl records, books, and comics — with 
 - **Cover art** — auto-fetched from Discogs, OpenLibrary, and ComicVine, resized and stored in Supabase Storage
 - **Barcode scanning** — scan ISBN or vinyl barcodes with your phone camera to add items instantly; manga/graphic novel ISBN barcodes work for comics too
 - **Descriptions** — books and comics get descriptions auto-fetched on add; language-aware for Dutch/French/German books (Google Books preferred, OpenLibrary fallback)
-- **Vinyl tracklist** — automatically fetched from Discogs when adding a record
-- **Wishlist** — toggle items between owned and wishlist; counts shown on each tab
+- **Vinyl tracklist** — automatically fetched from Discogs when adding a record; search cards show format (LP/7"), label, country, catalogue number to distinguish editions; tap "Details & tracklist" on any search result for a full preview before adding
+- **Wishlist** — toggle items between owned and wishlist; counts shown on each tab; family-wide wishlist view at `/wishlist`
 - **Sorting** — by artist/author (with A–Z index sidebar), title, year (with decade grouping), or date added
 - **Language filter** — controls which description language is fetched (Dutch default); does not restrict search results
-- **Three-tier access** — view PIN for read-only browsing, per-member PIN for editing your own collection only, family password for full admin access
-- **PWA** — installable on iPhone via Safari → Add to Home Screen
+- **Three-tier access** — view PIN for read-only browsing, per-member PIN for editing your own collection only, family password for full admin access; members can change their own PIN from `/profile`
+- **Add-more flow** — after adding an item the search page stays open ready for the next one; a "View collection" action in the success toast navigates back when done
+- **Pull-to-refresh** — drag down on any page (collection, wishlist, members) to reload fresh data
+- **PWA** — installable on iPhone via Safari → Add to Home Screen; cover images cached locally for offline browsing
 - **Dark mode** — automatic, follows OS setting
 - **Keep-alive cron** — pings Supabase every 5 days to prevent cold starts
 
