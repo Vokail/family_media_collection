@@ -76,7 +76,12 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ notes }),
     })
-    if (res.ok) onUpdate(await res.json())
+    if (res.ok) {
+      onUpdate(await res.json())
+      toast.show('Note saved')
+    } else {
+      toast.show('Could not save note', 'error')
+    }
     setSavingNotes(false)
   }
 
