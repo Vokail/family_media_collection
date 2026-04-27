@@ -271,15 +271,15 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
       />
 
       {/* Owned / Wishlist + Sort */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <button className={`btn-ghost ${!isWishlist ? 'active' : ''}`} onClick={() => { setIsWishlist(false); localStorage.setItem(tabStorageKey, 'owned') }}>Owned<span className="opacity-70 hidden sm:inline"> ({ownedCount})</span></button>
-        <button className={`btn-ghost ${isWishlist ? 'active' : ''}`} onClick={() => { setIsWishlist(true); localStorage.setItem(tabStorageKey, 'wishlist') }}>Wishlist<span className="opacity-70 hidden sm:inline"> ({wishlistCount})</span></button>
+      <div className="flex items-center gap-1 sm:gap-2 flex-nowrap">
+        <button className={`btn-ghost px-2 sm:px-4 text-xs sm:text-sm ${!isWishlist ? 'active' : ''}`} onClick={() => { setIsWishlist(false); localStorage.setItem(tabStorageKey, 'owned') }}>Owned <span className="opacity-70">({ownedCount})</span></button>
+        <button className={`btn-ghost px-2 sm:px-4 text-xs sm:text-sm ${isWishlist ? 'active' : ''}`} onClick={() => { setIsWishlist(true); localStorage.setItem(tabStorageKey, 'wishlist') }}>Wishlist <span className="opacity-70">({wishlistCount})</span></button>
         <div className="ml-auto flex items-center gap-2">
           <span className="label hidden sm:inline">Sort</span>
           <select
             value={sort}
             onChange={e => { const v = e.target.value as SortMode; setSort(v); localStorage.setItem(sortStorageKey, v) }}
-            className="input py-1 px-2 text-sm w-auto"
+            className="input py-1 px-2 text-xs sm:text-sm w-auto"
           >
             <option value="added">Date added</option>
             <option value="creator">{sortCreatorLabel(collection)}</option>
