@@ -1,6 +1,6 @@
 'use client'
 import Image from 'next/image'
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import type { Item, Track } from '@/lib/types'
 import PhotoCapture from './PhotoCapture'
 import { useToast } from './Toast'
@@ -39,7 +39,12 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
   const [uploadingCover, setUploadingCover] = useState(false)
   const [showCamera, setShowCamera] = useState(false)
   const [imgLoaded, setImgLoaded] = useState(false)
+  const imgRef = useRef<HTMLImageElement>(null)
   const coverInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (imgRef.current?.complete) setImgLoaded(true)
+  }, [coverSrc])
   const coverSrc = item.cover_path
     ? `${supabaseUrl}/storage/v1/object/public/${item.cover_path}`
     : null
@@ -130,7 +135,7 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
             {coverSrc ? (
               <>
                 <div className="absolute inset-0 animate-pulse" style={{ backgroundColor: 'var(--border)', opacity: imgLoaded ? 0 : 1, transition: 'opacity 0.3s' }} />
-                <Image src={coverSrc} alt={item.title} width={48} height={48} className="w-full h-full object-cover" onLoad={() => setImgLoaded(true)} style={{ opacity: imgLoaded ? 1 : 0, transition: 'opacity 0.3s' }} />
+                <Image ref={imgRef} src={coverSrc} alt={item.title} width={48} height={48} className="w-full h-full object-cover" onLoad={() => setImgLoaded(true)} style={{ opacity: imgLoaded ? 1 : 0, transition: 'opacity 0.3s' }} />
               </>
             ) : (
               <div className="placeholder-tile w-full h-full text-lg" style={{ color: 'var(--text-muted)' }}>{emoji}</div>
@@ -158,6 +163,7 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
                 style={{ backgroundColor: 'var(--border)', opacity: imgLoaded ? 0 : 1, transition: 'opacity 0.3s' }}
               />
               <Image
+                ref={imgRef}
                 src={coverSrc}
                 alt={item.title}
                 width={200}
