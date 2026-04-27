@@ -58,11 +58,20 @@ function VinylDetailModal({ result, onClose }: DetailModalProps) {
             {result.catno && <span className="text-xs px-2.5 py-1 rounded-full font-mono" style={{ backgroundColor: 'var(--border)', color: 'var(--text-muted)' }}>{result.catno}</span>}
           </div>
 
-          {/* Tracklist */}
-          {loading && <p className="subtitle text-sm text-center">Loading tracklist…</p>}
-          {detail && detail.tracklist.length > 0 && (
-            <div>
-              <p className="label mb-2 block">Tracklist</p>
+          {/* Tracklist — always rendered so the modal doesn't shift when data loads */}
+          <div>
+            <p className="label mb-2 block">Tracklist</p>
+            {loading && (
+              <div className="flex flex-col gap-2">
+                {[1,2,3,4,5,6].map(i => (
+                  <div key={i} className="flex gap-2 items-center">
+                    <div className="w-8 h-3 rounded animate-pulse" style={{ backgroundColor: 'var(--border)' }} />
+                    <div className="flex-1 h-3 rounded animate-pulse" style={{ backgroundColor: 'var(--border)', width: `${55 + (i % 3) * 15}%` }} />
+                  </div>
+                ))}
+              </div>
+            )}
+            {detail && detail.tracklist.length > 0 && (
               <ol className="flex flex-col gap-1">
                 {detail.tracklist.map((t, i) => (
                   <li key={i} className="flex gap-2 text-sm">
@@ -72,11 +81,11 @@ function VinylDetailModal({ result, onClose }: DetailModalProps) {
                   </li>
                 ))}
               </ol>
-            </div>
-          )}
-          {detail && detail.tracklist.length === 0 && (
-            <p className="subtitle text-sm text-center">No tracklist available</p>
-          )}
+            )}
+            {detail && detail.tracklist.length === 0 && (
+              <p className="subtitle text-sm">No tracklist available</p>
+            )}
+          </div>
         </div>
       </div>
     </div>

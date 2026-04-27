@@ -182,6 +182,8 @@ export default function AddItemPage() {
         'success',
         { label: 'View collection', onClick: goToCollection },
       )
+      // Auto-navigate when the toast disappears
+      setTimeout(goToCollection, 5000)
     } else {
       toast.show('Could not add item', 'error')
     }
@@ -215,6 +217,7 @@ export default function AddItemPage() {
         'success',
         { label: 'View collection', onClick: goToCollection },
       )
+      setTimeout(goToCollection, 5000)
     } else {
       toast.show('Could not add item', 'error')
     }
