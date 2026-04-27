@@ -1,12 +1,9 @@
 'use client'
-import { useRouter } from 'next/navigation'
 
 export default function LogoutButton() {
-  const router = useRouter()
   async function logout() {
     await fetch('/api/auth', { method: 'DELETE' })
-    router.refresh()
-    router.push('/')
+    window.location.href = '/'
   }
   return <button onClick={logout} className="btn-ghost text-xs">Log out</button>
 }

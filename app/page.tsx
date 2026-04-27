@@ -1,10 +1,8 @@
 'use client'
-import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import PasswordField from '@/components/PasswordField'
 
 export default function LoginPage() {
-  const router = useRouter()
   const [error, setError] = useState('')
 
   async function handleLogin(password: string) {
@@ -15,8 +13,7 @@ export default function LoginPage() {
       body: JSON.stringify({ password }),
     })
     if (res.ok) {
-      router.refresh()
-      router.push('/members')
+      window.location.href = '/members'
     } else {
       const body = await res.json().catch(() => ({}))
       setError(body.error ?? 'Incorrect password or PIN')
