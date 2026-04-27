@@ -34,6 +34,8 @@ export async function POST(request: Request) {
   if (!VALID_COLLECTIONS.includes(collection)) return NextResponse.json({ error: 'Invalid collection' }, { status: 400 })
   try {
   const [member, session] = await Promise.all([getMemberBySlug(memberSlug), getSession()])
+  if (!session.role) return NextResponse.json({ error: 'Unauthenticated' }, { status: 401 })
+  if (session.role === 'viewer') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   if (!member) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   if (session.role === 'member' && session.editableMemberId !== member.id) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })

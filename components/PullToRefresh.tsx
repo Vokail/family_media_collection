@@ -1,23 +1,19 @@
 'use client'
-import { useRouter } from 'next/navigation'
-import { useRef, useState, useCallback } from 'react'
+import { useRef, useState } from 'react'
 
 const PULL_THRESHOLD = 72
 
 export default function PullToRefresh({ children }: { children: React.ReactNode }) {
-  const router = useRouter()
   const [pullY, setPullY] = useState(0)
   const [refreshing, setRefreshing] = useState(false)
   const touchStartY = useRef(0)
   const pulling = useRef(false)
 
-  const doRefresh = useCallback(async () => {
+  function doRefresh() {
     setRefreshing(true)
-    router.refresh()
-    // Give server components time to re-render
-    await new Promise(r => setTimeout(r, 800))
-    setRefreshing(false)
-  }, [router])
+    // Hard reload guarantees a fresh session read from the server
+    window.location.reload()
+  }
 
   function onTouchStart(e: React.TouchEvent) {
     if ((window.scrollY ?? document.documentElement.scrollTop ?? 0) <= 0) {
@@ -33,7 +29,10 @@ export default function PullToRefresh({ children }: { children: React.ReactNode 
   }
 
   function onTouchEnd() {
-    if (pulling.current && pullY >= PULL_THRESHOLD && !refreshing) doRefresh()
+    if (pulling.current && pullY >= PULL_THRESHOLD && !refreshing) {
+      doRefresh()
+      return // page will reload; no need to reset state
+    }
     pulling.current = false
     setPullY(0)
   }

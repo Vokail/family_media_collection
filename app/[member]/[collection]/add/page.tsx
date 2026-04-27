@@ -35,6 +35,7 @@ export default function AddItemPage() {
   const [offset, setOffset] = useState(0)
   const [lastQuery, setLastQuery] = useState('')
   const barcodeAbort = useRef<AbortController | null>(null)
+  const navTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [showManual, setShowManual] = useState(false)
   const [manualTitle, setManualTitle] = useState('')
   const [manualCreator, setManualCreator] = useState('')
@@ -145,6 +146,7 @@ export default function AddItemPage() {
   }, [collection, comicLang])
 
   function goToCollection() {
+    if (navTimer.current) clearTimeout(navTimer.current)
     window.location.href = `/${member}/${collection}`
   }
 
@@ -183,8 +185,9 @@ export default function AddItemPage() {
         'success',
         { label: 'View collection', onClick: goToCollection },
       )
-      // Auto-navigate when the toast disappears
-      setTimeout(goToCollection, 5000)
+      // Auto-navigate when the toast disappears; cancel any previous pending timer
+      if (navTimer.current) clearTimeout(navTimer.current)
+      navTimer.current = setTimeout(goToCollection, 5000)
     } else {
       toast.show('Could not add item', 'error')
     }
@@ -218,7 +221,8 @@ export default function AddItemPage() {
         'success',
         { label: 'View collection', onClick: goToCollection },
       )
-      setTimeout(goToCollection, 5000)
+      if (navTimer.current) clearTimeout(navTimer.current)
+      navTimer.current = setTimeout(goToCollection, 5000)
     } else {
       toast.show('Could not add item', 'error')
     }
@@ -307,7 +311,7 @@ export default function AddItemPage() {
               <div className="flex items-center gap-2">
                 <button onClick={() => setShowManualCamera(true)} className="btn-ghost text-xs md:hidden">📷</button>
                 <button onClick={() => manualFileRef.current?.click()} className="btn-ghost text-xs">
-                  {manualCover ? manualCover.name : 'Library…'}
+                  {manualCover ? manualCover.name : 'Add cover…'}
                 </button>
                 <input
                   ref={manualFileRef}

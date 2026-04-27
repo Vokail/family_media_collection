@@ -23,6 +23,7 @@ function VinylDetailModal({ result, onClose }: DetailModalProps) {
     fetch(`/api/vinyl/${result.external_id}`)
       .then(r => r.ok ? r.json() : null)
       .then(d => { if (!cancelled && d) setDetail(d) })
+      .catch(() => {})
       .finally(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
   }, [result.external_id])

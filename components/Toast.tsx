@@ -19,7 +19,11 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
   const show = useCallback((message: string, type: ToastType = 'success', action?: ToastAction) => {
     const id = nextId.current++
-    dispatch({ type: 'add', toast: { id, message, type, action } })
+    // Wrap action.onClick so clicking it also dismisses the toast immediately
+    const wrappedAction = action
+      ? { ...action, onClick: () => { dispatch({ type: 'remove', id }); action.onClick() } }
+      : undefined
+    dispatch({ type: 'add', toast: { id, message, type, action: wrappedAction } })
     setTimeout(() => dispatch({ type: 'remove', id }), action ? 5000 : 2500)
   }, [])
 
