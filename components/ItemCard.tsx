@@ -1,6 +1,6 @@
 'use client'
 import Image from 'next/image'
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef } from 'react'
 import type { Item, Track } from '@/lib/types'
 import PhotoCapture from './PhotoCapture'
 import { useToast } from './Toast'
@@ -38,16 +38,10 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
   const [savingNotes, setSavingNotes] = useState(false)
   const [uploadingCover, setUploadingCover] = useState(false)
   const [showCamera, setShowCamera] = useState(false)
-  const [imgLoaded, setImgLoaded] = useState(false)
-  const imgRef = useRef<HTMLImageElement>(null)
   const coverInputRef = useRef<HTMLInputElement>(null)
   const coverSrc = item.cover_path
     ? `${supabaseUrl}/storage/v1/object/public/${item.cover_path}`
     : null
-
-  useEffect(() => {
-    if (imgRef.current?.complete) setImgLoaded(true)
-  }, [coverSrc])
   const showNewBadge = item.created_at ? isNew(item.created_at) : false
 
   async function setRating(rating: number | null) {
@@ -131,12 +125,9 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
           className="w-full flex items-center gap-3 px-2 py-2 rounded-lg text-left hover:opacity-80 transition-opacity"
           style={{ borderBottom: '1px solid var(--border)' }}
         >
-          <div className="relative w-12 h-12 flex-shrink-0 rounded overflow-hidden shadow">
+          <div className="relative w-12 h-12 flex-shrink-0 rounded overflow-hidden shadow" style={{ backgroundColor: 'var(--border)' }}>
             {coverSrc ? (
-              <>
-                <div className="absolute inset-0 animate-pulse" style={{ backgroundColor: 'var(--border)', opacity: imgLoaded ? 0 : 1, transition: 'opacity 0.3s' }} />
-                <Image ref={imgRef} src={coverSrc} alt={item.title} width={48} height={48} className="w-full h-full object-cover" onLoad={() => setImgLoaded(true)} style={{ opacity: imgLoaded ? 1 : 0, transition: 'opacity 0.3s' }} />
-              </>
+              <Image src={coverSrc} alt={item.title} width={48} height={48} className="w-full h-full object-cover" />
             ) : (
               <div className="placeholder-tile w-full h-full text-lg" style={{ color: 'var(--text-muted)' }}>{emoji}</div>
             )}
@@ -157,20 +148,13 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
       ) : (
         <button onClick={() => setOpen(true)} className="w-full aspect-square relative">
           {coverSrc ? (
-            <div className="relative w-full h-full rounded-lg overflow-hidden shadow-md">
-              <div
-                className="absolute inset-0 animate-pulse"
-                style={{ backgroundColor: 'var(--border)', opacity: imgLoaded ? 0 : 1, transition: 'opacity 0.3s' }}
-              />
+            <div className="relative w-full h-full rounded-lg overflow-hidden shadow-md" style={{ backgroundColor: 'var(--border)' }}>
               <Image
-                ref={imgRef}
                 src={coverSrc}
                 alt={item.title}
                 width={200}
                 height={200}
                 className="w-full h-full object-cover"
-                onLoad={() => setImgLoaded(true)}
-                style={{ opacity: imgLoaded ? 1 : 0, transition: 'opacity 0.3s' }}
               />
             </div>
           ) : (
