@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import BarcodeScanner from '@/components/BarcodeScanner'
 import PhotoCapture from '@/components/PhotoCapture'
 import SearchResults from '@/components/SearchResults'
+import { useToast } from '@/components/Toast'
 import type { SearchResult, CollectionType, Item } from '@/lib/types'
 
 const COMIC_LANGUAGES = [
@@ -22,6 +23,7 @@ export default function AddItemPage() {
   const member = params.member as string
   const collection = params.collection as CollectionType
 
+  const toast = useToast()
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<SearchResult[]>([])
   const [loading, setLoading] = useState(false)
@@ -161,7 +163,8 @@ export default function AddItemPage() {
       }),
     })
     setAdding(null)
-    window.location.href = `/${member}/${collection}`
+    toast.show(isWishlist ? 'Added to wishlist' : 'Added to collection')
+    router.push(`/${member}/${collection}`)
   }
 
   async function handleManualAdd(isWishlist: boolean) {
@@ -178,7 +181,8 @@ export default function AddItemPage() {
     if (manualCover) body.append('cover', manualCover)
     await fetch('/api/items/manual', { method: 'POST', body })
     setAddingManual(false)
-    window.location.href = `/${member}/${collection}`
+    toast.show(isWishlist ? 'Added to wishlist' : 'Added to collection')
+    router.push(`/${member}/${collection}`)
   }
 
   const collectionLabel = collection === 'vinyl' ? 'Vinyl' : collection === 'book' ? 'Book' : collection === 'lego' ? 'Lego Set' : 'Comic'
