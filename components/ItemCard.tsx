@@ -170,11 +170,14 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
             </div>
           )}
           {item.rating && (
-            <div className="absolute bottom-1 left-0 right-0 flex justify-center gap-0.5">
-              {[1,2,3,4,5].map(s => (
-                <span key={s} className="text-xs leading-none" style={{ color: s <= item.rating! ? 'var(--accent)' : 'rgba(255,255,255,0.3)', textShadow: '0 1px 2px rgba(0,0,0,0.8)' }}>★</span>
-              ))}
-            </div>
+            <>
+              <div className="absolute bottom-0 left-0 right-0 h-8 rounded-b-lg pointer-events-none" style={{ background: 'linear-gradient(transparent, rgba(0,0,0,0.55))' }} />
+              <div className="absolute bottom-1 left-0 right-0 flex justify-center gap-0.5">
+                {[1,2,3,4,5].map(s => (
+                  <span key={s} className="text-xs leading-none drop-shadow" style={{ color: s <= item.rating! ? '#f5a623' : 'rgba(255,255,255,0.4)' }}>★</span>
+                ))}
+              </div>
+            </>
           )}
           {showNewBadge && (
             <div className="absolute top-1 right-1 px-1.5 py-0.5 rounded text-white text-[10px] font-bold leading-none" style={{ backgroundColor: 'var(--accent)' }}>

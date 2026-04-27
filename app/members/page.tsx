@@ -5,6 +5,7 @@ import MemberCard from '@/components/MemberCard'
 import LogoutButton from '@/components/LogoutButton'
 import Link from 'next/link'
 import { getSession } from '@/lib/session'
+import PullToRefresh from '@/components/PullToRefresh'
 
 export default async function MembersPage() {
   const [members, memberCounts, session] = await Promise.all([
@@ -16,6 +17,7 @@ export default async function MembersPage() {
   const isMember = session.role === 'member'
 
   return (
+    <PullToRefresh>
     <main className="min-h-screen p-6 max-w-sm mx-auto">
       <div className="flex flex-col gap-3 mb-8">
         <h1 className="text-2xl font-serif font-bold">Our Collection</h1>
@@ -34,5 +36,6 @@ export default async function MembersPage() {
         {members.map(m => <MemberCard key={m.id} member={m} counts={memberCounts[m.id]} />)}
       </div>
     </main>
+    </PullToRefresh>
   )
 }

@@ -175,13 +175,16 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
   const byRating = sort === 'rating'
   const byLego = byCreator && collection === 'lego'
 
+  // Strip "LEGO " prefix from theme names for display/grouping
+  function stripLego(name: string) { return name.replace(/^LEGO\s+/i, '').trim() }
+
   // Build groups when sorted by creator
   const creatorGroups: { letter: string; items: Item[] }[] = []
   if (byCreator) {
     const map = new Map<string, Item[]>()
     for (const item of sorted) {
-      // Lego: group by full theme name; others: by first letter
-      const k = byLego ? item.creator : indexKey(item.creator, item.sort_name)
+      // Lego: group by theme name (without LEGO prefix); others: by first letter
+      const k = byLego ? stripLego(item.creator) : indexKey(item.creator, item.sort_name)
       if (!map.has(k)) map.set(k, [])
       map.get(k)!.push(item)
     }
@@ -195,7 +198,7 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
 
   const sidebarKeys = byCreator
     ? byLego
-      ? creatorGroups.map(g => g.letter.slice(0, 3))
+      ? creatorGroups.map(g => g.letter.slice(0, 4))  // already stripped of "LEGO "
       : creatorGroups.map(g => g.letter)
     : byYear
     ? yearGroups.map(g => g.shortKey)

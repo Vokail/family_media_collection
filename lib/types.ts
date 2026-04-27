@@ -45,6 +45,12 @@ export interface SearchResult {
   year: number | null
   cover_url: string | null
   source: 'openlibrary' | 'discogs' | 'comicvine' | 'rebrickable' | 'google'
+  // Vinyl / Discogs extras
+  format?: string | null       // e.g. "LP, Album"
+  label?: string | null        // e.g. "Columbia"
+  country?: string | null      // e.g. "UK"
+  catno?: string | null        // e.g. "CBS 32100"
+  description?: string | null  // short subtitle / series info
 }
 
 export interface SessionData {

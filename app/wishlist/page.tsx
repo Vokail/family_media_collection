@@ -5,6 +5,7 @@ import Image from 'next/image'
 import { listWishlistItems } from '@/lib/db/items'
 import { listMembers } from '@/lib/db/members'
 import type { CollectionType } from '@/lib/types'
+import PullToRefresh from '@/components/PullToRefresh'
 
 const COLLECTION_EMOJI: Record<CollectionType, string> = {
   vinyl: '🎵', book: '📚', comic: '🦸', lego: '🧱',
@@ -26,6 +27,7 @@ export default async function WishlistPage() {
   const totalCount = allItems.length
 
   return (
+    <PullToRefresh>
     <main className="min-h-screen p-4 max-w-2xl mx-auto">
       <div className="flex items-center gap-3 mb-6">
         <Link href="/members" className="btn-ghost text-sm">← Members</Link>
@@ -81,5 +83,6 @@ export default async function WishlistPage() {
         </section>
       ))}
     </main>
+    </PullToRefresh>
   )
 }

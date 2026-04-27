@@ -144,9 +144,14 @@ export default function AddItemPage() {
     }
   }, [collection, comicLang])
 
+  function goToCollection() {
+    router.refresh()
+    router.push(`/${member}/${collection}`)
+  }
+
   async function handleAdd(result: SearchResult, isWishlist: boolean) {
     setAdding(result.external_id)
-    await fetch('/api/items', {
+    const res = await fetch('/api/items', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -163,8 +168,18 @@ export default function AddItemPage() {
       }),
     })
     setAdding(null)
-    toast.show(isWishlist ? 'Added to wishlist' : 'Added to collection')
-    router.push(`/${member}/${collection}`)
+    if (res.ok) {
+      // Update dupe map so the card shows "In collection" immediately
+      const added = await res.json()
+      setExistingItems(prev => [...prev, added])
+      toast.show(
+        isWishlist ? 'Added to wishlist' : 'Added to collection',
+        'success',
+        { label: 'View collection', onClick: goToCollection },
+      )
+    } else {
+      toast.show('Could not add item', 'error')
+    }
   }
 
   async function handleManualAdd(isWishlist: boolean) {
@@ -179,10 +194,25 @@ export default function AddItemPage() {
     body.append('is_wishlist', String(isWishlist))
     if (manualIsbn) body.append('isbn', manualIsbn)
     if (manualCover) body.append('cover', manualCover)
-    await fetch('/api/items/manual', { method: 'POST', body })
+    const res = await fetch('/api/items/manual', { method: 'POST', body })
     setAddingManual(false)
-    toast.show(isWishlist ? 'Added to wishlist' : 'Added to collection')
-    router.push(`/${member}/${collection}`)
+    if (res.ok) {
+      const added = await res.json()
+      setExistingItems(prev => [...prev, added])
+      // Reset manual form
+      setManualTitle('')
+      setManualCreator('')
+      setManualYear('')
+      setManualIsbn('')
+      setManualCover(null)
+      toast.show(
+        isWishlist ? 'Added to wishlist' : 'Added to collection',
+        'success',
+        { label: 'View collection', onClick: goToCollection },
+      )
+    } else {
+      toast.show('Could not add item', 'error')
+    }
   }
 
   const collectionLabel = collection === 'vinyl' ? 'Vinyl' : collection === 'book' ? 'Book' : collection === 'lego' ? 'Lego Set' : 'Comic'

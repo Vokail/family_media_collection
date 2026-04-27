@@ -14,6 +14,9 @@ function parseDiscogsTitle(raw: string): { title: string; creator: string } {
 
 function mapResult(r: Record<string, unknown>): SearchResult {
   const { title, creator } = parseDiscogsTitle(r.title as string)
+  const formats = r.format as string[] | undefined
+  const labels = r.label as string[] | undefined
+  const catnos = r.catno as string | undefined
   return {
     external_id: String(r.id),
     title,
@@ -21,6 +24,10 @@ function mapResult(r: Record<string, unknown>): SearchResult {
     year: r.year ? parseInt(r.year as string) : null,
     cover_url: (r.cover_image as string) || null,
     source: 'discogs',
+    format: formats?.filter(f => !['Vinyl'].includes(f)).join(', ') || null,
+    label: labels?.[0] ?? null,
+    country: (r.country as string) || null,
+    catno: catnos || null,
   }
 }
 

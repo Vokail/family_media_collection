@@ -15,6 +15,7 @@ export default function LoginPage() {
       body: JSON.stringify({ password }),
     })
     if (res.ok) {
+      router.refresh()
       router.push('/members')
     } else {
       const body = await res.json().catch(() => ({}))
