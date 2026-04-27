@@ -16,6 +16,12 @@ export async function getMemberBySlug(slug: string): Promise<Member | null> {
   return data
 }
 
+export async function getMemberById(id: string): Promise<Member | null> {
+  const db = createServerClient()
+  const { data } = await db.from('members').select('*').eq('id', id).single()
+  return data
+}
+
 export async function listMembersWithPinHashes(): Promise<(Member & { pin_hash: string | null })[]> {
   const db = createServerClient()
   const { data, error } = await db.from('members').select('id, name, slug, pin_hash').order('name')

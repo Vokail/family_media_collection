@@ -1,12 +1,13 @@
 jest.mock('@/lib/session', () => ({ getSession: jest.fn() }))
-jest.mock('@/lib/auth', () => ({ updateCredential: jest.fn() }))
+jest.mock('@/lib/auth', () => ({ updateCredential: jest.fn(), updateMemberPin: jest.fn() }))
 
 import { PATCH } from '@/app/api/settings/route'
 import { getSession } from '@/lib/session'
-import { updateCredential } from '@/lib/auth'
+import { updateCredential, updateMemberPin } from '@/lib/auth'
 
 const mockGetSession = getSession as jest.Mock
 const mockUpdateCredential = updateCredential as jest.Mock
+const mockUpdateMemberPin = updateMemberPin as jest.Mock
 
 function makePatch(body: unknown) {
   return new Request('http://localhost/api/settings', {
@@ -19,12 +20,20 @@ function makePatch(body: unknown) {
 beforeEach(() => {
   mockGetSession.mockReset()
   mockUpdateCredential.mockReset()
+  mockUpdateMemberPin.mockReset()
   mockUpdateCredential.mockResolvedValue(undefined)
+  mockUpdateMemberPin.mockResolvedValue(undefined)
 })
 
-describe('PATCH /api/settings', () => {
+describe('PATCH /api/settings — credential targets (editor only)', () => {
   it('returns 403 when role is viewer', async () => {
     mockGetSession.mockResolvedValue({ role: 'viewer' })
+    const res = await PATCH(makePatch({ target: 'view_pin_hash', newValue: '9999' }))
+    expect(res.status).toBe(403)
+  })
+
+  it('returns 403 when role is member', async () => {
+    mockGetSession.mockResolvedValue({ role: 'member', editableMemberId: 'member-1' })
     const res = await PATCH(makePatch({ target: 'view_pin_hash', newValue: '9999' }))
     expect(res.status).toBe(403)
   })
@@ -53,5 +62,51 @@ describe('PATCH /api/settings', () => {
     const res = await PATCH(makePatch({ target: 'family_password_hash', newValue: 'newpass' }))
     expect(res.status).toBe(200)
     expect(mockUpdateCredential).toHaveBeenCalledWith('family_password_hash', 'newpass')
+  })
+})
+
+describe('PATCH /api/settings — member_pin target', () => {
+  it('returns 401 when unauthenticated', async () => {
+    mockGetSession.mockResolvedValue({ role: undefined })
+    const res = await PATCH(makePatch({ target: 'member_pin', newValue: '1234', memberId: 'member-1' }))
+    expect(res.status).toBe(401)
+  })
+
+  it('returns 400 when memberId is missing', async () => {
+    mockGetSession.mockResolvedValue({ role: 'editor' })
+    const res = await PATCH(makePatch({ target: 'member_pin', newValue: '1234' }))
+    expect(res.status).toBe(400)
+  })
+
+  it('returns 400 when newValue is too short', async () => {
+    mockGetSession.mockResolvedValue({ role: 'editor' })
+    const res = await PATCH(makePatch({ target: 'member_pin', newValue: '12', memberId: 'member-1' }))
+    expect(res.status).toBe(400)
+  })
+
+  it('allows editor to update any member PIN', async () => {
+    mockGetSession.mockResolvedValue({ role: 'editor' })
+    const res = await PATCH(makePatch({ target: 'member_pin', newValue: '5678', memberId: 'member-1' }))
+    expect(res.status).toBe(200)
+    expect(mockUpdateMemberPin).toHaveBeenCalledWith('member-1', '5678')
+  })
+
+  it('allows member to update their own PIN', async () => {
+    mockGetSession.mockResolvedValue({ role: 'member', editableMemberId: 'member-1' })
+    const res = await PATCH(makePatch({ target: 'member_pin', newValue: 'mypin', memberId: 'member-1' }))
+    expect(res.status).toBe(200)
+    expect(mockUpdateMemberPin).toHaveBeenCalledWith('member-1', 'mypin')
+  })
+
+  it('forbids member from updating another member PIN', async () => {
+    mockGetSession.mockResolvedValue({ role: 'member', editableMemberId: 'member-1' })
+    const res = await PATCH(makePatch({ target: 'member_pin', newValue: '9999', memberId: 'member-2' }))
+    expect(res.status).toBe(403)
+  })
+
+  it('forbids viewer from updating any member PIN', async () => {
+    mockGetSession.mockResolvedValue({ role: 'viewer' })
+    const res = await PATCH(makePatch({ target: 'member_pin', newValue: '9999', memberId: 'member-1' }))
+    expect(res.status).toBe(403)
   })
 })

@@ -4,7 +4,7 @@ import { updateCredential, updateMemberPin } from '@/lib/auth'
 
 export async function PATCH(request: Request) {
   const session = await getSession()
-  if (session.role !== 'editor') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!session.role) return NextResponse.json({ error: 'Unauthenticated' }, { status: 401 })
 
   const { target, newValue, memberId } = await request.json()
 
@@ -13,9 +13,20 @@ export async function PATCH(request: Request) {
     if (!newValue || newValue.length < 4) {
       return NextResponse.json({ error: 'Must be at least 4 characters' }, { status: 400 })
     }
+    // Members can only update their own PIN; editors can update any
+    if (session.role === 'member') {
+      if (session.editableMemberId !== memberId) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+      }
+    } else if (session.role !== 'editor') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
     await updateMemberPin(memberId, newValue)
     return NextResponse.json({ ok: true })
   }
+
+  // All other targets are editor-only
+  if (session.role !== 'editor') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   if (!['view_pin_hash', 'family_password_hash'].includes(target)) {
     return NextResponse.json({ error: 'Invalid target' }, { status: 400 })
