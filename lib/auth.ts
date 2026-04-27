@@ -1,14 +1,28 @@
 import bcrypt from 'bcryptjs'
 import { getSettingHash, upsertSettingHash } from './db/settings'
+import { listMembersWithPinHashes, setMemberPinHash } from './db/members'
 import type { Role } from './types'
 
-export async function resolveRole(input: string): Promise<Role | null> {
+export interface ResolveRoleResult {
+  role: Role
+  memberId?: string
+}
+
+export async function resolveRole(input: string): Promise<ResolveRoleResult | null> {
   const [viewHash, editHash] = await Promise.all([
     getSettingHash('view_pin_hash'),
     getSettingHash('family_password_hash'),
   ])
-  if (editHash && await bcrypt.compare(input, editHash)) return 'editor'
-  if (viewHash && await bcrypt.compare(input, viewHash)) return 'viewer'
+  if (editHash && await bcrypt.compare(input, editHash)) return { role: 'editor' }
+  if (viewHash && await bcrypt.compare(input, viewHash)) return { role: 'viewer' }
+
+  // Check per-member PINs
+  const members = await listMembersWithPinHashes()
+  for (const member of members) {
+    if (member.pin_hash && await bcrypt.compare(input, member.pin_hash)) {
+      return { role: 'member', memberId: member.id }
+    }
+  }
   return null
 }
 
@@ -29,4 +43,9 @@ export async function updateCredential(
 ) {
   const hash = await bcrypt.hash(newValue, 10)
   await upsertSettingHash(key, hash)
+}
+
+export async function updateMemberPin(memberId: string, newValue: string) {
+  const hash = await bcrypt.hash(newValue, 10)
+  await setMemberPinHash(memberId, hash)
 }

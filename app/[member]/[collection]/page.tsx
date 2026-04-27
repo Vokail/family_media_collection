@@ -32,7 +32,7 @@ export default async function CollectionPage({
         member={member}
         collection={collection as CollectionType}
         initialItems={items}
-        isEditor={session.role === 'editor'}
+        isEditor={session.role === 'editor' || (session.role === 'member' && session.editableMemberId === member.id)}
         supabaseUrl={process.env.NEXT_PUBLIC_SUPABASE_URL!}
       />
     </main>

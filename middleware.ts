@@ -30,8 +30,8 @@ export async function middleware(request: NextRequest) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  // Block viewers from settings page
-  if (pathname.startsWith('/settings') && session.role === 'viewer') {
+  // Block non-editors from settings page
+  if (pathname.startsWith('/settings') && session.role !== 'editor') {
     return NextResponse.redirect(new URL('/members', request.url))
   }
 

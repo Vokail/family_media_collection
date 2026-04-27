@@ -16,6 +16,18 @@ export async function getMemberBySlug(slug: string): Promise<Member | null> {
   return data
 }
 
+export async function listMembersWithPinHashes(): Promise<(Member & { pin_hash: string | null })[]> {
+  const db = createServerClient()
+  const { data, error } = await db.from('members').select('id, name, slug, pin_hash').order('name')
+  if (error) throw error
+  return (data ?? []) as (Member & { pin_hash: string | null })[]
+}
+
+export async function setMemberPinHash(memberId: string, hash: string): Promise<void> {
+  const db = createServerClient()
+  await db.from('members').update({ pin_hash: hash }).eq('id', memberId)
+}
+
 export async function listMemberItemCounts(): Promise<Record<string, MemberItemCounts>> {
   const db = createServerClient()
   const { data } = await db.from('items').select('member_id, collection').eq('is_wishlist', false)

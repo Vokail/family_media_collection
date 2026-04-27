@@ -32,15 +32,15 @@ export async function POST(request: Request) {
   }
 
   await seedCredentialsIfMissing()
-  const role = await resolveRole(password)
-  if (!role) {
+  const result = await resolveRole(password)
+  if (!result) {
     recordFailure(ip)
     return NextResponse.json({ error: 'Incorrect password' }, { status: 401 })
   }
 
   clearAttempts(ip)
-  await createSession(role)
-  return NextResponse.json({ role })
+  await createSession(result.role, result.memberId)
+  return NextResponse.json({ role: result.role })
 }
 
 export async function DELETE() {

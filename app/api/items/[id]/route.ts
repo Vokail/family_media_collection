@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { updateItem, deleteItem } from '@/lib/db/items'
 import { createServerClient } from '@/lib/supabase-server'
+import { getSession } from '@/lib/session'
 
 const PATCHABLE_KEYS = ['is_wishlist', 'notes', 'cover_path', 'rating'] as const
 type PatchKey = typeof PATCHABLE_KEYS[number]
@@ -16,6 +17,13 @@ export async function PATCH(
     if (key in raw) patch[key] = raw[key]
   }
   try {
+    const [session, { data: existing }] = await Promise.all([
+      getSession(),
+      createServerClient().from('items').select('member_id').eq('id', id).single(),
+    ])
+    if (session.role === 'member' && session.editableMemberId !== existing?.member_id) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
     const item = await updateItem(id, patch as Parameters<typeof updateItem>[1])
     return NextResponse.json(item)
   } catch {
@@ -30,7 +38,13 @@ export async function DELETE(
   const { id } = await params
   try {
     const db = createServerClient()
-    const { data } = await db.from('items').select('cover_path').eq('id', id).single()
+    const [session, { data }] = await Promise.all([
+      getSession(),
+      db.from('items').select('cover_path, member_id').eq('id', id).single(),
+    ])
+    if (session.role === 'member' && session.editableMemberId !== data?.member_id) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
     await deleteItem(id)
     if (data?.cover_path) {
       const key = data.cover_path.startsWith('covers/') ? data.cover_path.slice('covers/'.length) : data.cover_path

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { revalidatePath } from 'next/cache'
 import { listItems, createItem } from '@/lib/db/items'
 import { getMemberBySlug } from '@/lib/db/members'
+import { getSession } from '@/lib/session'
 import type { CollectionType } from '@/lib/types'
 
 const VALID_COLLECTIONS: CollectionType[] = ['vinyl', 'book', 'comic', 'lego']
@@ -32,8 +33,11 @@ export async function POST(request: Request) {
   if (!title?.trim()) return NextResponse.json({ error: 'Title required' }, { status: 400 })
   if (!VALID_COLLECTIONS.includes(collection)) return NextResponse.json({ error: 'Invalid collection' }, { status: 400 })
   try {
-  const member = await getMemberBySlug(memberSlug)
+  const [member, session] = await Promise.all([getMemberBySlug(memberSlug), getSession()])
   if (!member) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  if (session.role === 'member' && session.editableMemberId !== member.id) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
 
   const comicDescription = collection === 'comic' && external_id
     ? /^\d+$/.test(external_id)

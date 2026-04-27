@@ -1,5 +1,5 @@
 export type CollectionType = 'vinyl' | 'book' | 'comic' | 'lego'
-export type Role = 'viewer' | 'editor'
+export type Role = 'viewer' | 'editor' | 'member'
 
 export interface Member {
   id: string
@@ -49,4 +49,5 @@ export interface SearchResult {
 
 export interface SessionData {
   role?: Role
+  editableMemberId?: string
 }

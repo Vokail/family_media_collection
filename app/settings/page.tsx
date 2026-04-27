@@ -1,7 +1,8 @@
 'use client'
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import PasswordField from '@/components/PasswordField'
+import type { Member } from '@/lib/types'
 
 const BACKFILL_TYPES = [
   { value: 'vinyl', label: 'Vinyl', hint: 'artist sort name, tracklist, cover' },
@@ -161,6 +162,51 @@ function BackupSection() {
   )
 }
 
+function MemberPinsSection() {
+  const [members, setMembers] = useState<Member[]>([])
+  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [successes, setSuccesses] = useState<Record<string, boolean>>({})
+
+  useEffect(() => {
+    fetch('/api/members').then(r => r.json()).then(setMembers)
+  }, [])
+
+  async function updateMemberPin(memberId: string, newValue: string) {
+    setErrors(prev => ({ ...prev, [memberId]: '' }))
+    setSuccesses(prev => ({ ...prev, [memberId]: false }))
+    const res = await fetch('/api/settings', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ target: 'member_pin', memberId, newValue }),
+    })
+    if (res.ok) {
+      setSuccesses(prev => ({ ...prev, [memberId]: true }))
+    } else {
+      const { error } = await res.json()
+      setErrors(prev => ({ ...prev, [memberId]: error ?? 'Something went wrong' }))
+    }
+  }
+
+  if (!members.length) return <p className="subtitle text-sm">Loading members…</p>
+
+  return (
+    <div className="flex flex-col gap-6">
+      {members.map(m => (
+        <div key={m.id} className="flex flex-col gap-2">
+          <p className="font-semibold">{m.name}</p>
+          <PasswordField
+            placeholder="Set PIN (min 4 characters)"
+            buttonLabel="Set PIN"
+            error={errors[m.id]}
+            onSubmit={v => updateMemberPin(m.id, v)}
+          />
+          {successes[m.id] && <p className="text-green-600 text-sm">PIN set for {m.name}.</p>}
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export default function SettingsPage() {
   const router = useRouter()
   const [pinError, setPinError] = useState('')
@@ -215,6 +261,12 @@ export default function SettingsPage() {
           onSubmit={v => updateCredential('family_password_hash', v, setPassError, setPassSuccess)}
         />
         {passSuccess && <p className="text-green-600 text-sm">Password updated successfully.</p>}
+      </section>
+
+      <section className="card p-6 flex flex-col gap-4">
+        <h2 className="font-serif text-lg font-semibold">Member PINs</h2>
+        <p className="subtitle text-sm">Each family member can log in with their own PIN to edit only their own collection.</p>
+        <MemberPinsSection />
       </section>
 
       <section className="card p-6 flex flex-col gap-4">
