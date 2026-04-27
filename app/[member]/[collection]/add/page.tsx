@@ -172,6 +172,11 @@ export default function AddItemPage() {
       // Update dupe map so the card shows "In collection" immediately
       const added = await res.json()
       setExistingItems(prev => [...prev, added])
+      // Clear search so the page is ready for the next item
+      setResults([])
+      setQuery('')
+      setOffset(0)
+      setBarcodeHint(null)
       toast.show(
         isWishlist ? 'Added to wishlist' : 'Added to collection',
         'success',
