@@ -12,6 +12,7 @@ interface Props {
   onUpdate: (updated: Item) => void
   onDelete: (id: string) => void
   supabaseUrl: string
+  layout?: 'grid' | 'list'
 }
 
 function StarRating({ rating, onRate }: { rating: number | null; onRate?: (r: number | null) => void }) {
@@ -30,7 +31,7 @@ function StarRating({ rating, onRate }: { rating: number | null; onRate?: (r: nu
   )
 }
 
-export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseUrl }: Props) {
+export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseUrl, layout = 'grid' }: Props) {
   const toast = useToast()
   const [open, setOpen] = useState(false)
   const [notes, setNotes] = useState(item.notes ?? '')
@@ -115,43 +116,76 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
     }
   }
 
+  const emoji = item.collection === 'vinyl' ? '🎵' : item.collection === 'book' ? '📚' : item.collection === 'lego' ? '🧱' : '🦸'
+
   return (
     <>
-      <button onClick={() => setOpen(true)} className="w-full aspect-square relative">
-        {coverSrc ? (
-          <div className="relative w-full h-full rounded-lg overflow-hidden shadow-md">
-            <div
-              className="absolute inset-0 animate-pulse"
-              style={{ backgroundColor: 'var(--border)', opacity: imgLoaded ? 0 : 1, transition: 'opacity 0.3s' }}
-            />
-            <Image
-              src={coverSrc}
-              alt={item.title}
-              width={200}
-              height={200}
-              className="w-full h-full object-cover"
-              onLoad={() => setImgLoaded(true)}
-              style={{ opacity: imgLoaded ? 1 : 0, transition: 'opacity 0.3s' }}
-            />
+      {layout === 'list' ? (
+        <button
+          onClick={() => setOpen(true)}
+          className="w-full flex items-center gap-3 px-2 py-2 rounded-lg text-left hover:opacity-80 transition-opacity"
+          style={{ borderBottom: '1px solid var(--border)' }}
+        >
+          <div className="relative w-12 h-12 flex-shrink-0 rounded overflow-hidden shadow">
+            {coverSrc ? (
+              <>
+                <div className="absolute inset-0 animate-pulse" style={{ backgroundColor: 'var(--border)', opacity: imgLoaded ? 0 : 1, transition: 'opacity 0.3s' }} />
+                <Image src={coverSrc} alt={item.title} width={48} height={48} className="w-full h-full object-cover" onLoad={() => setImgLoaded(true)} style={{ opacity: imgLoaded ? 1 : 0, transition: 'opacity 0.3s' }} />
+              </>
+            ) : (
+              <div className="placeholder-tile w-full h-full text-lg" style={{ color: 'var(--text-muted)' }}>{emoji}</div>
+            )}
           </div>
-        ) : (
-          <div className="placeholder-tile w-full h-full text-2xl" style={{ color: 'var(--text-muted)' }}>
-            {item.collection === 'vinyl' ? '🎵' : item.collection === 'book' ? '📚' : item.collection === 'lego' ? '🧱' : '🦸'}
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold text-sm truncate">{item.title}</p>
+            <p className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>{item.creator}{item.year ? ` · ${item.year}` : ''}</p>
           </div>
-        )}
-        {item.rating && (
-          <div className="absolute bottom-1 left-0 right-0 flex justify-center gap-0.5">
-            {[1,2,3,4,5].map(s => (
-              <span key={s} className="text-xs leading-none" style={{ color: s <= item.rating! ? 'var(--accent)' : 'rgba(255,255,255,0.3)', textShadow: '0 1px 2px rgba(0,0,0,0.8)' }}>★</span>
-            ))}
+          <div className="flex-shrink-0 flex flex-col items-end gap-1">
+            {showNewBadge && (
+              <span className="px-1.5 py-0.5 rounded text-white text-[10px] font-bold leading-none" style={{ backgroundColor: 'var(--accent)' }}>NEW</span>
+            )}
+            {item.rating && (
+              <span className="text-xs" style={{ color: 'var(--accent)' }}>{'★'.repeat(item.rating)}</span>
+            )}
           </div>
-        )}
-        {showNewBadge && (
-          <div className="absolute top-1 right-1 px-1.5 py-0.5 rounded text-white text-[10px] font-bold leading-none" style={{ backgroundColor: 'var(--accent)' }}>
-            NEW
-          </div>
-        )}
-      </button>
+        </button>
+      ) : (
+        <button onClick={() => setOpen(true)} className="w-full aspect-square relative">
+          {coverSrc ? (
+            <div className="relative w-full h-full rounded-lg overflow-hidden shadow-md">
+              <div
+                className="absolute inset-0 animate-pulse"
+                style={{ backgroundColor: 'var(--border)', opacity: imgLoaded ? 0 : 1, transition: 'opacity 0.3s' }}
+              />
+              <Image
+                src={coverSrc}
+                alt={item.title}
+                width={200}
+                height={200}
+                className="w-full h-full object-cover"
+                onLoad={() => setImgLoaded(true)}
+                style={{ opacity: imgLoaded ? 1 : 0, transition: 'opacity 0.3s' }}
+              />
+            </div>
+          ) : (
+            <div className="placeholder-tile w-full h-full text-2xl" style={{ color: 'var(--text-muted)' }}>
+              {emoji}
+            </div>
+          )}
+          {item.rating && (
+            <div className="absolute bottom-1 left-0 right-0 flex justify-center gap-0.5">
+              {[1,2,3,4,5].map(s => (
+                <span key={s} className="text-xs leading-none" style={{ color: s <= item.rating! ? 'var(--accent)' : 'rgba(255,255,255,0.3)', textShadow: '0 1px 2px rgba(0,0,0,0.8)' }}>★</span>
+              ))}
+            </div>
+          )}
+          {showNewBadge && (
+            <div className="absolute top-1 right-1 px-1.5 py-0.5 rounded text-white text-[10px] font-bold leading-none" style={{ backgroundColor: 'var(--accent)' }}>
+              NEW
+            </div>
+          )}
+        </button>
+      )}
 
       {open && (
         <div className="fixed inset-0 bg-black/60 flex items-end z-50" onClick={() => setOpen(false)}>

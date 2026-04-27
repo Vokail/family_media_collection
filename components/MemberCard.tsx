@@ -9,7 +9,6 @@ export default function MemberCard({ member, counts }: { member: Member; counts?
   const initial = member.name[0].toUpperCase()
   const countEntries = COLLECTION_ORDER
     .map(c => [c, counts?.[c] ?? 0] as [string, number])
-    .filter(([, n]) => n > 0)
 
   return (
     <Link href={`/${member.slug}/vinyl`}>
@@ -21,13 +20,11 @@ export default function MemberCard({ member, counts }: { member: Member; counts?
           {initial}
         </div>
         <span className="font-serif font-semibold text-lg">{member.name}</span>
-        {countEntries.length > 0 && (
-          <div className="flex gap-2 text-xs" style={{ color: 'var(--text-muted)' }}>
-            {countEntries.map(([col, n]) => (
-              <span key={col}>{COLLECTION_EMOJI[col]} {n}</span>
-            ))}
-          </div>
-        )}
+        <div className="flex gap-2 text-xs" style={{ color: 'var(--text-muted)' }}>
+          {countEntries.map(([col, n]) => (
+            <span key={col}>{COLLECTION_EMOJI[col]} {n}</span>
+          ))}
+        </div>
       </div>
     </Link>
   )

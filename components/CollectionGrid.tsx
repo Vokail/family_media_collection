@@ -22,6 +22,8 @@ function sortCreatorLabel(collection: CollectionType): string {
 }
 
 const GRID = 'grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6'
+const LIST = 'flex flex-col'
+type ViewMode = 'grid' | 'list'
 
 // Use Discogs sort_name when available (e.g. "Sinatra, Frank"), else strip leading articles.
 function indexKey(creator: string, sortName?: string | null): string {
@@ -99,6 +101,7 @@ interface Props {
 export default function CollectionGrid({ member, collection, initialItems, isEditor, supabaseUrl }: Props) {
   const sortStorageKey = `sort_${member.slug}_${collection}`
   const tabStorageKey = `tab_${member.slug}_${collection}`
+  const viewStorageKey = `view_${member.slug}_${collection}`
 
   const [isWishlist, setIsWishlist] = useState(() =>
     typeof window !== 'undefined' ? localStorage.getItem(tabStorageKey) === 'wishlist' : false
@@ -106,6 +109,9 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
   const [items, setItems] = useState(initialItems)
   const [sort, setSort] = useState<SortMode>(() =>
     typeof window !== 'undefined' ? (localStorage.getItem(sortStorageKey) as SortMode | null) ?? 'creator' : 'creator'
+  )
+  const [viewMode, setViewMode] = useState<ViewMode>(() =>
+    typeof window !== 'undefined' ? (localStorage.getItem(viewStorageKey) as ViewMode | null) ?? 'grid' : 'grid'
   )
   const [search, setSearch] = useState('')
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({})
@@ -281,6 +287,18 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
             <option value="year">Year</option>
             <option value="rating">Rating</option>
           </select>
+          <button
+            onClick={() => {
+              const next: ViewMode = viewMode === 'grid' ? 'list' : 'grid'
+              setViewMode(next)
+              localStorage.setItem(viewStorageKey, next)
+            }}
+            className="btn-ghost px-2 py-1 text-base"
+            title={viewMode === 'grid' ? 'Switch to list view' : 'Switch to grid view'}
+            aria-label={viewMode === 'grid' ? 'Switch to list view' : 'Switch to grid view'}
+          >
+            {viewMode === 'grid' ? '☰' : '⊞'}
+          </button>
         </div>
       </div>
 
@@ -300,9 +318,9 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
                 >
                   {g.letter}
                 </h3>
-                <div className={GRID}>
+                <div className={viewMode === 'list' ? LIST : GRID}>
                   {g.items.map(item => (
-                    <ItemCard key={item.id} item={item} isEditor={isEditor} onUpdate={handleUpdate} onDelete={handleDelete} supabaseUrl={supabaseUrl} />
+                    <ItemCard key={item.id} item={item} isEditor={isEditor} onUpdate={handleUpdate} onDelete={handleDelete} supabaseUrl={supabaseUrl} layout={viewMode} />
                   ))}
                 </div>
               </div>
@@ -336,9 +354,9 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
                 >
                   {g.label}
                 </h3>
-                <div className={GRID}>
+                <div className={viewMode === 'list' ? LIST : GRID}>
                   {g.items.map(item => (
-                    <ItemCard key={item.id} item={item} isEditor={isEditor} onUpdate={handleUpdate} onDelete={handleDelete} supabaseUrl={supabaseUrl} />
+                    <ItemCard key={item.id} item={item} isEditor={isEditor} onUpdate={handleUpdate} onDelete={handleDelete} supabaseUrl={supabaseUrl} layout={viewMode} />
                   ))}
                 </div>
               </div>
@@ -368,18 +386,18 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
                 >
                   {g.label}
                 </h3>
-                <div className={GRID}>
+                <div className={viewMode === 'list' ? LIST : GRID}>
                   {g.items.map(item => (
-                    <ItemCard key={item.id} item={item} isEditor={isEditor} onUpdate={handleUpdate} onDelete={handleDelete} supabaseUrl={supabaseUrl} />
+                    <ItemCard key={item.id} item={item} isEditor={isEditor} onUpdate={handleUpdate} onDelete={handleDelete} supabaseUrl={supabaseUrl} layout={viewMode} />
                   ))}
                 </div>
               </div>
             ))}
           </>
         ) : (
-          <div className={GRID}>
+          <div className={viewMode === 'list' ? LIST : GRID}>
             {sorted.map(item => (
-              <ItemCard key={item.id} item={item} isEditor={isEditor} onUpdate={handleUpdate} onDelete={handleDelete} supabaseUrl={supabaseUrl} />
+              <ItemCard key={item.id} item={item} isEditor={isEditor} onUpdate={handleUpdate} onDelete={handleDelete} supabaseUrl={supabaseUrl} layout={viewMode} />
             ))}
           </div>
         )}
