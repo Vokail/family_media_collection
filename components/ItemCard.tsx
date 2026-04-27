@@ -165,8 +165,8 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
           ) : (
             <div className="placeholder-tile w-full h-full flex-col gap-1 px-2 rounded-lg" style={{ color: 'var(--text-muted)' }}>
               <span className="text-2xl">{emoji}</span>
-              <p className="text-[10px] font-semibold leading-tight text-center line-clamp-2 w-full" style={{ color: 'var(--text)' }}>{item.title}</p>
-              {item.creator && <p className="text-[9px] leading-tight text-center truncate w-full">{item.creator}</p>}
+              <p className="text-xs font-semibold leading-tight text-center line-clamp-3 w-full" style={{ color: 'var(--text)' }}>{item.title}</p>
+              {item.creator && <p className="text-[10px] leading-tight text-center line-clamp-2 w-full">{item.creator}</p>}
             </div>
           )}
           {item.rating && (
