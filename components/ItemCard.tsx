@@ -244,7 +244,7 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
                     {uploadingCover ? 'Uploading…' : '📷'}
                   </button>
                   <button onClick={() => coverInputRef.current?.click()} disabled={uploadingCover} className="btn-ghost text-xs">
-                    {coverSrc ? 'Replace' : 'Library'}
+                    {coverSrc ? 'Replace cover' : 'Add cover'}
                   </button>
                   <input
                     ref={coverInputRef}

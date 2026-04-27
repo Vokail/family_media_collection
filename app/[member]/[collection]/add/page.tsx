@@ -145,8 +145,7 @@ export default function AddItemPage() {
   }, [collection, comicLang])
 
   function goToCollection() {
-    router.refresh()
-    router.push(`/${member}/${collection}`)
+    window.location.href = `/${member}/${collection}`
   }
 
   async function handleAdd(result: SearchResult, isWishlist: boolean) {

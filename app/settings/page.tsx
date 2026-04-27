@@ -5,7 +5,7 @@ import PasswordField from '@/components/PasswordField'
 import type { Member } from '@/lib/types'
 
 const BACKFILL_TYPES = [
-  { value: 'vinyl', label: 'Vinyl', hint: 'artist sort name, tracklist, cover' },
+  { value: 'vinyl', label: 'Vinyl', hint: 'sort name, tracklist, genre, style, cover (Discogs)' },
   { value: 'book', label: 'Books', hint: 'description, ISBN, cover (OL · Google Books · KB)' },
   { value: 'comic', label: 'Comics', hint: 'description, cover (ComicVine)' },
   { value: 'lego', label: 'Lego', hint: 'theme, part count, year, cover (Rebrickable)' },
