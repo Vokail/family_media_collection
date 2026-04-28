@@ -86,6 +86,36 @@ describe('updateItem', () => {
     const result = await updateItem('item-uuid', { is_wishlist: true })
     expect(result.is_wishlist).toBe(true)
   })
+
+  it('updates status to consumed', async () => {
+    mockSingle.mockResolvedValue({ data: { ...ITEM, status: 'consumed' }, error: null })
+    const eqChain = { select: jest.fn().mockReturnValue({ single: mockSingle }) }
+    mockUpdate.mockReturnValue({ eq: jest.fn().mockReturnValue(eqChain) })
+    mockFrom.mockReturnValue({ update: mockUpdate })
+
+    const result = await updateItem('item-uuid', { status: 'consumed' })
+    expect((result as unknown as { status: string | null }).status).toBe('consumed')
+    expect(mockUpdate).toHaveBeenCalledWith({ status: 'consumed' })
+  })
+
+  it('updates status back to null (unread)', async () => {
+    mockSingle.mockResolvedValue({ data: { ...ITEM, status: null }, error: null })
+    const eqChain = { select: jest.fn().mockReturnValue({ single: mockSingle }) }
+    mockUpdate.mockReturnValue({ eq: jest.fn().mockReturnValue(eqChain) })
+    mockFrom.mockReturnValue({ update: mockUpdate })
+
+    const result = await updateItem('item-uuid', { status: null })
+    expect((result as unknown as { status: string | null }).status).toBeNull()
+  })
+
+  it('throws on update error', async () => {
+    mockSingle.mockResolvedValue({ data: null, error: new Error('update failed') })
+    const eqChain = { select: jest.fn().mockReturnValue({ single: mockSingle }) }
+    mockUpdate.mockReturnValue({ eq: jest.fn().mockReturnValue(eqChain) })
+    mockFrom.mockReturnValue({ update: mockUpdate })
+
+    await expect(updateItem('item-uuid', { status: 'consumed' })).rejects.toThrow('update failed')
+  })
 })
 
 describe('deleteItem', () => {

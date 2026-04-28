@@ -88,6 +88,34 @@ describe('PATCH /api/items/[id]', () => {
     expect(patch).not.toHaveProperty('title')
     expect(patch).toHaveProperty('is_wishlist')
   })
+
+  it('patches status to consumed and returns updated item', async () => {
+    const updated = { ...ITEM, status: 'consumed' }
+    mockUpdateItem.mockResolvedValue(updated)
+    const req = new Request('http://localhost/api/items/item-uuid', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'consumed' }),
+    })
+    const res = await PATCH(req, buildParams('item-uuid'))
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    expect(data.status).toBe('consumed')
+    expect(mockUpdateItem).toHaveBeenCalledWith('item-uuid', { status: 'consumed' })
+  })
+
+  it('patches status to null (unread) and returns updated item', async () => {
+    const updated = { ...ITEM, status: null }
+    mockUpdateItem.mockResolvedValue(updated)
+    const req = new Request('http://localhost/api/items/item-uuid', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: null }),
+    })
+    const res = await PATCH(req, buildParams('item-uuid'))
+    expect(res.status).toBe(200)
+    expect(mockUpdateItem).toHaveBeenCalledWith('item-uuid', { status: null })
+  })
 })
 
 describe('DELETE /api/items/[id]', () => {

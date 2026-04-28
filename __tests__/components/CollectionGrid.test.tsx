@@ -22,7 +22,7 @@ import CollectionGrid from '@/components/CollectionGrid'
 
 const MEMBER = { id: 'uuid-1', name: 'Alice', slug: 'alice' }
 
-const makeItem = (id: string) => ({
+const makeItem = (id: string, overrides: Partial<Record<string, unknown>> = {}) => ({
   id,
   member_id: 'uuid-1',
   collection: 'vinyl' as const,
@@ -39,6 +39,10 @@ const makeItem = (id: string) => ({
   rating: null,
   description: null,
   tracklist: null,
+  status: null,
+  genres: null,
+  styles: null,
+  ...overrides,
 })
 
 const defaultProps = {
@@ -85,5 +89,60 @@ describe('CollectionGrid view toggle', () => {
     const cards = screen.getAllByTestId('item-card')
     expect(cards[0]).toHaveAttribute('data-layout', 'grid')
     expect(localStorage.getItem('view_alice_vinyl')).toBe('grid')
+  })
+})
+
+describe('CollectionGrid status filter', () => {
+  const consumed = makeItem('consumed', { status: 'consumed' })
+  const unread = makeItem('unread', { status: null })
+
+  const propsWithMixed = {
+    ...defaultProps,
+    initialItems: [consumed, unread],
+  }
+
+  it('shows All items by default', () => {
+    render(<CollectionGrid {...propsWithMixed} />)
+    expect(screen.getAllByTestId('item-card')).toHaveLength(2)
+  })
+
+  it('shows Unread filter after first click', () => {
+    render(<CollectionGrid {...propsWithMixed} />)
+    fireEvent.click(screen.getByTitle('Cycle: All → Unread → Read'))
+    const cards = screen.getAllByTestId('item-card')
+    expect(cards).toHaveLength(1)
+    expect(cards[0]).toHaveTextContent('Album unread')
+  })
+
+  it('shows Read filter after second click', () => {
+    render(<CollectionGrid {...propsWithMixed} />)
+    const btn = screen.getByTitle('Cycle: All → Unread → Read')
+    fireEvent.click(btn)
+    fireEvent.click(btn)
+    const cards = screen.getAllByTestId('item-card')
+    expect(cards).toHaveLength(1)
+    expect(cards[0]).toHaveTextContent('Album consumed')
+  })
+
+  it('returns to All items after third click', () => {
+    render(<CollectionGrid {...propsWithMixed} />)
+    const btn = screen.getByTitle('Cycle: All → Unread → Read')
+    fireEvent.click(btn)
+    fireEvent.click(btn)
+    fireEvent.click(btn)
+    expect(screen.getAllByTestId('item-card')).toHaveLength(2)
+  })
+
+  it('does not show status filter chip for lego collection', () => {
+    render(<CollectionGrid {...propsWithMixed} collection="lego" />)
+    expect(screen.queryByTitle('Cycle: All → Unread → Read')).toBeNull()
+  })
+
+  it('does not show status filter chip when viewing wishlist', () => {
+    const wishlistItems = [makeItem('w1', { is_wishlist: true })]
+    render(<CollectionGrid {...defaultProps} initialItems={wishlistItems} />)
+    // switch to wishlist tab
+    fireEvent.click(screen.getByText('Wishlist'))
+    expect(screen.queryByTitle('Cycle: All → Unread → Read')).toBeNull()
   })
 })

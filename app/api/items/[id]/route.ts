@@ -3,7 +3,7 @@ import { updateItem, deleteItem } from '@/lib/db/items'
 import { createServerClient } from '@/lib/supabase-server'
 import { getSession } from '@/lib/session'
 
-const PATCHABLE_KEYS = ['is_wishlist', 'notes', 'cover_path', 'rating'] as const
+const PATCHABLE_KEYS = ['is_wishlist', 'notes', 'cover_path', 'rating', 'status'] as const
 type PatchKey = typeof PATCHABLE_KEYS[number]
 
 export async function PATCH(
