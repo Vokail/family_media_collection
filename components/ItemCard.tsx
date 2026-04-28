@@ -66,7 +66,7 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
     })
     if (res.ok) {
       onUpdate(await res.json())
-      toast.show(newStatus ? `Marked as ${statusLabel.toLowerCase()}` : 'Marked as unread')
+      toast.show(newStatus ? `Marked as ${statusLabel.toLowerCase()}` : `Marked as un${statusLabel.toLowerCase()}`)
     } else {
       onUpdate(item)
       toast.show('Could not update item', 'error')
