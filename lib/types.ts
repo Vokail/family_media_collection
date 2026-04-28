@@ -57,6 +57,17 @@ export interface SearchResult {
   styles?: string | null       // e.g. "New Wave, Synth-pop"
 }
 
+export interface ActivityItem {
+  id: string
+  title: string
+  creator: string
+  collection: CollectionType
+  cover_path: string | null
+  created_at: string
+  member_name: string
+  member_slug: string
+}
+
 export interface SessionData {
   role?: Role
   editableMemberId?: string

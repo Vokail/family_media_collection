@@ -1,16 +1,19 @@
 export const dynamic = 'force-dynamic'
 
 import { listMembers, listMemberItemCounts } from '@/lib/db/members'
+import { listRecentActivity } from '@/lib/db/items'
 import MemberCard from '@/components/MemberCard'
 import LogoutButton from '@/components/LogoutButton'
+import ActivityFeed from '@/components/ActivityFeed'
 import Link from 'next/link'
 import { getSession } from '@/lib/session'
 import PullToRefresh from '@/components/PullToRefresh'
 
 export default async function MembersPage() {
-  const [members, memberCounts, session] = await Promise.all([
+  const [members, memberCounts, activity, session] = await Promise.all([
     listMembers(),
     listMemberItemCounts(),
+    listRecentActivity(15),
     getSession(),
   ])
   const isEditor = session.role === 'editor'
@@ -32,9 +35,10 @@ export default async function MembersPage() {
           <LogoutButton />
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 gap-4 mb-8">
         {members.map(m => <MemberCard key={m.id} member={m} counts={memberCounts[m.id]} />)}
       </div>
+      <ActivityFeed items={activity} supabaseUrl={process.env.NEXT_PUBLIC_SUPABASE_URL!} />
     </main>
     </PullToRefresh>
   )
