@@ -1,23 +1,21 @@
 export const dynamic = 'force-dynamic'
 
 import Link from 'next/link'
-import Image from 'next/image'
 import { listWishlistItems } from '@/lib/db/items'
 import { listMembers } from '@/lib/db/members'
-import type { CollectionType } from '@/lib/types'
+import { getSession } from '@/lib/session'
 import PullToRefresh from '@/components/PullToRefresh'
-
-const COLLECTION_EMOJI: Record<CollectionType, string> = {
-  vinyl: '🎵', book: '📚', comic: '🦸', lego: '🧱',
-}
+import WishlistList from '@/components/WishlistList'
 
 export default async function WishlistPage() {
-  const [members, allItems] = await Promise.all([
+  const [members, allItems, session] = await Promise.all([
     listMembers(),
     listWishlistItems(),
+    getSession(),
   ])
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+  const isEditor = session.role === 'editor' || session.role === 'member'
 
   const byMember = members.map(m => ({
     member: m,
@@ -51,35 +49,11 @@ export default async function WishlistPage() {
             {member.name}
             <span className="subtitle text-sm font-normal">({items.length})</span>
           </h2>
-          <ul className="flex flex-col gap-2">
-            {items.map(item => {
-              const coverSrc = item.cover_path
-                ? `${supabaseUrl}/storage/v1/object/public/${item.cover_path}`
-                : null
-              return (
-                <li key={item.id} className="card p-3 flex gap-3 items-center">
-                  {coverSrc ? (
-                    <Image src={coverSrc} alt={item.title} width={48} height={48} className="w-12 h-12 rounded object-cover flex-shrink-0" />
-                  ) : (
-                    <div className="w-12 h-12 placeholder-tile flex-shrink-0 text-xl flex items-center justify-center">
-                      {COLLECTION_EMOJI[item.collection]}
-                    </div>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-sm leading-snug truncate">{item.title}</p>
-                    <p className="subtitle text-xs truncate">{item.creator}{item.year ? ` · ${item.year}` : ''}</p>
-                  </div>
-                  <Link
-                    href={`/${member.slug}/${item.collection}`}
-                    className="text-xs flex-shrink-0"
-                    style={{ color: 'var(--text-muted)' }}
-                  >
-                    {COLLECTION_EMOJI[item.collection]}
-                  </Link>
-                </li>
-              )
-            })}
-          </ul>
+          <WishlistList
+            initialItems={items}
+            isEditor={isEditor}
+            supabaseUrl={supabaseUrl}
+          />
         </section>
       ))}
     </main>
