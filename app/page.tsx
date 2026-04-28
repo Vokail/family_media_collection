@@ -1,5 +1,6 @@
 'use client'
 import { useState } from 'react'
+import Image from 'next/image'
 import PasswordField from '@/components/PasswordField'
 
 export default function LoginPage() {
@@ -22,6 +23,7 @@ export default function LoginPage() {
 
   return (
     <main className="fixed inset-0 flex flex-col items-center justify-center gap-6 p-6">
+      <Image src="/icon.svg" alt="Our Collection" width={96} height={96} className="rounded-2xl shadow-md" priority />
       <h1 className="text-3xl font-serif font-bold">Our Collection</h1>
       <p className="subtitle">Enter the family password or view PIN</p>
       <PasswordField onSubmit={handleLogin} error={error} placeholder="Password or PIN" />
