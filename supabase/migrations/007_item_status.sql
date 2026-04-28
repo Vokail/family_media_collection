@@ -1,0 +1,1 @@
+ALTER TABLE items ADD COLUMN IF NOT EXISTS status TEXT CHECK (status IN ('consumed')) DEFAULT NULL;

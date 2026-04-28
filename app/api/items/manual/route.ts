@@ -62,6 +62,7 @@ export async function POST(request: Request) {
       isbn,
       genres: null,
       styles: null,
+      status: null,
     })
 
     return NextResponse.json(item, { status: 201 })

@@ -31,6 +31,7 @@ export interface Item {
   rating: number | null
   genres: string | null
   styles: string | null
+  status: 'consumed' | null
   created_at: string
 }
 

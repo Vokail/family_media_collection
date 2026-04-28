@@ -53,6 +53,26 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
     if (res.ok) onUpdate(await res.json())
   }
 
+  const statusLabel = item.collection === 'vinyl' ? 'Listened' : 'Read'
+  const consumed = item.status === 'consumed'
+
+  async function toggleStatus() {
+    const newStatus = consumed ? null : 'consumed'
+    onUpdate({ ...item, status: newStatus })
+    const res = await fetch(`/api/items/${item.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: newStatus }),
+    })
+    if (res.ok) {
+      onUpdate(await res.json())
+      toast.show(newStatus ? `Marked as ${statusLabel.toLowerCase()}` : 'Marked as unread')
+    } else {
+      onUpdate(item)
+      toast.show('Could not update item', 'error')
+    }
+  }
+
   async function toggleWishlist() {
     onUpdate({ ...item, is_wishlist: !item.is_wishlist })
     const res = await fetch(`/api/items/${item.id}`, {
@@ -145,6 +165,9 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
             {showNewBadge && (
               <span className="px-1.5 py-0.5 rounded text-white text-[10px] font-bold leading-none" style={{ backgroundColor: 'var(--accent)' }}>NEW</span>
             )}
+            {consumed && item.collection !== 'lego' && (
+              <span className="text-xs font-medium" style={{ color: 'var(--accent)' }}>✓</span>
+            )}
             {item.rating && (
               <span className="text-xs" style={{ color: 'var(--accent)' }}>{'★'.repeat(item.rating)}</span>
             )}
@@ -182,6 +205,11 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
           {showNewBadge && (
             <div className="absolute top-1 right-1 px-1.5 py-0.5 rounded text-white text-[10px] font-bold leading-none" style={{ backgroundColor: 'var(--accent)' }}>
               NEW
+            </div>
+          )}
+          {consumed && item.collection !== 'lego' && (
+            <div className="absolute top-1 left-1 w-5 h-5 rounded-full flex items-center justify-center text-white text-[11px] font-bold shadow" style={{ backgroundColor: 'var(--accent)' }}>
+              ✓
             </div>
           )}
         </button>
@@ -222,6 +250,15 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
               </div>
             )}
             <StarRating rating={item.rating} onRate={isEditor ? setRating : undefined} />
+            {isEditor && !item.is_wishlist && item.collection !== 'lego' && (
+              <button
+                onClick={toggleStatus}
+                className="btn-ghost text-sm self-center"
+                style={consumed ? { borderColor: 'var(--accent)', color: 'var(--accent)' } : {}}
+              >
+                {consumed ? `✓ ${statusLabel}` : `Mark as ${statusLabel.toLowerCase()}`}
+              </button>
+            )}
             {isEditor ? (
               <>
                 <div>

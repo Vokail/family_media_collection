@@ -114,6 +114,7 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
     typeof window !== 'undefined' ? (localStorage.getItem(viewStorageKey) as ViewMode | null) ?? 'grid' : 'grid'
   )
   const [search, setSearch] = useState('')
+  const [statusFilter, setStatusFilter] = useState<'all' | 'unconsumed' | 'consumed'>('all')
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({})
   const [pullY, setPullY] = useState(0)
   const [refreshing, setRefreshing] = useState(false)
@@ -165,9 +166,12 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
   const ownedCount = items.filter(i => !i.is_wishlist).length
   const wishlistCount = items.filter(i => i.is_wishlist).length
   const q = search.trim().toLowerCase()
+  const showStatusFilter = !isWishlist && collection !== 'lego'
   const filtered = items.filter(i =>
     i.is_wishlist === isWishlist &&
-    (!q || i.title.toLowerCase().includes(q) || i.creator.toLowerCase().includes(q))
+    (!q || i.title.toLowerCase().includes(q) || i.creator.toLowerCase().includes(q)) &&
+    (!showStatusFilter || statusFilter === 'all' ||
+      (statusFilter === 'consumed' ? i.status === 'consumed' : i.status !== 'consumed'))
   )
   const sorted = sortItems(filtered, sort)
   const byCreator = sort === 'creator'
@@ -273,10 +277,19 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
         onChange={e => setSearch(e.target.value)}
       />
 
-      {/* Owned / Wishlist + Sort */}
+      {/* Owned / Wishlist + Status filter + Sort */}
       <div className="flex items-center gap-1 sm:gap-2 flex-nowrap">
         <button className={`btn-ghost px-2 sm:px-4 text-xs sm:text-sm ${!isWishlist ? 'active' : ''}`} onClick={() => { setIsWishlist(false); localStorage.setItem(tabStorageKey, 'owned') }}>Owned <span className="opacity-70">({ownedCount})</span></button>
         <button className={`btn-ghost px-2 sm:px-4 text-xs sm:text-sm ${isWishlist ? 'active' : ''}`} onClick={() => { setIsWishlist(true); localStorage.setItem(tabStorageKey, 'wishlist') }}>Wishlist <span className="opacity-70">({wishlistCount})</span></button>
+        {showStatusFilter && (
+          <button
+            className={`btn-ghost px-2 text-xs ${statusFilter !== 'all' ? 'active' : ''}`}
+            onClick={() => setStatusFilter(f => f === 'all' ? 'unconsumed' : f === 'unconsumed' ? 'consumed' : 'all')}
+            title="Cycle: All → Unread → Read"
+          >
+            {statusFilter === 'consumed' ? '✓ Read' : statusFilter === 'unconsumed' ? 'Unread' : 'All'}
+          </button>
+        )}
         <div className="ml-auto flex items-center gap-2">
           <span className="label hidden sm:inline">Sort</span>
           <select

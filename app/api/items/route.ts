@@ -77,6 +77,7 @@ export async function POST(request: Request) {
     // Genre/style from Discogs: prefer release-level data, fall back to search result
     genres: vinylRelease?.genres ?? genres ?? null,
     styles: vinylRelease?.styles ?? styles ?? null,
+    status: null,
   })
   revalidatePath(`/${memberSlug}/${collection}`)
   return NextResponse.json(item, { status: 201 })
