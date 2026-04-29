@@ -34,7 +34,7 @@ export async function POST(request: Request) {
 
     const buffer = Buffer.from(await image.arrayBuffer())
 
-    const worker = await createWorker('eng')
+    const worker = await createWorker('eng+nld')
     const { data } = await worker.recognize(buffer)
     await worker.terminate()
 
