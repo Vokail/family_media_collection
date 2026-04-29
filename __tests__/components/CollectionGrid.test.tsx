@@ -131,8 +131,9 @@ describe('CollectionGrid status filter', () => {
 
   it('does not show status filter for lego collection', () => {
     render(<CollectionGrid {...propsWithMixed} collection="lego" />)
+    // Lego uses its own filter row (Built/In box/Apart) not the status filter
     expect(screen.queryByText('Unlistened')).toBeNull()
-    expect(screen.queryByText('All')).toBeNull()
+    expect(screen.queryByText('Listened')).toBeNull()
   })
 
   it('does not show status filter when viewing wishlist', () => {
@@ -140,5 +141,64 @@ describe('CollectionGrid status filter', () => {
     render(<CollectionGrid {...defaultProps} initialItems={wishlistItems} />)
     fireEvent.click(screen.getByText('Wishlist'))
     expect(screen.queryByText('Unlistened')).toBeNull()
+  })
+})
+
+describe('CollectionGrid lego filter', () => {
+  const legoProps = {
+    ...defaultProps,
+    collection: 'lego' as const,
+    initialItems: [
+      makeItem('built', { collection: 'lego', lego_status: 'built' }),
+      makeItem('inbox', { collection: 'lego', lego_status: 'in_box' }),
+      makeItem('apart', { collection: 'lego', lego_status: 'disassembled' }),
+      makeItem('none', { collection: 'lego', lego_status: null }),
+    ],
+  }
+
+  it('shows all lego items by default', () => {
+    render(<CollectionGrid {...legoProps} />)
+    expect(screen.getAllByTestId('item-card')).toHaveLength(4)
+  })
+
+  it('filters to built items only', () => {
+    render(<CollectionGrid {...legoProps} />)
+    fireEvent.click(screen.getByText('🏗 Built'))
+    const cards = screen.getAllByTestId('item-card')
+    expect(cards).toHaveLength(1)
+    expect(cards[0]).toHaveTextContent('Album built')
+  })
+
+  it('filters to in-box items only', () => {
+    render(<CollectionGrid {...legoProps} />)
+    fireEvent.click(screen.getByText('📦 In box'))
+    const cards = screen.getAllByTestId('item-card')
+    expect(cards).toHaveLength(1)
+    expect(cards[0]).toHaveTextContent('Album inbox')
+  })
+
+  it('filters to disassembled items only', () => {
+    render(<CollectionGrid {...legoProps} />)
+    fireEvent.click(screen.getByText('🔧 Apart'))
+    const cards = screen.getAllByTestId('item-card')
+    expect(cards).toHaveLength(1)
+    expect(cards[0]).toHaveTextContent('Album apart')
+  })
+
+  it('returns to all when All is clicked', () => {
+    render(<CollectionGrid {...legoProps} />)
+    fireEvent.click(screen.getByText('🏗 Built'))
+    expect(screen.getAllByTestId('item-card')).toHaveLength(1)
+    // Click "All" again (first "All" button is the lego filter All)
+    fireEvent.click(screen.getAllByText('All')[0])
+    expect(screen.getAllByTestId('item-card')).toHaveLength(4)
+  })
+
+  it('does not show lego filter when viewing wishlist', () => {
+    const wishlistItems = [makeItem('w1', { collection: 'lego', is_wishlist: true })]
+    render(<CollectionGrid {...legoProps} initialItems={wishlistItems} />)
+    fireEvent.click(screen.getByText('Wishlist'))
+    expect(screen.queryByText('🏗 Built')).toBeNull()
+    expect(screen.queryByText('📦 In box')).toBeNull()
   })
 })

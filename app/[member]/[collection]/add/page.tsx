@@ -7,6 +7,7 @@ import PhotoCapture from '@/components/PhotoCapture'
 import SearchResults from '@/components/SearchResults'
 import { useToast } from '@/components/Toast'
 import type { SearchResult, CollectionType, Item } from '@/lib/types'
+import { toTitleCase } from '@/lib/utils'
 
 const SEARCH_LANGUAGES = [
   { value: 'dutch', label: 'Nederlands' },
@@ -166,9 +167,6 @@ export default function AddItemPage() {
         .split('\n')
         .map((l: string) => l.trim())
         .filter((l: string) => l.length > 2 && /[a-zA-Z]{2,}/.test(l))
-
-      const toTitleCase = (s: string) =>
-        s.toLowerCase().replace(/(^|\s|-)\S/g, c => c.toUpperCase())
 
       // Title = first substantial line (covers print titles at the top)
       // Creator = last substantial line (authors printed at the bottom)

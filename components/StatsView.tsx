@@ -43,6 +43,24 @@ export default function StatsView({ items }: { items: Item[] }) {
 
   const topRated = owned.filter(i => i.rating === 5).slice(0, 6)
 
+  // Status breakdown — only for single-collection views
+  const statusLabel: Record<string, string> = {
+    vinyl: 'Listening status',
+    book: 'Reading status',
+    comic: 'Reading status',
+    lego: 'Build status',
+  }
+  const consumedCount = owned.filter(i => i.status === 'consumed').length
+  const notYetCount = owned.filter(i => i.status == null).length
+  const legoBuilt = owned.filter(i => i.lego_status === 'built').length
+  const legoInBox = owned.filter(i => i.lego_status === 'in_box').length
+  const legoApart = owned.filter(i => i.lego_status === 'disassembled').length
+  const statusActionLabel: Record<string, string> = {
+    vinyl: 'Listened',
+    book: 'Read',
+    comic: 'Read',
+  }
+
   const decadeMap = new Map<number, number>()
   for (const item of owned) {
     if (item.year) {
@@ -86,6 +104,41 @@ export default function StatsView({ items }: { items: Item[] }) {
           <p className="label mt-1">Wishlist</p>
         </div>
       </div>
+
+      {/* Status breakdown — only for single-collection views */}
+      {col !== 'all' && owned.length > 0 && (
+        <section className="card p-4 mb-4" data-testid="status-breakdown">
+          <h2 className="label mb-3">{statusLabel[col]}</h2>
+          {col === 'lego' ? (
+            <div className="flex flex-col gap-2">
+              {[
+                { label: '🏗 Built', count: legoBuilt },
+                { label: '📦 In box', count: legoInBox },
+                { label: '🔧 Apart', count: legoApart },
+              ].map(({ label, count }) => (
+                <div key={label} className="flex items-center gap-2">
+                  <span className="text-xs w-20 flex-shrink-0" style={{ color: 'var(--text-muted)' }}>{label}</span>
+                  <Bar count={count} max={owned.length} />
+                  <span className="text-xs w-4 flex-shrink-0" style={{ color: 'var(--text-muted)' }}>{count}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {[
+                { label: statusActionLabel[col], count: consumedCount },
+                { label: 'Not yet', count: notYetCount },
+              ].map(({ label, count }) => (
+                <div key={label} className="flex items-center gap-2">
+                  <span className="text-xs w-16 flex-shrink-0" style={{ color: 'var(--text-muted)' }}>{label}</span>
+                  <Bar count={count} max={owned.length} />
+                  <span className="text-xs w-4 flex-shrink-0" style={{ color: 'var(--text-muted)' }}>{count}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
 
       {/* Per collection — only shown on "All" tab */}
       {col === 'all' && (

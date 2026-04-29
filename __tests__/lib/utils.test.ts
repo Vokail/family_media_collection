@@ -1,4 +1,30 @@
-import { isNew, relativeTime } from '@/lib/utils'
+import { isNew, relativeTime, toTitleCase } from '@/lib/utils'
+
+describe('toTitleCase', () => {
+  it('capitalises the first letter of each word', () => {
+    expect(toTitleCase('the lord of the rings')).toBe('The Lord Of The Rings')
+  })
+
+  it('handles already-uppercase input', () => {
+    expect(toTitleCase('DUNE')).toBe('Dune')
+  })
+
+  it('capitalises after hyphens', () => {
+    expect(toTitleCase('spider-man')).toBe('Spider-Man')
+  })
+
+  it('returns empty string unchanged', () => {
+    expect(toTitleCase('')).toBe('')
+  })
+
+  it('handles mixed case input', () => {
+    expect(toTitleCase('tOwErS oF mIdNiGhT')).toBe('Towers Of Midnight')
+  })
+
+  it('handles single word', () => {
+    expect(toTitleCase('dune')).toBe('Dune')
+  })
+})
 
 describe('isNew', () => {
   it('returns true for an item created today', () => {
