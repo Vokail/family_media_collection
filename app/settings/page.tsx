@@ -2,6 +2,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import PasswordField from '@/components/PasswordField'
+import AppVersion from '@/components/AppVersion'
 import type { Member } from '@/lib/types'
 
 const BACKFILL_TYPES = [
@@ -279,6 +280,8 @@ export default function SettingsPage() {
         <h2 className="font-serif text-lg font-semibold">Backup & Restore</h2>
         <BackupSection />
       </section>
+
+      <AppVersion />
     </main>
   )
 }

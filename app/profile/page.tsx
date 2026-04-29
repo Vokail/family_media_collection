@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/session'
 import { getMemberById } from '@/lib/db/members'
 import ProfilePinForm from '@/components/ProfilePinForm'
+import AppVersion from '@/components/AppVersion'
 import Link from 'next/link'
 
 export default async function ProfilePage() {
@@ -27,6 +28,7 @@ export default async function ProfilePage() {
         memberName={member.name}
         enabledCollections={member.enabled_collections ?? ['vinyl', 'book', 'comic', 'lego']}
       />
+      <AppVersion />
     </main>
   )
 }
