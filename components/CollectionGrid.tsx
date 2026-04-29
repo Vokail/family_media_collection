@@ -283,7 +283,7 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
         <button className={`btn-ghost px-2 sm:px-4 text-xs sm:text-sm ${isWishlist ? 'active' : ''}`} onClick={() => { setIsWishlist(true); localStorage.setItem(tabStorageKey, 'wishlist') }}>Wishlist <span className="opacity-70">({wishlistCount})</span></button>
         {showStatusFilter && (
           <button
-            className={`btn-ghost px-2 text-xs ${statusFilter !== 'all' ? 'active' : ''}`}
+            className={`btn-ghost px-2 sm:px-4 text-xs sm:text-sm whitespace-nowrap min-w-[4rem] sm:min-w-[5.5rem] ${statusFilter !== 'all' ? 'active' : ''}`}
             onClick={() => setStatusFilter(f => f === 'all' ? 'unconsumed' : f === 'unconsumed' ? 'consumed' : 'all')}
             title={`Cycle: All → Un${collection === 'vinyl' ? 'listened' : 'read'} → ${collection === 'vinyl' ? 'Listened' : 'Read'}`}
           >
