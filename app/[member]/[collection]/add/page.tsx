@@ -8,7 +8,7 @@ import SearchResults from '@/components/SearchResults'
 import { useToast } from '@/components/Toast'
 import type { SearchResult, CollectionType, Item } from '@/lib/types'
 
-const COMIC_LANGUAGES = [
+const SEARCH_LANGUAGES = [
   { value: 'dutch', label: 'Nederlands' },
   { value: 'english', label: 'English' },
   { value: 'french', label: 'Français' },
@@ -31,7 +31,7 @@ export default function AddItemPage() {
   const [adding, setAdding] = useState<string | null>(null)
   const [scanning, setScanning] = useState(false)
   const [barcodeHint, setBarcodeHint] = useState<string | null>(null)
-  const [comicLang, setComicLang] = useState('dutch')
+  const [searchLang, setSearchLang] = useState('dutch')
   const [offset, setOffset] = useState(0)
   const [lastQuery, setLastQuery] = useState('')
   const barcodeAbort = useRef<AbortController | null>(null)
@@ -53,7 +53,7 @@ export default function AddItemPage() {
 
   useEffect(() => {
     const saved = localStorage.getItem(langStorageKey(collection))
-    if (saved) setComicLang(saved)
+    if (saved) setSearchLang(saved)
   }, [collection])
 
   useEffect(() => {
@@ -84,7 +84,7 @@ export default function AddItemPage() {
   }
 
   function handleLangChange(lang: string) {
-    setComicLang(lang)
+    setSearchLang(lang)
     localStorage.setItem(langStorageKey(collection), lang)
   }
 
@@ -93,17 +93,17 @@ export default function AddItemPage() {
     setLoading(true)
     setOffset(0)
     setLastQuery(q)
-    const lang = (collection === 'book' || collection === 'comic') ? comicLang : undefined
+    const lang = (collection === 'book' || collection === 'comic') ? searchLang : undefined
     const url = `/api/search?q=${encodeURIComponent(q)}&type=${collection}${lang ? `&lang=${lang}` : ''}`
     const res = await fetch(url)
     setResults(res.ok ? await res.json() : [])
     setLoading(false)
-  }, [collection, comicLang])
+  }, [collection, searchLang])
 
   const loadMore = useCallback(async () => {
     const nextOffset = offset + 20
     setLoadingMore(true)
-    const lang = (collection === 'book' || collection === 'comic') ? comicLang : undefined
+    const lang = (collection === 'book' || collection === 'comic') ? searchLang : undefined
     const url = `/api/search?q=${encodeURIComponent(lastQuery)}&type=${collection}&offset=${nextOffset}${lang ? `&lang=${lang}` : ''}`
     const res = await fetch(url)
     if (res.ok) {
@@ -115,7 +115,7 @@ export default function AddItemPage() {
       setOffset(nextOffset)
     }
     setLoadingMore(false)
-  }, [collection, comicLang, lastQuery, offset])
+  }, [collection, searchLang, lastQuery, offset])
 
   const handleBarcodeDetected = useCallback(async (code: string) => {
     barcodeAbort.current?.abort()
@@ -129,7 +129,7 @@ export default function AddItemPage() {
     setBarcodeHint(null)
 
     try {
-      const lang = (collection === 'book' || collection === 'comic') ? comicLang : undefined
+      const lang = (collection === 'book' || collection === 'comic') ? searchLang : undefined
       const res = await fetch(`/api/barcode?code=${encodeURIComponent(code)}&type=${collection}${lang ? `&lang=${lang}` : ''}`, {
         signal: controller.signal,
       })
@@ -147,7 +147,7 @@ export default function AddItemPage() {
     } finally {
       if (!controller.signal.aborted) setLoading(false)
     }
-  }, [collection, comicLang])
+  }, [collection, searchLang])
 
   const handleCoverCapture = useCallback(async (file: File) => {
     setShowCoverCapture(false)
@@ -194,7 +194,7 @@ export default function AddItemPage() {
     } finally {
       setIdentifying(false)
     }
-  }, [runSearch, comicLang])
+  }, [runSearch, searchLang])
 
   function goToCollection() {
     if (navTimer.current) clearTimeout(navTimer.current)
@@ -216,7 +216,7 @@ export default function AddItemPage() {
         is_wishlist: isWishlist,
         external_id: result.external_id,
         isbn: result.isbn ?? null,
-        lang: collection === 'book' ? comicLang : undefined,
+        lang: collection === 'book' ? searchLang : undefined,
         genres: result.genres ?? null,
         styles: result.styles ?? null,
       }),
@@ -291,11 +291,11 @@ export default function AddItemPage() {
 
       {(collection === 'book' || collection === 'comic') && (
         <div className="flex gap-2 mb-3 flex-wrap">
-          {COMIC_LANGUAGES.map(l => (
+          {SEARCH_LANGUAGES.map(l => (
             <button
               key={l.value}
               onClick={() => handleLangChange(l.value)}
-              className={`btn-ghost text-xs ${comicLang === l.value ? 'active' : ''}`}
+              className={`btn-ghost text-xs ${searchLang === l.value ? 'active' : ''}`}
             >
               {l.label}
             </button>
