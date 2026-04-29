@@ -167,10 +167,13 @@ export default function AddItemPage() {
         .map((l: string) => l.trim())
         .filter((l: string) => l.length > 2 && /[a-zA-Z]{2,}/.test(l))
 
+      const toTitleCase = (s: string) =>
+        s.toLowerCase().replace(/(^|\s|-)\S/g, c => c.toUpperCase())
+
       // Title = first substantial line (covers print titles at the top)
       // Creator = last substantial line (authors printed at the bottom)
-      const title = lines[0] ?? ''
-      const creator = lines.length > 1 ? lines[lines.length - 1] : ''
+      const title = toTitleCase(lines[0] ?? '')
+      const creator = toTitleCase(lines.length > 1 ? lines[lines.length - 1] : '')
       const confident = data.confidence >= 40 && title.length > 2
 
       // Always pre-fill whatever was extracted, regardless of confidence
