@@ -154,19 +154,26 @@ export default function AddItemPage() {
     setScanCover(file)
     setIdentifying(true)
 
-    const form = new FormData()
-    form.append('image', file)
     try {
-      const res = await fetch('/api/identify-cover', { method: 'POST', body: form })
-      const data = res.ok ? await res.json() : null
+      // Lazy-load Tesseract only when needed — runs in the browser, no serverless timeout
+      const { createWorker } = await import('tesseract.js')
+      const worker = await createWorker('eng+nld')
+      const { data } = await worker.recognize(file)
+      await worker.terminate()
 
-      if (data?.confident && data.title) {
-        setQuery(data.title)
-        if (data.creator) setManualCreator(data.creator)
-        setManualTitle(data.title)
-        await runSearch(data.title)
+      const MIN_CONFIDENCE = 50
+      const lines = data.text.split('\n').map((l: string) => l.trim()).filter((l: string) => l.length > 1)
+      const sorted = [...lines].sort((a: string, b: string) => b.length - a.length)
+      const title = sorted[0] ?? ''
+      const creator = lines.find((l: string) => l !== title && l.length > 2) ?? ''
+      const confident = data.confidence >= MIN_CONFIDENCE && title.length > 2
+
+      if (confident && title) {
+        setQuery(title)
+        setManualTitle(title)
+        if (creator) setManualCreator(creator)
+        await runSearch(title)
       } else {
-        // Low confidence — go straight to manual form
         setShowManual(true)
         setManualCover(file)
       }
