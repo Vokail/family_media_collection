@@ -17,7 +17,6 @@ export default async function MembersPage() {
     getSession(),
   ])
   const isEditor = session.role === 'editor'
-  const isMember = session.role === 'member'
 
   return (
     <PullToRefresh>
@@ -28,9 +27,6 @@ export default async function MembersPage() {
           <Link href="/wishlist" className="btn-ghost text-xs">Wishlist</Link>
           {isEditor && (
             <Link href="/settings" className="btn-ghost text-xs">Settings</Link>
-          )}
-          {isMember && (
-            <Link href="/profile" className="btn-ghost text-xs">My PIN</Link>
           )}
           <LogoutButton />
         </div>
