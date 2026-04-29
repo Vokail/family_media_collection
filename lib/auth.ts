@@ -45,7 +45,15 @@ export async function updateCredential(
   await upsertSettingHash(key, hash)
 }
 
-export async function updateMemberPin(memberId: string, newValue: string) {
+export async function updateMemberPin(memberId: string, newValue: string): Promise<'conflict' | 'ok'> {
+  // Check no other member already uses this PIN
+  const others = await listMembersWithPinHashes()
+  for (const m of others) {
+    if (m.id !== memberId && m.pin_hash && await bcrypt.compare(newValue, m.pin_hash)) {
+      return 'conflict'
+    }
+  }
   const hash = await bcrypt.hash(newValue, 10)
   await setMemberPinHash(memberId, hash)
+  return 'ok'
 }

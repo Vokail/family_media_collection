@@ -24,7 +24,10 @@ export async function PATCH(request: Request) {
     } else if (session.role !== 'editor') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
-    await updateMemberPin(memberId, newValue)
+    const result = await updateMemberPin(memberId, newValue)
+    if (result === 'conflict') {
+      return NextResponse.json({ error: 'Invalid PIN, please choose a different one' }, { status: 409 })
+    }
     return NextResponse.json({ ok: true })
   }
 

@@ -77,13 +77,47 @@ describe('updateCredential', () => {
 })
 
 describe('updateMemberPin', () => {
-  it('hashes new PIN and calls setMemberPinHash', async () => {
+  beforeEach(() => {
     mockSetPinHash.mockReset()
     mockSetPinHash.mockResolvedValue(undefined)
-    await updateMemberPin('member-uuid-1', 'pin1234')
+    mockListMembers.mockReset()
+  })
+
+  it('hashes new PIN and calls setMemberPinHash when no conflict', async () => {
+    mockListMembers.mockResolvedValue([])
+    const result = await updateMemberPin('member-uuid-1', 'pin1234')
+    expect(result).toBe('ok')
     expect(mockSetPinHash).toHaveBeenCalledTimes(1)
     const [id, hash] = mockSetPinHash.mock.calls[0]
     expect(id).toBe('member-uuid-1')
     expect(await bcrypt.compare('pin1234', hash)).toBe(true)
+  })
+
+  it('returns conflict when another member already uses the same PIN', async () => {
+    const existingHash = await bcrypt.hash('pin1234', 10)
+    mockListMembers.mockResolvedValue([
+      { id: 'member-uuid-2', name: 'Bob', slug: 'bob', pin_hash: existingHash },
+    ])
+    const result = await updateMemberPin('member-uuid-1', 'pin1234')
+    expect(result).toBe('conflict')
+    expect(mockSetPinHash).not.toHaveBeenCalled()
+  })
+
+  it('does not conflict with the member updating their own PIN', async () => {
+    const existingHash = await bcrypt.hash('pin1234', 10)
+    mockListMembers.mockResolvedValue([
+      { id: 'member-uuid-1', name: 'Alice', slug: 'alice', pin_hash: existingHash },
+    ])
+    const result = await updateMemberPin('member-uuid-1', 'pin1234')
+    expect(result).toBe('ok')
+    expect(mockSetPinHash).toHaveBeenCalledTimes(1)
+  })
+
+  it('allows a PIN that matches a member with no hash set', async () => {
+    mockListMembers.mockResolvedValue([
+      { id: 'member-uuid-2', name: 'Bob', slug: 'bob', pin_hash: null },
+    ])
+    const result = await updateMemberPin('member-uuid-1', 'pin1234')
+    expect(result).toBe('ok')
   })
 })
