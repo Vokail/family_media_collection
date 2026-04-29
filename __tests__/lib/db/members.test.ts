@@ -2,13 +2,14 @@ const mockSingle = jest.fn()
 const mockEq = jest.fn()
 const mockOrder = jest.fn()
 const mockSelect = jest.fn()
+const mockUpdate = jest.fn()
 const mockFrom = jest.fn()
 
 jest.mock('@/lib/supabase-server', () => ({
   createServerClient: jest.fn(() => ({ from: mockFrom })),
 }))
 
-import { listMembers, getMemberBySlug, listMemberItemCounts } from '@/lib/db/members'
+import { listMembers, getMemberBySlug, listMemberItemCounts, updateMemberCollections } from '@/lib/db/members'
 
 const MEMBERS = [
   { id: 'uuid-1', name: 'Alice', slug: 'alice' },
@@ -20,6 +21,7 @@ beforeEach(() => {
   mockEq.mockReset()
   mockOrder.mockReset()
   mockSelect.mockReset()
+  mockUpdate.mockReset()
   mockFrom.mockReset()
 })
 
@@ -101,5 +103,26 @@ describe('listMemberItemCounts', () => {
 
     const result = await listMemberItemCounts()
     expect(result).toEqual({})
+  })
+})
+
+describe('updateMemberCollections', () => {
+  it('updates enabled_collections for a member', async () => {
+    mockEq.mockResolvedValue({ error: null })
+    mockUpdate.mockReturnValue({ eq: mockEq })
+    mockFrom.mockReturnValue({ update: mockUpdate })
+
+    await updateMemberCollections('uuid-1', ['vinyl', 'book'])
+    expect(mockUpdate).toHaveBeenCalledWith({ enabled_collections: ['vinyl', 'book'] })
+    expect(mockEq).toHaveBeenCalledWith('id', 'uuid-1')
+  })
+
+  it('can set a single collection', async () => {
+    mockEq.mockResolvedValue({ error: null })
+    mockUpdate.mockReturnValue({ eq: mockEq })
+    mockFrom.mockReturnValue({ update: mockUpdate })
+
+    await updateMemberCollections('uuid-1', ['lego'])
+    expect(mockUpdate).toHaveBeenCalledWith({ enabled_collections: ['lego'] })
   })
 })

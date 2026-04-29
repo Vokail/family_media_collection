@@ -14,6 +14,10 @@ A private family web app for tracking vinyl records, books, and comics — with 
 - **Sorting** — by artist/author (with A–Z index sidebar), title, year (with decade grouping), or date added
 - **Language filter** — controls which description language is fetched (Dutch default); does not restrict search results
 - **Three-tier access** — view PIN for read-only browsing, per-member PIN for editing your own collection only, family password for full admin access; members can change their own PIN from `/profile`
+- **Per-member collection visibility** — each member can hide collections they don't use (e.g. disable Lego); toggled from their profile page via the 👤 icon in the collection header; data is never deleted, just hidden
+- **Read/Listened status** — mark items as read or listened; filter your collection by All / Unread / Read (or Unlistened / Listened for vinyl)
+- **Ratings** — 1–5 star rating per item shown as an overlay on cover art
+- **Activity feed** — recent additions across all members shown on the members home screen
 - **Add-more flow** — after adding an item the search page stays open ready for the next one; a "View collection" action in the success toast navigates back when done
 - **Pull-to-refresh** — drag down on any page (collection, wishlist, members) to reload fresh data
 - **PWA** — installable on iPhone via Safari → Add to Home Screen; cover images cached locally for offline browsing
@@ -63,6 +67,9 @@ Run all migrations in sequence:
 | `003_items_extended_fields.sql` | No-op on fresh install (columns already in 001); safe to run anyway. Adds: tracklist, sort_name, external_id, isbn, description, rating |
 | `004_items_rating.sql` | No-op on fresh install; adds rating column for installations that ran 003 before rating was introduced |
 | `005_member_pins.sql` | Adds `pin_hash` column to members table for per-member PIN login |
+| `006_vinyl_genre_style.sql` | Adds `genres` and `styles` columns to items for Discogs genre/style tags |
+| `007_item_status.sql` | Adds `status` column to items for read/listened tracking |
+| `008_member_enabled_collections.sql` | Adds `enabled_collections` array to members for per-member collection visibility |
 
 Then add your family members (edit names/slugs to match your family):
 
@@ -83,6 +90,9 @@ Run only the migrations you haven't applied yet, in order:
 003_items_extended_fields.sql             — adds tracklist, sort_name, external_id, isbn, description; expands collection check to include 'lego'
 004_items_rating.sql                      — adds rating column (if not already present from 003)
 005_member_pins.sql                       — adds pin_hash column to members for per-member PIN login
+006_vinyl_genre_style.sql                 — adds genres and styles columns to items
+007_item_status.sql                       — adds status column to items (read/listened tracking)
+008_member_enabled_collections.sql        — adds enabled_collections array to members
 ```
 
 ## Local Development
