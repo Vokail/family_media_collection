@@ -285,9 +285,13 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
           <button
             className={`btn-ghost px-2 text-xs ${statusFilter !== 'all' ? 'active' : ''}`}
             onClick={() => setStatusFilter(f => f === 'all' ? 'unconsumed' : f === 'unconsumed' ? 'consumed' : 'all')}
-            title="Cycle: All → Unread → Read"
+            title={`Cycle: All → Un${collection === 'vinyl' ? 'listened' : 'read'} → ${collection === 'vinyl' ? 'Listened' : 'Read'}`}
           >
-            {statusFilter === 'consumed' ? '✓ Read' : statusFilter === 'unconsumed' ? 'Unread' : 'All'}
+            {statusFilter === 'consumed'
+              ? `✓ ${collection === 'vinyl' ? 'Listened' : 'Read'}`
+              : statusFilter === 'unconsumed'
+              ? `Un${collection === 'vinyl' ? 'listened' : 'read'}`
+              : 'All'}
           </button>
         )}
         <div className="ml-auto flex items-center gap-2">

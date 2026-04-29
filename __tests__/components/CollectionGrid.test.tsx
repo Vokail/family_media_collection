@@ -108,7 +108,7 @@ describe('CollectionGrid status filter', () => {
 
   it('shows Unread filter after first click', () => {
     render(<CollectionGrid {...propsWithMixed} />)
-    fireEvent.click(screen.getByTitle('Cycle: All → Unread → Read'))
+    fireEvent.click(screen.getByTitle('Cycle: All → Unlistened → Listened'))
     const cards = screen.getAllByTestId('item-card')
     expect(cards).toHaveLength(1)
     expect(cards[0]).toHaveTextContent('Album unread')
@@ -116,7 +116,7 @@ describe('CollectionGrid status filter', () => {
 
   it('shows Read filter after second click', () => {
     render(<CollectionGrid {...propsWithMixed} />)
-    const btn = screen.getByTitle('Cycle: All → Unread → Read')
+    const btn = screen.getByTitle('Cycle: All → Unlistened → Listened')
     fireEvent.click(btn)
     fireEvent.click(btn)
     const cards = screen.getAllByTestId('item-card')
@@ -126,7 +126,7 @@ describe('CollectionGrid status filter', () => {
 
   it('returns to All items after third click', () => {
     render(<CollectionGrid {...propsWithMixed} />)
-    const btn = screen.getByTitle('Cycle: All → Unread → Read')
+    const btn = screen.getByTitle('Cycle: All → Unlistened → Listened')
     fireEvent.click(btn)
     fireEvent.click(btn)
     fireEvent.click(btn)
@@ -135,7 +135,7 @@ describe('CollectionGrid status filter', () => {
 
   it('does not show status filter chip for lego collection', () => {
     render(<CollectionGrid {...propsWithMixed} collection="lego" />)
-    expect(screen.queryByTitle('Cycle: All → Unread → Read')).toBeNull()
+    expect(screen.queryByTitle('Cycle: All → Unlistened → Listened')).toBeNull()
   })
 
   it('does not show status filter chip when viewing wishlist', () => {
@@ -143,6 +143,6 @@ describe('CollectionGrid status filter', () => {
     render(<CollectionGrid {...defaultProps} initialItems={wishlistItems} />)
     // switch to wishlist tab
     fireEvent.click(screen.getByText('Wishlist'))
-    expect(screen.queryByTitle('Cycle: All → Unread → Read')).toBeNull()
+    expect(screen.queryByTitle('Cycle: All → Unlistened → Listened')).toBeNull()
   })
 })
