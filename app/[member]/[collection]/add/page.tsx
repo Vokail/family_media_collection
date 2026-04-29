@@ -353,6 +353,16 @@ export default function AddItemPage() {
               <label className="label mb-1 block">Title *</label>
               <input className="input" value={manualTitle} onChange={e => setManualTitle(e.target.value)} placeholder="Title" />
             </div>
+            <div className="flex items-center justify-center">
+              <button
+                type="button"
+                onClick={() => { const t = manualTitle; setManualTitle(manualCreator); setManualCreator(t) }}
+                className="btn-ghost text-xs px-3 py-1"
+                title="Swap title and author"
+              >
+                ⇅ Swap title &amp; author
+              </button>
+            </div>
             <div>
               <label className="label mb-1 block">{collection === 'vinyl' ? 'Artist' : collection === 'lego' ? 'Theme' : 'Author / Publisher'}</label>
               <input className="input" value={manualCreator} onChange={e => setManualCreator(e.target.value)} placeholder="Creator" />
