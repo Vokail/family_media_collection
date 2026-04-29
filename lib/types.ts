@@ -33,6 +33,7 @@ export interface Item {
   genres: string | null
   styles: string | null
   status: 'consumed' | null
+  lego_status: 'built' | 'in_box' | 'disassembled' | null
   created_at: string
 }
 

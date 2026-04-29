@@ -78,6 +78,7 @@ export async function POST(request: Request) {
     genres: vinylRelease?.genres ?? genres ?? null,
     styles: vinylRelease?.styles ?? styles ?? null,
     status: null,
+    lego_status: null,
   })
   revalidatePath(`/${memberSlug}/${collection}`)
   return NextResponse.json(item, { status: 201 })

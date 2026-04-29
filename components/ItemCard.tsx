@@ -143,6 +143,26 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
 
   const emoji = item.collection === 'vinyl' ? '🎵' : item.collection === 'book' ? '📚' : item.collection === 'lego' ? '🧱' : '🦸'
 
+  const LEGO_STATUS_OPTIONS = [
+    { value: 'in_box',       label: '📦 In box' },
+    { value: 'built',        label: '🏗 Built' },
+    { value: 'disassembled', label: '🔧 Apart' },
+  ] as const
+
+  async function setLegoStatus(value: 'built' | 'in_box' | 'disassembled' | null) {
+    const res = await fetch(`/api/items/${item.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ lego_status: value }),
+    })
+    if (res.ok) onUpdate(await res.json())
+  }
+
+  const legoStatusLabel = item.lego_status === 'built' ? '🏗 Built'
+    : item.lego_status === 'in_box' ? '📦 In box'
+    : item.lego_status === 'disassembled' ? '🔧 Apart'
+    : null
+
   return (
     <>
       {layout === 'list' ? (
@@ -171,6 +191,9 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
             )}
             {item.rating && (
               <span className="text-xs" style={{ color: 'var(--accent)' }}>{'★'.repeat(item.rating)}</span>
+            )}
+            {item.collection === 'lego' && legoStatusLabel && (
+              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full" style={{ backgroundColor: 'var(--border)', color: 'var(--text-muted)' }}>{legoStatusLabel}</span>
             )}
           </div>
         </button>
@@ -211,6 +234,12 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
           {consumed && item.collection !== 'lego' && (
             <div className="absolute top-1 left-1 w-5 h-5 rounded-full flex items-center justify-center text-white text-[11px] font-bold shadow" style={{ backgroundColor: 'var(--accent)' }}>
               ✓
+            </div>
+          )}
+          {item.collection === 'lego' && legoStatusLabel && (
+            <div className="absolute top-1 left-1 px-1.5 py-0.5 rounded text-white text-[9px] font-bold leading-none shadow"
+              style={{ backgroundColor: item.lego_status === 'built' ? 'var(--accent)' : 'rgba(44,26,14,0.65)' }}>
+              {legoStatusLabel}
             </div>
           )}
         </button>
@@ -259,6 +288,23 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
               >
                 {consumed ? `✓ ${statusLabel}` : `Mark as ${statusLabel.toLowerCase()}`}
               </button>
+            )}
+            {isEditor && item.collection === 'lego' && (
+              <div className="flex flex-col gap-2">
+                <p className="label text-center">Build status</p>
+                <div className="flex gap-2 justify-center">
+                  {LEGO_STATUS_OPTIONS.map(opt => (
+                    <button
+                      key={opt.value}
+                      onClick={() => setLegoStatus(item.lego_status === opt.value ? null : opt.value)}
+                      className="btn-ghost text-xs px-3 py-1.5"
+                      style={item.lego_status === opt.value ? { backgroundColor: 'var(--accent)', color: '#fff', borderColor: 'var(--accent)' } : {}}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
             )}
             {isEditor ? (
               <>

@@ -119,6 +119,7 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
   )
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<'all' | 'unconsumed' | 'consumed'>('all')
+  const [legoFilter, setLegoFilter] = useState<'all' | 'built' | 'in_box' | 'disassembled'>('all')
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({})
   const [pullY, setPullY] = useState(0)
   const [refreshing, setRefreshing] = useState(false)
@@ -171,11 +172,13 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
   const wishlistCount = items.filter(i => i.is_wishlist).length
   const q = search.trim().toLowerCase()
   const showStatusFilter = !isWishlist && collection !== 'lego'
+  const showLegoFilter = !isWishlist && collection === 'lego'
   const filtered = items.filter(i =>
     i.is_wishlist === isWishlist &&
     (!q || i.title.toLowerCase().includes(q) || i.creator.toLowerCase().includes(q)) &&
     (!showStatusFilter || statusFilter === 'all' ||
-      (statusFilter === 'consumed' ? i.status === 'consumed' : i.status !== 'consumed'))
+      (statusFilter === 'consumed' ? i.status === 'consumed' : i.status !== 'consumed')) &&
+    (!showLegoFilter || legoFilter === 'all' || i.lego_status === legoFilter)
   )
   const sorted = sortItems(filtered, sort)
   const byCreator = sort === 'creator'
@@ -319,6 +322,16 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
           <button className={`btn-ghost px-2 sm:px-3 py-1 text-xs ${statusFilter === 'all' ? 'active' : ''}`} onClick={() => setStatusFilter('all')}>All</button>
           <button className={`btn-ghost px-2 sm:px-3 py-1 text-xs ${statusFilter === 'unconsumed' ? 'active' : ''}`} onClick={() => setStatusFilter('unconsumed')}>{collection === 'vinyl' ? 'Unlistened' : 'Unread'}</button>
           <button className={`btn-ghost px-2 sm:px-3 py-1 text-xs ${statusFilter === 'consumed' ? 'active' : ''}`} onClick={() => setStatusFilter('consumed')}>{collection === 'vinyl' ? '✓ Listened' : '✓ Read'}</button>
+        </div>
+      )}
+
+      {/* Lego build status filter */}
+      {showLegoFilter && (
+        <div className="flex items-center gap-1">
+          <button className={`btn-ghost px-2 sm:px-3 py-1 text-xs ${legoFilter === 'all' ? 'active' : ''}`} onClick={() => setLegoFilter('all')}>All</button>
+          <button className={`btn-ghost px-2 sm:px-3 py-1 text-xs ${legoFilter === 'in_box' ? 'active' : ''}`} onClick={() => setLegoFilter('in_box')}>📦 In box</button>
+          <button className={`btn-ghost px-2 sm:px-3 py-1 text-xs ${legoFilter === 'built' ? 'active' : ''}`} onClick={() => setLegoFilter('built')}>🏗 Built</button>
+          <button className={`btn-ghost px-2 sm:px-3 py-1 text-xs ${legoFilter === 'disassembled' ? 'active' : ''}`} onClick={() => setLegoFilter('disassembled')}>🔧 Apart</button>
         </div>
       )}
 
