@@ -178,8 +178,11 @@ export default function AddItemPage() {
       if (creator) setManualCreator(creator)
 
       if (confident && title) {
+        // Combine title + creator in the search query so results are good even if
+        // the heuristic swapped them. Show only the title in the search box.
+        const searchQuery = [title, creator].filter(Boolean).join(' ')
         setQuery(title)
-        await runSearch(title)
+        await runSearch(searchQuery)
       } else {
         // Low confidence — go straight to manual form (fields already pre-filled above)
         setShowManual(true)
@@ -191,7 +194,7 @@ export default function AddItemPage() {
     } finally {
       setIdentifying(false)
     }
-  }, [runSearch])
+  }, [runSearch, comicLang])
 
   function goToCollection() {
     if (navTimer.current) clearTimeout(navTimer.current)
