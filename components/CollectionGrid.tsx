@@ -277,23 +277,10 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
         onChange={e => setSearch(e.target.value)}
       />
 
-      {/* Owned / Wishlist + Status filter + Sort */}
+      {/* Owned / Wishlist + Sort */}
       <div className="flex items-center gap-1 sm:gap-2 flex-nowrap">
         <button className={`btn-ghost px-2 sm:px-4 text-xs sm:text-sm ${!isWishlist ? 'active' : ''}`} onClick={() => { setIsWishlist(false); localStorage.setItem(tabStorageKey, 'owned') }}>Owned <span className="opacity-70">({ownedCount})</span></button>
         <button className={`btn-ghost px-2 sm:px-4 text-xs sm:text-sm ${isWishlist ? 'active' : ''}`} onClick={() => { setIsWishlist(true); localStorage.setItem(tabStorageKey, 'wishlist') }}>Wishlist <span className="opacity-70">({wishlistCount})</span></button>
-        {showStatusFilter && (
-          <button
-            className={`btn-ghost px-2 text-xs sm:text-sm whitespace-nowrap w-24 text-center flex-shrink-0 ${statusFilter !== 'all' ? 'active' : ''}`}
-            onClick={() => setStatusFilter(f => f === 'all' ? 'unconsumed' : f === 'unconsumed' ? 'consumed' : 'all')}
-            title={`Cycle: All → Un${collection === 'vinyl' ? 'listened' : 'read'} → ${collection === 'vinyl' ? 'Listened' : 'Read'}`}
-          >
-            {statusFilter === 'consumed'
-              ? `✓ ${collection === 'vinyl' ? 'Listened' : 'Read'}`
-              : statusFilter === 'unconsumed'
-              ? `Un${collection === 'vinyl' ? 'listened' : 'read'}`
-              : 'All'}
-          </button>
-        )}
         <div className="ml-auto flex items-center gap-2">
           <span className="label hidden sm:inline">Sort</span>
           <select
@@ -321,6 +308,15 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
           </button>
         </div>
       </div>
+
+      {/* Status filter — own row, segmented control so size never changes */}
+      {showStatusFilter && (
+        <div className="flex items-center gap-1">
+          <button className={`btn-ghost px-2 sm:px-3 py-1 text-xs ${statusFilter === 'all' ? 'active' : ''}`} onClick={() => setStatusFilter('all')}>All</button>
+          <button className={`btn-ghost px-2 sm:px-3 py-1 text-xs ${statusFilter === 'unconsumed' ? 'active' : ''}`} onClick={() => setStatusFilter('unconsumed')}>{collection === 'vinyl' ? 'Unlistened' : 'Unread'}</button>
+          <button className={`btn-ghost px-2 sm:px-3 py-1 text-xs ${statusFilter === 'consumed' ? 'active' : ''}`} onClick={() => setStatusFilter('consumed')}>{collection === 'vinyl' ? '✓ Listened' : '✓ Read'}</button>
+        </div>
+      )}
 
       {/* Grid — flat or grouped */}
       <div className={`relative ${hasSidebar ? 'pr-8' : ''}`}>

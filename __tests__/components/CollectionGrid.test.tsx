@@ -106,43 +106,39 @@ describe('CollectionGrid status filter', () => {
     expect(screen.getAllByTestId('item-card')).toHaveLength(2)
   })
 
-  it('shows Unread filter after first click', () => {
+  it('shows only unlistened items when Unlistened is clicked', () => {
     render(<CollectionGrid {...propsWithMixed} />)
-    fireEvent.click(screen.getByTitle('Cycle: All → Unlistened → Listened'))
+    fireEvent.click(screen.getByText('Unlistened'))
     const cards = screen.getAllByTestId('item-card')
     expect(cards).toHaveLength(1)
     expect(cards[0]).toHaveTextContent('Album unread')
   })
 
-  it('shows Read filter after second click', () => {
+  it('shows only listened items when Listened is clicked', () => {
     render(<CollectionGrid {...propsWithMixed} />)
-    const btn = screen.getByTitle('Cycle: All → Unlistened → Listened')
-    fireEvent.click(btn)
-    fireEvent.click(btn)
+    fireEvent.click(screen.getByText('✓ Listened'))
     const cards = screen.getAllByTestId('item-card')
     expect(cards).toHaveLength(1)
     expect(cards[0]).toHaveTextContent('Album consumed')
   })
 
-  it('returns to All items after third click', () => {
+  it('returns to all items when All is clicked', () => {
     render(<CollectionGrid {...propsWithMixed} />)
-    const btn = screen.getByTitle('Cycle: All → Unlistened → Listened')
-    fireEvent.click(btn)
-    fireEvent.click(btn)
-    fireEvent.click(btn)
+    fireEvent.click(screen.getByText('Unlistened'))
+    fireEvent.click(screen.getByText('All'))
     expect(screen.getAllByTestId('item-card')).toHaveLength(2)
   })
 
-  it('does not show status filter chip for lego collection', () => {
+  it('does not show status filter for lego collection', () => {
     render(<CollectionGrid {...propsWithMixed} collection="lego" />)
-    expect(screen.queryByTitle('Cycle: All → Unlistened → Listened')).toBeNull()
+    expect(screen.queryByText('Unlistened')).toBeNull()
+    expect(screen.queryByText('All')).toBeNull()
   })
 
-  it('does not show status filter chip when viewing wishlist', () => {
+  it('does not show status filter when viewing wishlist', () => {
     const wishlistItems = [makeItem('w1', { is_wishlist: true })]
     render(<CollectionGrid {...defaultProps} initialItems={wishlistItems} />)
-    // switch to wishlist tab
     fireEvent.click(screen.getByText('Wishlist'))
-    expect(screen.queryByTitle('Cycle: All → Unlistened → Listened')).toBeNull()
+    expect(screen.queryByText('Unlistened')).toBeNull()
   })
 })
