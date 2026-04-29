@@ -45,6 +45,10 @@ export default function AddItemPage() {
   const [addingManual, setAddingManual] = useState(false)
   const [showManualCamera, setShowManualCamera] = useState(false)
   const manualFileRef = useRef<HTMLInputElement>(null)
+  const [showScanPicker, setShowScanPicker] = useState(false)
+  const [showCoverCapture, setShowCoverCapture] = useState(false)
+  const [scanCover, setScanCover] = useState<File | null>(null)
+  const [identifying, setIdentifying] = useState(false)
   const [existingItems, setExistingItems] = useState<Item[]>([])
 
   useEffect(() => {
@@ -145,6 +149,35 @@ export default function AddItemPage() {
     }
   }, [collection, comicLang])
 
+  const handleCoverCapture = useCallback(async (file: File) => {
+    setShowCoverCapture(false)
+    setScanCover(file)
+    setIdentifying(true)
+
+    const form = new FormData()
+    form.append('image', file)
+    try {
+      const res = await fetch('/api/identify-cover', { method: 'POST', body: form })
+      const data = res.ok ? await res.json() : null
+
+      if (data?.confident && data.title) {
+        setQuery(data.title)
+        if (data.creator) setManualCreator(data.creator)
+        setManualTitle(data.title)
+        await runSearch(data.title)
+      } else {
+        // Low confidence — go straight to manual form
+        setShowManual(true)
+        setManualCover(file)
+      }
+    } catch {
+      setShowManual(true)
+      setManualCover(file)
+    } finally {
+      setIdentifying(false)
+    }
+  }, [runSearch])
+
   function goToCollection() {
     if (navTimer.current) clearTimeout(navTimer.current)
     window.location.href = `/${member}/${collection}`
@@ -180,6 +213,7 @@ export default function AddItemPage() {
       setQuery('')
       setOffset(0)
       setBarcodeHint(null)
+      setScanCover(null)
       toast.show(
         isWishlist ? 'Added to wishlist' : 'Added to collection',
         'success',
@@ -262,8 +296,10 @@ export default function AddItemPage() {
           onChange={e => { setQuery(e.target.value); setBarcodeHint(null) }}
           onKeyDown={e => e.key === 'Enter' && runSearch(query)}
         />
-        <button onClick={() => setScanning(true)} className="btn-ghost px-4 text-xl md:hidden" title="Scan barcode">📷</button>
-        <button onClick={() => runSearch(query)} className="btn-primary px-4" disabled={loading}>
+        <button onClick={() => setShowScanPicker(true)} className="btn-ghost px-4 text-xl md:hidden" title="Scan">
+          {identifying ? '⏳' : '📷'}
+        </button>
+        <button onClick={() => runSearch(query)} className="btn-primary px-4" disabled={loading || identifying}>
           {loading ? '…' : 'Search'}
         </button>
       </div>
@@ -280,7 +316,11 @@ export default function AddItemPage() {
 
       <div className="mt-6 border-t pt-4" style={{ borderColor: 'var(--border)' }}>
         <button
-          onClick={() => setShowManual(v => !v)}
+          onClick={() => {
+            const next = !showManual
+            setShowManual(next)
+            if (next && scanCover) setManualCover(scanCover)
+          }}
           className="btn-ghost text-sm w-full text-center"
         >
           {showManual ? 'Hide manual entry' : 'Not found? Add manually'}
@@ -341,6 +381,36 @@ export default function AddItemPage() {
           onCapture={file => { setManualCover(file); setShowManualCamera(false) }}
           onClose={() => setShowManualCamera(false)}
         />
+      )}
+      {showCoverCapture && (
+        <PhotoCapture
+          onCapture={handleCoverCapture}
+          onClose={() => setShowCoverCapture(false)}
+        />
+      )}
+
+      {/* Scan picker bottom sheet */}
+      {showScanPicker && (
+        <div className="fixed inset-0 bg-black/60 flex items-end z-50" onClick={() => setShowScanPicker(false)}>
+          <div className="w-full rounded-t-2xl p-6 flex flex-col gap-3" style={{ backgroundColor: 'var(--bg-card)' }} onClick={e => e.stopPropagation()}>
+            <p className="font-serif text-base font-semibold text-center mb-1">What do you want to scan?</p>
+            <button
+              className="btn-ghost text-sm py-3 w-full text-center"
+              onClick={() => { setShowScanPicker(false); setScanning(true) }}
+            >
+              📦 Scan barcode
+            </button>
+            <button
+              className="btn-ghost text-sm py-3 w-full text-center"
+              onClick={() => { setShowScanPicker(false); setShowCoverCapture(true) }}
+            >
+              🖼 Scan cover (OCR)
+            </button>
+            <button className="btn-ghost text-sm py-2 w-full text-center" style={{ color: 'var(--text-muted)' }} onClick={() => setShowScanPicker(false)}>
+              Cancel
+            </button>
+          </div>
+        </div>
       )}
     </main>
   )
