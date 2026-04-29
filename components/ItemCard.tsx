@@ -13,6 +13,7 @@ interface Props {
   onDelete: (id: string) => void
   supabaseUrl: string
   layout?: 'grid' | 'list'
+  initialOpen?: boolean
 }
 
 function StarRating({ rating, onRate }: { rating: number | null; onRate?: (r: number | null) => void }) {
@@ -31,9 +32,9 @@ function StarRating({ rating, onRate }: { rating: number | null; onRate?: (r: nu
   )
 }
 
-export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseUrl, layout = 'grid' }: Props) {
+export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseUrl, layout = 'grid', initialOpen = false }: Props) {
   const toast = useToast()
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(initialOpen)
   const [notes, setNotes] = useState(item.notes ?? '')
   const [savingNotes, setSavingNotes] = useState(false)
   const [uploadingCover, setUploadingCover] = useState(false)

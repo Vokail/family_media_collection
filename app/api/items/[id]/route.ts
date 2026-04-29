@@ -3,6 +3,20 @@ import { updateItem, deleteItem } from '@/lib/db/items'
 import { createServerClient } from '@/lib/supabase-server'
 import { getSession } from '@/lib/session'
 
+export async function GET(
+  _: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params
+  try {
+    const { data, error } = await createServerClient().from('items').select('*').eq('id', id).single()
+    if (error || !data) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    return NextResponse.json(data)
+  } catch {
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}
+
 const PATCHABLE_KEYS = ['is_wishlist', 'notes', 'cover_path', 'rating', 'status'] as const
 type PatchKey = typeof PATCHABLE_KEYS[number]
 
