@@ -289,7 +289,7 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
                 {consumed ? `✓ ${statusLabel}` : `Mark as ${statusLabel.toLowerCase()}`}
               </button>
             )}
-            {isEditor && item.collection === 'lego' && (
+            {isEditor && item.collection === 'lego' && !item.is_wishlist && (
               <div className="flex flex-col gap-2">
                 <p className="label text-center">Build status</p>
                 <div className="flex gap-2 justify-center">
