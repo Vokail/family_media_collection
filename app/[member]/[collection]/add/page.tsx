@@ -161,19 +161,27 @@ export default function AddItemPage() {
       const { data } = await worker.recognize(file)
       await worker.terminate()
 
-      const MIN_CONFIDENCE = 50
-      const lines = data.text.split('\n').map((l: string) => l.trim()).filter((l: string) => l.length > 1)
-      const sorted = [...lines].sort((a: string, b: string) => b.length - a.length)
-      const title = sorted[0] ?? ''
-      const creator = lines.find((l: string) => l !== title && l.length > 2) ?? ''
-      const confident = data.confidence >= MIN_CONFIDENCE && title.length > 2
+      // Filter noise: keep lines that look like real text (>2 chars, not purely numeric/punctuation)
+      const lines = data.text
+        .split('\n')
+        .map((l: string) => l.trim())
+        .filter((l: string) => l.length > 2 && /[a-zA-Z]{2,}/.test(l))
+
+      // Title = first substantial line (covers print titles at the top)
+      // Creator = last substantial line (authors printed at the bottom)
+      const title = lines[0] ?? ''
+      const creator = lines.length > 1 ? lines[lines.length - 1] : ''
+      const confident = data.confidence >= 40 && title.length > 2
+
+      // Always pre-fill whatever was extracted, regardless of confidence
+      if (title) setManualTitle(title)
+      if (creator) setManualCreator(creator)
 
       if (confident && title) {
         setQuery(title)
-        setManualTitle(title)
-        if (creator) setManualCreator(creator)
         await runSearch(title)
       } else {
+        // Low confidence — go straight to manual form (fields already pre-filled above)
         setShowManual(true)
         setManualCover(file)
       }
