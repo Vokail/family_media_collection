@@ -129,7 +129,7 @@ describe('StatsView — lego build status', () => {
   it('shows all three lego states', () => {
     render(<StatsView items={legoItems} />)
     clickTab('Lego')
-    expect(screen.getByText('🏗 Built')).toBeInTheDocument()
+    expect(screen.getByText('🔨 Built')).toBeInTheDocument()
     expect(screen.getByText('📦 In box')).toBeInTheDocument()
     expect(screen.getByText('🔧 Apart')).toBeInTheDocument()
   })

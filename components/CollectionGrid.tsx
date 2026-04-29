@@ -330,7 +330,7 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
         <div className="flex items-center gap-1">
           <button className={`btn-ghost px-2 sm:px-3 py-1 text-xs ${legoFilter === 'all' ? 'active' : ''}`} onClick={() => setLegoFilter('all')}>All</button>
           <button className={`btn-ghost px-2 sm:px-3 py-1 text-xs ${legoFilter === 'in_box' ? 'active' : ''}`} onClick={() => setLegoFilter('in_box')}>📦 In box</button>
-          <button className={`btn-ghost px-2 sm:px-3 py-1 text-xs ${legoFilter === 'built' ? 'active' : ''}`} onClick={() => setLegoFilter('built')}>🏗 Built</button>
+          <button className={`btn-ghost px-2 sm:px-3 py-1 text-xs ${legoFilter === 'built' ? 'active' : ''}`} onClick={() => setLegoFilter('built')}>🔨 Built</button>
           <button className={`btn-ghost px-2 sm:px-3 py-1 text-xs ${legoFilter === 'disassembled' ? 'active' : ''}`} onClick={() => setLegoFilter('disassembled')}>🔧 Apart</button>
         </div>
       )}

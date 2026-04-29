@@ -112,7 +112,7 @@ export default function StatsView({ items }: { items: Item[] }) {
           {col === 'lego' ? (
             <div className="flex flex-col gap-2">
               {[
-                { label: '🏗 Built', count: legoBuilt },
+                { label: '🔨 Built', count: legoBuilt },
                 { label: '📦 In box', count: legoInBox },
                 { label: '🔧 Apart', count: legoApart },
               ].map(({ label, count }) => (

@@ -163,7 +163,7 @@ describe('CollectionGrid lego filter', () => {
 
   it('filters to built items only', () => {
     render(<CollectionGrid {...legoProps} />)
-    fireEvent.click(screen.getByText('🏗 Built'))
+    fireEvent.click(screen.getByText('🔨 Built'))
     const cards = screen.getAllByTestId('item-card')
     expect(cards).toHaveLength(1)
     expect(cards[0]).toHaveTextContent('Album built')
@@ -187,7 +187,7 @@ describe('CollectionGrid lego filter', () => {
 
   it('returns to all when All is clicked', () => {
     render(<CollectionGrid {...legoProps} />)
-    fireEvent.click(screen.getByText('🏗 Built'))
+    fireEvent.click(screen.getByText('🔨 Built'))
     expect(screen.getAllByTestId('item-card')).toHaveLength(1)
     // Click "All" again (first "All" button is the lego filter All)
     fireEvent.click(screen.getAllByText('All')[0])
@@ -198,7 +198,7 @@ describe('CollectionGrid lego filter', () => {
     const wishlistItems = [makeItem('w1', { collection: 'lego', is_wishlist: true })]
     render(<CollectionGrid {...legoProps} initialItems={wishlistItems} />)
     fireEvent.click(screen.getByText('Wishlist'))
-    expect(screen.queryByText('🏗 Built')).toBeNull()
+    expect(screen.queryByText('🔨 Built')).toBeNull()
     expect(screen.queryByText('📦 In box')).toBeNull()
   })
 })

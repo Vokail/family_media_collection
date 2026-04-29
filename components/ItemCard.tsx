@@ -145,7 +145,7 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
 
   const LEGO_STATUS_OPTIONS = [
     { value: 'in_box',       label: '📦 In box' },
-    { value: 'built',        label: '🏗 Built' },
+    { value: 'built',        label: '🔨 Built' },
     { value: 'disassembled', label: '🔧 Apart' },
   ] as const
 
@@ -158,7 +158,7 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
     if (res.ok) onUpdate(await res.json())
   }
 
-  const legoStatusLabel = item.lego_status === 'built' ? '🏗 Built'
+  const legoStatusLabel = item.lego_status === 'built' ? '🔨 Built'
     : item.lego_status === 'in_box' ? '📦 In box'
     : item.lego_status === 'disassembled' ? '🔧 Apart'
     : null
