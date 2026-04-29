@@ -5,6 +5,7 @@ export interface Member {
   id: string
   name: string
   slug: string
+  enabled_collections: CollectionType[]
 }
 
 export interface Track {

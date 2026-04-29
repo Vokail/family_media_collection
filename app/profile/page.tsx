@@ -9,7 +9,6 @@ import Link from 'next/link'
 export default async function ProfilePage() {
   const session = await getSession()
 
-  // Only member role has a profile page; editors use /settings, viewers can't set a PIN
   if (session.role !== 'member' || !session.editableMemberId) {
     redirect('/members')
   }
@@ -23,7 +22,11 @@ export default async function ProfilePage() {
         <Link href="/members" className="btn-ghost text-sm">← Back</Link>
         <h1 className="font-serif text-2xl font-bold">My Profile</h1>
       </div>
-      <ProfilePinForm memberId={member.id} memberName={member.name} />
+      <ProfilePinForm
+        memberId={member.id}
+        memberName={member.name}
+        enabledCollections={member.enabled_collections ?? ['vinyl', 'book', 'comic', 'lego']}
+      />
     </main>
   )
 }

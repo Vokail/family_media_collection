@@ -1,5 +1,5 @@
 import { createServerClient } from '../supabase-server'
-import type { Member } from '../types'
+import type { Member, CollectionType } from '../types'
 
 export type MemberItemCounts = Record<string, number>
 
@@ -32,6 +32,11 @@ export async function listMembersWithPinHashes(): Promise<(Member & { pin_hash: 
 export async function setMemberPinHash(memberId: string, hash: string): Promise<void> {
   const db = createServerClient()
   await db.from('members').update({ pin_hash: hash }).eq('id', memberId)
+}
+
+export async function updateMemberCollections(memberId: string, collections: CollectionType[]): Promise<void> {
+  const db = createServerClient()
+  await db.from('members').update({ enabled_collections: collections }).eq('id', memberId)
 }
 
 export async function listMemberItemCounts(): Promise<Record<string, MemberItemCounts>> {

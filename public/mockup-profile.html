@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Profile placement mockup</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #1c1510; color: #f5ede0; font-family: system-ui, sans-serif; padding: 24px 16px; }
+  h1 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: #c9a96e; margin-bottom: 24px; }
+
+  .section-label {
+    font-size: 11px; text-transform: uppercase; letter-spacing: .1em;
+    color: #c9a96e; margin-bottom: 10px; margin-top: 32px;
+  }
+  .section-label:first-of-type { margin-top: 0; }
+
+  /* ── shared phone shell ── */
+  .phone {
+    width: 320px; background: #1c1510;
+    border: 1.5px solid #3d2e1e; border-radius: 20px;
+    overflow: hidden; box-shadow: 0 8px 32px rgba(0,0,0,.5);
+  }
+
+  /* ── nav bar ── */
+  .nav {
+    display: flex; align-items: center; gap: 8px;
+    padding: 12px 14px; border-bottom: 1px solid #3d2e1e;
+  }
+  .btn-ghost {
+    padding: 4px 12px; border-radius: 999px; border: 1px solid #3d2e1e;
+    font-size: 12px; color: #c9a96e; background: transparent; cursor: pointer;
+    white-space: nowrap;
+  }
+  .btn-ghost.icon { padding: 4px 8px; font-size: 15px; }
+  .name { font-size: 16px; font-weight: 700; font-family: Georgia, serif; flex: 1; }
+
+  /* ── collection tabs ── */
+  .tabs {
+    display: flex; gap: 6px; padding: 10px 14px;
+    border-bottom: 1px solid #3d2e1e; overflow-x: auto;
+  }
+  .tab {
+    padding: 4px 12px; border-radius: 999px; border: 1px solid #3d2e1e;
+    font-size: 12px; color: #c9a96e; white-space: nowrap;
+  }
+  .tab.active { background: #c67c3c; color: #fff; border-color: #c67c3c; }
+
+  /* ── grid preview ── */
+  .grid-area { padding: 12px 14px; }
+  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .tile {
+    aspect-ratio: 1; border-radius: 8px; background: #3d2e1e;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+  }
+
+  /* ── member grid ── */
+  .member-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 12px 14px; }
+  .member-card {
+    background: #2a1f16; border: 1px solid #3d2e1e; border-radius: 12px;
+    padding: 14px 10px; display: flex; flex-direction: column; align-items: center; gap: 8px;
+    position: relative;
+  }
+  .avatar {
+    width: 40px; height: 40px; border-radius: 50%; background: #c67c3c;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; font-weight: 700; color: #fff; font-family: Georgia, serif;
+  }
+  .member-name { font-size: 13px; font-weight: 600; font-family: Georgia, serif; }
+  .profile-badge {
+    position: absolute; top: 8px; right: 8px;
+    width: 22px; height: 22px; border-radius: 50%;
+    background: #3d2e1e; border: 1px solid #c67c3c;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; color: #c9a96e; cursor: pointer;
+  }
+
+  /* ── layout ── */
+  .row { display: flex; gap: 24px; flex-wrap: wrap; }
+  .col { display: flex; flex-direction: column; gap: 8px; }
+  .label-pill {
+    display: inline-block; background: #c67c3c22; color: #c67c3c;
+    border: 1px solid #c67c3c66; border-radius: 999px;
+    font-size: 10px; padding: 2px 8px; margin-top: 4px; align-self: flex-start;
+  }
+
+  /* highlight ring */
+  .highlight { outline: 2px solid #c67c3c; outline-offset: 2px; border-radius: 999px; }
+  .highlight-card { outline: 2px solid #c67c3c; outline-offset: 2px; border-radius: 12px; }
+</style>
+</head>
+<body>
+
+<h1>Issue #19 — Profile link placement</h1>
+
+<div class="row">
+
+  <!-- OPTION A: header on collection page -->
+  <div class="col">
+    <p class="section-label">Option A — Collection page header</p>
+    <div class="phone">
+      <div class="nav">
+        <button class="btn-ghost">← Members</button>
+        <span class="name">Ewart</span>
+        <button class="btn-ghost icon highlight" title="Profile">👤</button>
+      </div>
+      <div class="tabs">
+        <div class="tab active">Vinyl</div>
+        <div class="tab">Books</div>
+        <div class="tab">Comics</div>
+        <div class="tab">Lego</div>
+      </div>
+      <div class="grid-area">
+        <div class="grid">
+          <div class="tile">🎵</div><div class="tile">🎵</div>
+          <div class="tile">🎵</div><div class="tile">🎵</div>
+          <div class="tile">🎵</div><div class="tile">🎵</div>
+          <div class="tile">🎵</div><div class="tile">+</div>
+        </div>
+      </div>
+    </div>
+    <span class="label-pill">👤 icon top-right of header</span>
+    <p style="font-size:11px;color:#c9a96e;max-width:200px">Always visible while browsing your collection. One tap from anywhere in your collection.</p>
+  </div>
+
+  <!-- OPTION B: members grid badge -->
+  <div class="col">
+    <p class="section-label">Option B — Members grid badge</p>
+    <div class="phone">
+      <div class="nav" style="padding: 12px 14px;">
+        <span class="name" style="flex:none">Our Collection</span>
+      </div>
+      <div class="member-grid">
+        <div class="member-card highlight-card">
+          <div class="profile-badge">⚙</div>
+          <div class="avatar">E</div>
+          <span class="member-name">Ewart</span>
+        </div>
+        <div class="member-card">
+          <div class="profile-badge">⚙</div>
+          <div class="avatar">M</div>
+          <span class="member-name">Marieke</span>
+        </div>
+        <div class="member-card">
+          <div class="profile-badge">⚙</div>
+          <div class="avatar">L</div>
+          <span class="member-name">Lotte</span>
+        </div>
+        <div class="member-card">
+          <div class="profile-badge">⚙</div>
+          <div class="avatar">N</div>
+          <span class="member-name">Noud</span>
+        </div>
+      </div>
+    </div>
+    <span class="label-pill">⚙ badge on each member card</span>
+    <p style="font-size:11px;color:#c9a96e;max-width:200px">Accessible from the members grid. Small gear badge on your own card only (others greyed out for viewers).</p>
+  </div>
+
+</div>
+
+<div style="margin-top:32px;padding:14px;background:#2a1f16;border:1px solid #3d2e1e;border-radius:12px;max-width:500px">
+  <p style="font-size:12px;color:#c9a96e;margin-bottom:8px;font-weight:600">What the Profile page would contain</p>
+  <ul style="font-size:12px;color:#f5ede0;line-height:1.8;padding-left:16px">
+    <li>Change PIN</li>
+    <li>Enable / disable collections (Vinyl · Books · Comics · Lego)</li>
+    <li style="color:#c9a96e">At least one collection must stay enabled</li>
+  </ul>
+</div>
+
+</body>
+</html>

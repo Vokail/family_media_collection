@@ -96,9 +96,13 @@ interface Props {
   initialItems: Item[]
   isEditor: boolean
   supabaseUrl: string
+  enabledCollections?: CollectionType[]
 }
 
-export default function CollectionGrid({ member, collection, initialItems, isEditor, supabaseUrl }: Props) {
+export default function CollectionGrid({ member, collection, initialItems, isEditor, supabaseUrl, enabledCollections }: Props) {
+  const visibleTabs = enabledCollections
+    ? TABS.filter(t => enabledCollections.includes(t.value))
+    : TABS
   const sortStorageKey = `sort_${member.slug}_${collection}`
   const tabStorageKey = `tab_${member.slug}_${collection}`
   const viewStorageKey = `view_${member.slug}_${collection}`
@@ -250,7 +254,7 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
       )}
       {/* Tab bar */}
       <div className="flex gap-1 overflow-x-auto pb-1 border-b" style={{ borderColor: 'var(--border)' }}>
-        {TABS.map(tab => {
+        {visibleTabs.map(tab => {
           const isActive = collection === tab.value
           return (
             <Link
