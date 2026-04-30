@@ -7,6 +7,8 @@ import { randomUUID } from 'crypto'
 export const maxDuration = 60
 
 interface ExportMember { id: string; name: string; slug: string }
+const VALID_COLLECTIONS = ['vinyl', 'book', 'comic', 'lego'] as const
+
 interface ExportItem {
   member_id: string
   collection: string
@@ -23,6 +25,12 @@ interface ExportItem {
   tracklist: unknown
   description: string | null
   isbn: string | null
+  rating: number | null
+  genres: string | null
+  styles: string | null
+  status: 'consumed' | null
+  lego_status: 'built' | 'in_box' | 'disassembled' | null
+  locked_fields: string[] | null
 }
 
 export async function POST(request: Request) {
@@ -69,6 +77,8 @@ export async function POST(request: Request) {
     const memberId = slug ? memberMap.get(slug) : undefined
     if (!memberId) { skipped++; continue }
 
+    if (!VALID_COLLECTIONS.includes(item.collection as typeof VALID_COLLECTIONS[number])) { skipped++; continue }
+
     const dupKey = `${memberId}|${item.collection}|${item.title.toLowerCase().trim()}`
     if (existingSet.has(dupKey)) { skipped++; continue }
 
@@ -100,6 +110,12 @@ export async function POST(request: Request) {
       tracklist: item.tracklist ?? null,
       description: item.description ?? null,
       isbn: item.isbn ?? null,
+      rating: item.rating ?? null,
+      genres: item.genres ?? null,
+      styles: item.styles ?? null,
+      status: item.status ?? null,
+      lego_status: item.lego_status ?? null,
+      locked_fields: item.locked_fields ?? null,
     })
 
     if (!error) {

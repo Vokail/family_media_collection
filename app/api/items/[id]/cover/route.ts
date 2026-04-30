@@ -9,11 +9,16 @@ const MAX_SIZE = 10 * 1024 * 1024 // 10 MB
 
 export async function POST(request: Request, { params }: { params: { id: string } }) {
   const session = await getSession()
-  if (session.role !== 'editor') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!session.role || session.role === 'viewer') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const db = createServerClient()
   const { data: item } = await db.from('items').select('member_id, cover_path').eq('id', params.id).single()
   if (!item) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+  // Members can only upload covers for their own items
+  if (session.role === 'member' && session.editableMemberId !== item.member_id) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
 
   const form = await request.formData()
   const file = form.get('cover') as File | null

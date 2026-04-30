@@ -9,6 +9,8 @@ export async function GET(
 ) {
   const { id } = await params
   try {
+    const session = await getSession()
+    if (!session.role) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     const { data, error } = await createServerClient().from('items').select('*').eq('id', id).single()
     if (error || !data) return NextResponse.json({ error: 'Not found' }, { status: 404 })
     return NextResponse.json(data)
