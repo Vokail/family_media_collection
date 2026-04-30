@@ -7,6 +7,18 @@ const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions'
 const MODELS_URL = 'https://openrouter.ai/api/v1/models'
 const MAX_PX = 1024
 
+// Preferred models in priority order — known to work well for cover OCR.
+// Auto-discovery falls back to these if none is available.
+const PREFERRED_MODELS = [
+  'qwen/qwen2.5-vl-72b-instruct:free',
+  'qwen/qwen2.5-vl-7b-instruct:free',
+  'meta-llama/llama-3.2-11b-vision-instruct:free',
+  'meta-llama/llama-3.2-90b-vision-instruct:free',
+]
+
+// Models known to claim vision support but return empty/garbage for OCR tasks
+const BLOCKLIST = ['nemotron', 'omni', 'phi-3']
+
 async function findFreeVisionModel(apiKey: string): Promise<string | null> {
   const cached = getCachedModel()
   if (cached) return cached
@@ -20,17 +32,28 @@ async function findFreeVisionModel(apiKey: string): Promise<string | null> {
     data: { id: string; pricing?: { prompt?: string }; architecture?: { modality?: string } }[]
   }
 
-  const model = data.find(m =>
-    m.pricing?.prompt === '0' &&
-    (m.architecture?.modality?.includes('image') || m.id.includes('vision') || m.id.includes('-vl-'))
+  const freeVisionIds = new Set(
+    data
+      .filter(m =>
+        m.pricing?.prompt === '0' &&
+        (m.architecture?.modality?.includes('image') || m.id.includes('vision') || m.id.includes('-vl-')) &&
+        !BLOCKLIST.some(b => m.id.toLowerCase().includes(b))
+      )
+      .map(m => m.id)
   )
 
+  // Pick preferred model if available, otherwise first from discovered list
+  const model =
+    PREFERRED_MODELS.find(id => freeVisionIds.has(id)) ??
+    Array.from(freeVisionIds)[0] ??
+    null
+
   if (model) {
-    setCachedModel(model.id)
-    console.log('OCR: selected free vision model:', model.id)
+    setCachedModel(model)
+    console.log('OCR: selected free vision model:', model)
   }
 
-  return model?.id ?? null
+  return model
 }
 
 export async function POST(request: Request) {
