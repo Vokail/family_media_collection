@@ -8,6 +8,7 @@ A private family web app for tracking vinyl records, books, and comics — with 
 - **4 collection types** — Vinyl, Books, Comics, Lego
 - **Cover art** — auto-fetched from Discogs, OpenLibrary, and ComicVine, resized and stored in Supabase Storage
 - **Barcode scanning** — scan ISBN or vinyl barcodes with your phone camera to add items instantly; manga/graphic novel ISBN barcodes work for comics too
+- **Cover scan OCR** — photograph a book, record, or comic cover to auto-identify title and creator using OpenRouter (Llama 3.2 Vision); falls back to manual form if the key is not configured
 - **Descriptions** — books and comics get descriptions auto-fetched on add; language-aware for Dutch/French/German books (Google Books preferred, OpenLibrary fallback)
 - **Vinyl tracklist** — automatically fetched from Discogs when adding a record; search cards show format (LP/7"), label, country, catalogue number to distinguish editions; tap "Details & tracklist" on any search result for a full preview before adding
 - **Wishlist** — toggle items between owned and wishlist; counts shown on each tab; family-wide wishlist view at `/wishlist`
@@ -32,6 +33,7 @@ A private family web app for tracking vinyl records, books, and comics — with 
 - [bcryptjs](https://github.com/dcodeIO/bcrypt.js) — hashed credentials stored in DB
 - [ZXing](https://github.com/zxing-js/browser) — barcode scanning via camera
 - [sharp](https://sharp.pixelplumbing.com) — image resize before upload
+- [OpenRouter](https://openrouter.ai) — vision model API for cover scan OCR (Llama 3.2 Vision, free tier)
 - External APIs: [OpenLibrary](https://openlibrary.org/developers/api), [Discogs](https://www.discogs.com/developers), [ComicVine](https://comicvine.gamespot.com/api/), [Rebrickable](https://rebrickable.com/api/) (Lego)
 
 ## Deployment
@@ -51,6 +53,7 @@ Hosted on [Vercel](https://vercel.com) (free Hobby plan) with [Supabase](https:/
 | `DISCOGS_API_KEY` | Discogs API token |
 | `COMICVINE_API_KEY` | ComicVine API key |
 | `REBRICKABLE_API_KEY` | Rebrickable API key (for Lego sets) |
+| `OPENROUTER_API_KEY` | OpenRouter API key for cover scan OCR (free tier — [get one here](https://openrouter.ai)) |
 
 ## Database Setup
 
