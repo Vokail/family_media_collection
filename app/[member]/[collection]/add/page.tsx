@@ -184,17 +184,21 @@ export default function AddItemPage() {
         return
       }
 
-      const { title: rawTitle, creator: rawCreator } = await res.json() as { title: string; creator: string }
+      const { series: rawSeries, title: rawTitle, creator: rawCreator } = await res.json() as { series: string; title: string; creator: string }
+      const series = toTitleCase((rawSeries ?? '').trim())
       const title = toTitleCase(rawTitle.trim())
       const creator = toTitleCase(rawCreator.trim())
 
-      // Always pre-fill whatever was extracted
-      if (title) setManualTitle(title)
+      // Pre-fill manual form — include series in title field for clarity
+      const fullTitle = series && title ? `${series}: ${title}` : title || series
+      if (fullTitle) setManualTitle(fullTitle)
       if (creator) setManualCreator(creator)
 
-      if (title) {
-        const searchQuery = [title, creator].filter(Boolean).join(' ')
-        setQuery(title)
+      if (title || series) {
+        // Search with series + title + creator for best specificity
+        const searchQuery = [series, title, creator].filter(Boolean).join(' ')
+        // Show only the volume title in the search box (series shown via results)
+        setQuery(title || series)
         await runSearch(searchQuery)
       } else {
         toast.show('OCR returned no text — please fill in manually', 'error')

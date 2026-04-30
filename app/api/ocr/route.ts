@@ -81,8 +81,11 @@ export async function POST(request: Request) {
 
   const prompt =
     'This is a cover image of a book, vinyl record, or comic. ' +
-    'Extract the title and the creator (author, artist, or publisher). ' +
-    'Return ONLY valid JSON with two fields, nothing else: {"title": "...", "creator": "..."}'
+    'Extract the text you can see. ' +
+    'If it is part of a series (e.g. "Warrior Cats — De Wildernis In"), return the series name separately. ' +
+    'The "title" field should be the most specific title (the volume/subtitle, NOT the series name). ' +
+    'Return ONLY valid JSON with three fields, nothing else: ' +
+    '{"series": "series name or empty string", "title": "specific volume title", "creator": "author/artist/publisher"}'
 
   const res = await fetch(OPENROUTER_URL, {
     method: 'POST',
@@ -117,9 +120,13 @@ export async function POST(request: Request) {
 
   try {
     const cleaned = raw_text.replace(/```json|```/g, '').trim()
-    const parsed = JSON.parse(cleaned) as { title?: string; creator?: string }
-    return NextResponse.json({ title: parsed.title ?? '', creator: parsed.creator ?? '' })
+    const parsed = JSON.parse(cleaned) as { series?: string; title?: string; creator?: string }
+    return NextResponse.json({
+      series: parsed.series ?? '',
+      title: parsed.title ?? '',
+      creator: parsed.creator ?? '',
+    })
   } catch {
-    return NextResponse.json({ title: raw_text.slice(0, 120), creator: '' })
+    return NextResponse.json({ series: '', title: raw_text.slice(0, 120), creator: '' })
   }
 }

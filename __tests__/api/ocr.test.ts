@@ -75,21 +75,32 @@ describe('POST /api/ocr', () => {
     expect(res.status).toBe(503)
   })
 
-  it('returns title and creator from OpenRouter JSON response', async () => {
+  it('returns series, title and creator from OpenRouter JSON response', async () => {
     mockFetch
       .mockResolvedValueOnce(MODEL_LIST_RESPONSE)
-      .mockResolvedValueOnce(ocrResponse('{"title": "Dune", "creator": "Frank Herbert"}'))
+      .mockResolvedValueOnce(ocrResponse('{"series": "Warrior Cats", "title": "De Wildernis In", "creator": "Erin Hunter"}'))
     const res = await POST(makeRequest(new Blob(['img'], { type: 'image/jpeg' })))
     expect(res.status).toBe(200)
     const body = await res.json()
+    expect(body.series).toBe('Warrior Cats')
+    expect(body.title).toBe('De Wildernis In')
+    expect(body.creator).toBe('Erin Hunter')
+  })
+
+  it('returns empty series when book has no series', async () => {
+    mockFetch
+      .mockResolvedValueOnce(MODEL_LIST_RESPONSE)
+      .mockResolvedValueOnce(ocrResponse('{"series": "", "title": "Dune", "creator": "Frank Herbert"}'))
+    const res = await POST(makeRequest(new Blob(['img'], { type: 'image/jpeg' })))
+    const body = await res.json()
+    expect(body.series).toBe('')
     expect(body.title).toBe('Dune')
-    expect(body.creator).toBe('Frank Herbert')
   })
 
   it('strips markdown code fences from model response', async () => {
     mockFetch
       .mockResolvedValueOnce(MODEL_LIST_RESPONSE)
-      .mockResolvedValueOnce(ocrResponse('```json\n{"title": "1984", "creator": "George Orwell"}\n```'))
+      .mockResolvedValueOnce(ocrResponse('```json\n{"series": "", "title": "1984", "creator": "George Orwell"}\n```'))
     const res = await POST(makeRequest(new Blob(['img'], { type: 'image/jpeg' })))
     const body = await res.json()
     expect(body.title).toBe('1984')
