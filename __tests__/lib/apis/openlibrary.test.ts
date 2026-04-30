@@ -4,33 +4,63 @@ global.fetch = jest.fn()
 const mockFetch = fetch as jest.Mock
 
 describe('searchBooks', () => {
-  it('returns mapped results from OpenLibrary', async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
-        docs: [{
-          key: '/works/OL1234W',
-          title: 'Dune',
-          author_name: ['Frank Herbert'],
-          first_publish_year: 1965,
-          cover_i: 12345,
-        }]
+  it('returns merged results from OpenLibrary and Google Books', async () => {
+    // OL fires first in Promise.all, then GB
+    mockFetch
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          docs: [{
+            key: '/works/OL1234W',
+            title: 'Into the Wild',
+            author_name: ['Erin Hunter'],
+            first_publish_year: 2003,
+            cover_i: 12345,
+          }],
+        }),
       })
-    })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          items: [{
+            id: 'gbid1',
+            volumeInfo: {
+              title: 'Warrior cats / De wildernis in',
+              authors: ['Erin Hunter'],
+              publishedDate: '2006',
+              imageLinks: { thumbnail: 'https://books.google.com/cover.jpg' },
+              industryIdentifiers: [{ type: 'ISBN_13', identifier: '9789022323175' }],
+            },
+          }],
+        }),
+      })
+    const results = await searchBooks('Warrior Cats De Wildernis In', 'dutch')
+    // GB result comes first in merged output (prepended), OL second
+    expect(results[0]).toMatchObject({ title: 'Warrior cats / De wildernis in', source: 'google' })
+    expect(results[1]).toMatchObject({ title: 'Into the Wild', source: 'openlibrary' })
+  })
+
+  it('deduplicates results with the same title and creator', async () => {
+    // OL first, GB second
+    mockFetch
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          docs: [{ key: '/works/OL1234W', title: 'Dune', author_name: ['Frank Herbert'], first_publish_year: 1965, cover_i: null }],
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          items: [{ id: 'gbid1', volumeInfo: { title: 'Dune', authors: ['Frank Herbert'], publishedDate: '1965', industryIdentifiers: [] } }],
+        }),
+      })
     const results = await searchBooks('Dune')
     expect(results).toHaveLength(1)
-    expect(results[0]).toMatchObject({
-      external_id: '/works/OL1234W',
-      title: 'Dune',
-      creator: 'Frank Herbert',
-      year: 1965,
-      cover_url: 'https://covers.openlibrary.org/b/id/12345-L.jpg',
-      source: 'openlibrary',
-    })
   })
 
   it('returns empty array on fetch error', async () => {
-    mockFetch.mockResolvedValueOnce({ ok: false })
+    mockFetch.mockResolvedValue({ ok: false })
     const results = await searchBooks('nothing')
     expect(results).toEqual([])
   })

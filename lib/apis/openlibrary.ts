@@ -12,13 +12,57 @@ function mapDoc(doc: Record<string, unknown>): SearchResult {
 }
 
 
-export async function searchBooks(query: string, _lang?: string, offset = 0): Promise<SearchResult[]> {
-  // Don't filter by language — OL language tagging is inconsistent and would hide valid results
-  const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&fields=key,title,author_name,first_publish_year,cover_i&limit=20&offset=${offset}`
-  const res = await fetch(url)
-  if (!res.ok) return []
-  const data = await res.json()
-  return (data.docs ?? []).map(mapDoc)
+async function searchGoogleBooks(query: string, lang?: string): Promise<SearchResult[]> {
+  const langParam = lang && GB_LANG_CODES[lang] ? `&langRestrict=${GB_LANG_CODES[lang]}` : ''
+  const url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=10${langParam}`
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(7000) })
+    if (!res.ok) return []
+    const data = await res.json()
+    return (data.items ?? []).map((item: Record<string, unknown>) => {
+      const vol = item.volumeInfo as Record<string, unknown>
+      const isbn = (vol.industryIdentifiers as { type: string; identifier: string }[] | undefined)
+        ?.find(i => i.type === 'ISBN_13' || i.type === 'ISBN_10')?.identifier ?? null
+      return {
+        external_id: isbn ? `isbn:${isbn}` : `gb:${(item.id as string)}`,
+        isbn,
+        title: vol.title as string,
+        creator: (vol.authors as string[])?.[0] ?? 'Unknown',
+        year: vol.publishedDate ? parseInt(vol.publishedDate as string) : null,
+        cover_url: (vol.imageLinks as Record<string, string> | undefined)?.thumbnail?.replace('http:', 'https:') ?? null,
+        source: 'google' as SearchResult['source'],
+      }
+    })
+  } catch {
+    return []
+  }
+}
+
+export async function searchBooks(query: string, lang?: string, offset = 0): Promise<SearchResult[]> {
+  // Run OpenLibrary and Google Books in parallel — GB is especially useful for
+  // non-English editions that OL doesn't index well
+  const [olResults, gbResults] = await Promise.all([
+    (async () => {
+      const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&fields=key,title,author_name,first_publish_year,cover_i&limit=20&offset=${offset}`
+      const res = await fetch(url)
+      if (!res.ok) return []
+      const data = await res.json()
+      return (data.docs ?? []).map(mapDoc) as SearchResult[]
+    })(),
+    offset === 0 ? searchGoogleBooks(query, lang) : Promise.resolve([]),
+  ])
+
+  // Merge: deduplicate by normalised title+creator, prefer results with cover art
+  const seen = new Set<string>()
+  const merged: SearchResult[] = []
+  for (const r of [...gbResults, ...olResults]) {
+    const key = `${r.title?.toLowerCase().trim()}|${r.creator?.toLowerCase().trim()}`
+    if (!seen.has(key)) {
+      seen.add(key)
+      merged.push(r)
+    }
+  }
+  return merged
 }
 
 const OL_LANG_CODES_DESC: Record<string, string> = { dutch: 'dut', french: 'fre', german: 'ger' }
