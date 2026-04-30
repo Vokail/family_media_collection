@@ -8,6 +8,7 @@ import SearchResults from '@/components/SearchResults'
 import { useToast } from '@/components/Toast'
 import type { SearchResult, CollectionType, Item } from '@/lib/types'
 import { toTitleCase } from '@/lib/utils'
+import { searchOpenLibrary } from '@/lib/apis/openlibrary'
 
 const SEARCH_LANGUAGES = [
   { value: 'dutch', label: 'Nederlands' },
@@ -100,10 +101,18 @@ export default function AddItemPage() {
     setLoading(true)
     setOffset(0)
     setLastQuery(q)
-    const lang = (collection === 'book' || collection === 'comic') ? searchLang : undefined
-    const url = `/api/search?q=${encodeURIComponent(q)}&type=${collection}${lang ? `&lang=${lang}` : ''}`
-    const res = await fetch(url)
-    const data: SearchResult[] = res.ok ? await res.json() : []
+    let data: SearchResult[]
+    if (collection === 'book') {
+      // Call OL directly from the browser — OL has CORS (*) so no server proxy needed.
+      // This bypasses the Vercel 10s function timeout that caused silent empty results
+      // on cold-start requests fired immediately after OCR.
+      data = await searchOpenLibrary(q)
+    } else {
+      const lang = (collection === 'book' || collection === 'comic') ? searchLang : undefined
+      const url = `/api/search?q=${encodeURIComponent(q)}&type=${collection}${lang ? `&lang=${lang}` : ''}`
+      const res = await fetch(url)
+      data = res.ok ? await res.json() : []
+    }
     setResults(data)
     setHasSearched(true)
     setHasMore(data.length === 20)
@@ -113,11 +122,16 @@ export default function AddItemPage() {
   const loadMore = useCallback(async () => {
     const nextOffset = offset + 20
     setLoadingMore(true)
-    const lang = (collection === 'book' || collection === 'comic') ? searchLang : undefined
-    const url = `/api/search?q=${encodeURIComponent(lastQuery)}&type=${collection}&offset=${nextOffset}${lang ? `&lang=${lang}` : ''}`
-    const res = await fetch(url)
-    if (res.ok) {
-      const more: SearchResult[] = await res.json()
+    let more: SearchResult[]
+    if (collection === 'book') {
+      more = await searchOpenLibrary(lastQuery, nextOffset)
+    } else {
+      const lang = (collection === 'book' || collection === 'comic') ? searchLang : undefined
+      const url = `/api/search?q=${encodeURIComponent(lastQuery)}&type=${collection}&offset=${nextOffset}${lang ? `&lang=${lang}` : ''}`
+      const res = await fetch(url)
+      more = res.ok ? await res.json() : []
+    }
+    if (more.length > 0) {
       setResults(prev => {
         const existingIds = new Set(prev.map(r => r.external_id))
         return [...prev, ...more.filter(r => !existingIds.has(r.external_id))]

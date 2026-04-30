@@ -55,37 +55,32 @@ async function searchGoogleBooks(query: string): Promise<SearchResult[]> {
   }
 }
 
-export async function searchBooks(query: string, lang?: string, offset = 0): Promise<SearchResult[]> {
-  // Run OpenLibrary and Google Books in parallel — GB is especially useful for
-  // non-English editions that OL doesn't index well.
-  // Neither source uses a language filter: OL's language filter returns wrong/incomplete
-  // results, and GB's langRestrict kills results for many non-English queries.
-  // GB naturally ranks localised editions first when the query contains local words.
-  // allSettled so a slow/failing OL never blocks GB results (and vice versa)
-  const [olSettled, gbSettled] = await Promise.allSettled([
-    (async () => {
-      const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&fields=key,title,author_name,first_publish_year,cover_i,editions&limit=20&offset=${offset}`
-      const res = await fetch(url, { signal: AbortSignal.timeout(8000) })
-      if (!res.ok) return []
-      const data = await res.json()
-      return (data.docs ?? []).map(mapDoc) as SearchResult[]
-    })(),
-    offset === 0 ? searchGoogleBooks(query) : Promise.resolve([]),
-  ])
-  const olResults = olSettled.status === 'fulfilled' ? olSettled.value : []
-  const gbResults = gbSettled.status === 'fulfilled' ? gbSettled.value : []
-
-  // Merge: deduplicate by normalised title+creator, prefer results with cover art
-  const seen = new Set<string>()
-  const merged: SearchResult[] = []
-  for (const r of [...olResults, ...gbResults]) {
-    const key = `${r.title?.toLowerCase().trim()}|${r.creator?.toLowerCase().trim()}`
-    if (!seen.has(key)) {
-      seen.add(key)
-      merged.push(r)
-    }
+// Called directly from the browser (OL supports CORS) to bypass the Vercel
+// 10-second function timeout that can silently drop results on cold starts.
+// Use this in client components instead of going through /api/search.
+export async function searchOpenLibrary(query: string, offset = 0): Promise<SearchResult[]> {
+  try {
+    const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&fields=key,title,author_name,first_publish_year,cover_i,editions&limit=20&offset=${offset}`
+    const res = await fetch(url, { signal: AbortSignal.timeout(15000) })
+    if (!res.ok) return []
+    const data = await res.json()
+    return (data.docs ?? []).map(mapDoc) as SearchResult[]
+  } catch {
+    return []
   }
-  return merged
+}
+
+// Server-side version (used by /api/search for barcode fallback search).
+export async function searchBooks(query: string, lang?: string, offset = 0): Promise<SearchResult[]> {
+  try {
+    const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&fields=key,title,author_name,first_publish_year,cover_i,editions&limit=20&offset=${offset}`
+    const res = await fetch(url, { signal: AbortSignal.timeout(8000) })
+    if (!res.ok) return []
+    const data = await res.json()
+    return (data.docs ?? []).map(mapDoc) as SearchResult[]
+  } catch {
+    return []
+  }
 }
 
 const OL_LANG_CODES_DESC: Record<string, string> = { dutch: 'dut', french: 'fre', german: 'ger' }
