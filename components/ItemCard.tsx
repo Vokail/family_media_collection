@@ -45,6 +45,7 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
   const [savingRating, setSavingRating] = useState(false)
   const [savingLegoStatus, setSavingLegoStatus] = useState(false)
   const [removingCover, setRemovingCover] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
   const [uploadingCover, setUploadingCover] = useState(false)
   const [showCamera, setShowCamera] = useState(false)
   const coverInputRef = useRef<HTMLInputElement>(null)
@@ -287,13 +288,13 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
       )}
 
       {open && (
-        <div className="fixed inset-0 bg-black/60 flex items-end z-50" onClick={() => setOpen(false)}>
+        <div className="fixed inset-0 bg-black/60 flex items-end z-50" onClick={() => { setOpen(false); setConfirmDelete(false) }}>
           <div
             className="card w-full rounded-b-none flex flex-col max-h-[90vh]"
             onClick={e => e.stopPropagation()}
           >
             <div className="flex justify-end p-3 border-b flex-shrink-0" style={{ borderColor: 'var(--border)' }}>
-              <button onClick={() => setOpen(false)} className="btn-ghost px-3 py-1 text-sm">✕ Close</button>
+              <button onClick={() => { setOpen(false); setConfirmDelete(false) }} className="btn-ghost px-3 py-1 text-sm">✕ Close</button>
             </div>
             <div className="p-6 flex flex-col gap-4 overflow-y-auto">
             {coverSrc && (
@@ -426,7 +427,15 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
                       {removingCover ? 'Removing…' : 'Remove cover'}
                     </button>
                   )}
-                  <button onClick={handleDelete} className="btn-ghost text-red-500">Delete</button>
+                  {confirmDelete ? (
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm" style={{ color: 'var(--text-muted)' }}>Are you sure?</span>
+                      <button onClick={handleDelete} className="btn-ghost text-sm text-red-500">Yes, delete</button>
+                      <button onClick={() => setConfirmDelete(false)} className="btn-ghost text-sm">Cancel</button>
+                    </div>
+                  ) : (
+                    <button onClick={() => setConfirmDelete(true)} className="btn-ghost text-red-500">Delete</button>
+                  )}
                 </div>
               </>
             ) : (
