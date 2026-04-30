@@ -1,12 +1,37 @@
 import { NextResponse } from 'next/server'
 import { getSession } from '@/lib/session'
 import sharp from 'sharp'
+import { getCachedModel, setCachedModel, clearModelCache } from '@/lib/ocr-model-cache'
 
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions'
-// Free vision model on OpenRouter — switch here if a better free model becomes available
-const MODEL = 'qwen/qwen2.5-vl-72b-instruct:free'
-// Max longest side before sending to vision model — keeps base64 payload small
+const MODELS_URL = 'https://openrouter.ai/api/v1/models'
 const MAX_PX = 1024
+
+async function findFreeVisionModel(apiKey: string): Promise<string | null> {
+  const cached = getCachedModel()
+  if (cached) return cached
+
+  const res = await fetch(MODELS_URL, {
+    headers: { Authorization: `Bearer ${apiKey}` },
+  })
+  if (!res.ok) return null
+
+  const { data } = await res.json() as {
+    data: { id: string; pricing?: { prompt?: string }; architecture?: { modality?: string } }[]
+  }
+
+  const model = data.find(m =>
+    m.pricing?.prompt === '0' &&
+    (m.architecture?.modality?.includes('image') || m.id.includes('vision') || m.id.includes('-vl-'))
+  )
+
+  if (model) {
+    setCachedModel(model.id)
+    console.log('OCR: selected free vision model:', model.id)
+  }
+
+  return model?.id ?? null
+}
 
 export async function POST(request: Request) {
   const session = await getSession()
@@ -19,8 +44,10 @@ export async function POST(request: Request) {
   const file = form.get('image') as File | null
   if (!file) return NextResponse.json({ error: 'No image provided' }, { status: 400 })
 
-  // Resize to max 1024px on the longest side — phone photos can be 3–8 MB which
-  // exceeds free vision model context limits when base64-encoded
+  const model = await findFreeVisionModel(apiKey)
+  if (!model) return NextResponse.json({ error: 'No free vision model available on OpenRouter' }, { status: 503 })
+
+  // Resize to max 1024px — phone photos exceed free model context limits when base64-encoded
   const raw = Buffer.from(await file.arrayBuffer())
   const resized = await sharp(raw)
     .resize(MAX_PX, MAX_PX, { fit: 'inside', withoutEnlargement: true })
@@ -42,7 +69,7 @@ export async function POST(request: Request) {
       'HTTP-Referer': 'https://github.com/Vokail/family_media_collection',
     },
     body: JSON.stringify({
-      model: MODEL,
+      model,
       messages: [
         {
           role: 'user',
@@ -58,23 +85,18 @@ export async function POST(request: Request) {
   if (!res.ok) {
     const err = await res.text()
     console.error('OpenRouter OCR error:', res.status, err)
-    return NextResponse.json({ error: `OpenRouter ${res.status}: ${err.slice(0, 200)}` }, { status: 502 })
+    clearModelCache() // bust cache so we re-discover on next attempt
+    return NextResponse.json({ error: `OpenRouter ${res.status} (model: ${model}): ${err.slice(0, 200)}` }, { status: 502 })
   }
 
   const json = await res.json()
   const raw_text = json.choices?.[0]?.message?.content ?? ''
 
-  // Parse the JSON the model returns — strip any markdown code fences if present
   try {
     const cleaned = raw_text.replace(/```json|```/g, '').trim()
     const parsed = JSON.parse(cleaned) as { title?: string; creator?: string }
-    return NextResponse.json({
-      title: parsed.title ?? '',
-      creator: parsed.creator ?? '',
-    })
+    return NextResponse.json({ title: parsed.title ?? '', creator: parsed.creator ?? '' })
   } catch {
-    // Model returned something unparseable — return raw text as title so the
-    // user at least gets something to work with
     return NextResponse.json({ title: raw_text.slice(0, 120), creator: '' })
   }
 }

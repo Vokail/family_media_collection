@@ -12,8 +12,25 @@ global.fetch = mockFetch
 
 import { POST } from '@/app/api/ocr/route'
 import { getSession } from '@/lib/session'
+import { clearModelCache } from '@/lib/ocr-model-cache'
 
 const mockGetSession = getSession as jest.Mock
+
+// Model discovery response — one free vision model
+const MODEL_LIST_RESPONSE = {
+  ok: true,
+  json: async () => ({
+    data: [
+      { id: 'some/vision-model:free', pricing: { prompt: '0' }, architecture: { modality: 'text+image->text' } },
+    ],
+  }),
+}
+
+// Successful OCR response
+const ocrResponse = (content: string) => ({
+  ok: true,
+  json: async () => ({ choices: [{ message: { content } }] }),
+})
 
 function makeRequest(file?: Blob) {
   const form = new FormData()
@@ -26,6 +43,7 @@ beforeEach(() => {
   mockFetch.mockReset()
   mockGetSession.mockResolvedValue({ role: 'editor' })
   process.env.OPENROUTER_API_KEY = 'test-key'
+  clearModelCache()
 })
 
 describe('POST /api/ocr', () => {
@@ -42,17 +60,25 @@ describe('POST /api/ocr', () => {
   })
 
   it('returns 400 when no image is provided', async () => {
+    // Models endpoint called first, then 400 on missing image
+    mockFetch.mockResolvedValueOnce(MODEL_LIST_RESPONSE)
     const res = await POST(makeRequest())
     expect(res.status).toBe(400)
   })
 
-  it('returns title and creator from OpenRouter JSON response', async () => {
+  it('returns 503 when no free vision model is found', async () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => ({
-        choices: [{ message: { content: '{"title": "Dune", "creator": "Frank Herbert"}' } }],
-      }),
+      json: async () => ({ data: [] }), // empty model list
     })
+    const res = await POST(makeRequest(new Blob(['img'], { type: 'image/jpeg' })))
+    expect(res.status).toBe(503)
+  })
+
+  it('returns title and creator from OpenRouter JSON response', async () => {
+    mockFetch
+      .mockResolvedValueOnce(MODEL_LIST_RESPONSE)
+      .mockResolvedValueOnce(ocrResponse('{"title": "Dune", "creator": "Frank Herbert"}'))
     const res = await POST(makeRequest(new Blob(['img'], { type: 'image/jpeg' })))
     expect(res.status).toBe(200)
     const body = await res.json()
@@ -61,12 +87,9 @@ describe('POST /api/ocr', () => {
   })
 
   it('strips markdown code fences from model response', async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
-        choices: [{ message: { content: '```json\n{"title": "1984", "creator": "George Orwell"}\n```' } }],
-      }),
-    })
+    mockFetch
+      .mockResolvedValueOnce(MODEL_LIST_RESPONSE)
+      .mockResolvedValueOnce(ocrResponse('```json\n{"title": "1984", "creator": "George Orwell"}\n```'))
     const res = await POST(makeRequest(new Blob(['img'], { type: 'image/jpeg' })))
     const body = await res.json()
     expect(body.title).toBe('1984')
@@ -74,12 +97,9 @@ describe('POST /api/ocr', () => {
   })
 
   it('returns raw text as title when model returns unparseable content', async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
-        choices: [{ message: { content: 'Sorry, I cannot read this image.' } }],
-      }),
-    })
+    mockFetch
+      .mockResolvedValueOnce(MODEL_LIST_RESPONSE)
+      .mockResolvedValueOnce(ocrResponse('Sorry, I cannot read this image.'))
     const res = await POST(makeRequest(new Blob(['img'], { type: 'image/jpeg' })))
     expect(res.status).toBe(200)
     const body = await res.json()
@@ -88,7 +108,9 @@ describe('POST /api/ocr', () => {
   })
 
   it('returns 502 when OpenRouter returns an error', async () => {
-    mockFetch.mockResolvedValueOnce({ ok: false, text: async () => 'Rate limit exceeded' })
+    mockFetch
+      .mockResolvedValueOnce(MODEL_LIST_RESPONSE)
+      .mockResolvedValueOnce({ ok: false, text: async () => 'Rate limit exceeded' })
     const res = await POST(makeRequest(new Blob(['img'], { type: 'image/jpeg' })))
     expect(res.status).toBe(502)
   })
