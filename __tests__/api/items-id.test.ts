@@ -80,13 +80,27 @@ describe('PATCH /api/items/[id]', () => {
     const req = new Request('http://localhost/api/items/item-uuid', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ is_wishlist: false, member_id: 'evil', title: 'Hacked' }),
+      body: JSON.stringify({ is_wishlist: false, member_id: 'evil', collection: 'hacked' }),
     })
     await PATCH(req, buildParams('item-uuid'))
     const [, patch] = mockUpdateItem.mock.calls[0]
     expect(patch).not.toHaveProperty('member_id')
-    expect(patch).not.toHaveProperty('title')
+    expect(patch).not.toHaveProperty('collection')
     expect(patch).toHaveProperty('is_wishlist')
+  })
+
+  it('allows patching title, creator and year', async () => {
+    mockUpdateItem.mockResolvedValue(ITEM)
+    const req = new Request('http://localhost/api/items/item-uuid', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: 'New Title', creator: 'New Artist', year: 1999 }),
+    })
+    await PATCH(req, buildParams('item-uuid'))
+    const [, patch] = mockUpdateItem.mock.calls[0]
+    expect(patch).toHaveProperty('title', 'New Title')
+    expect(patch).toHaveProperty('creator', 'New Artist')
+    expect(patch).toHaveProperty('year', 1999)
   })
 
   it('patches status to consumed and returns updated item', async () => {

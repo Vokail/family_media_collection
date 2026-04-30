@@ -17,7 +17,7 @@ export async function GET(
   }
 }
 
-const PATCHABLE_KEYS = ['is_wishlist', 'notes', 'cover_path', 'rating', 'status', 'lego_status'] as const
+const PATCHABLE_KEYS = ['is_wishlist', 'notes', 'cover_path', 'rating', 'status', 'lego_status', 'title', 'creator', 'year'] as const
 type PatchKey = typeof PATCHABLE_KEYS[number]
 
 export async function PATCH(

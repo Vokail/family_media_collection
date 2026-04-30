@@ -37,6 +37,11 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
   const [open, setOpen] = useState(initialOpen)
   const [notes, setNotes] = useState(item.notes ?? '')
   const [savingNotes, setSavingNotes] = useState(false)
+  const [editingMeta, setEditingMeta] = useState(false)
+  const [editTitle, setEditTitle] = useState(item.title)
+  const [editCreator, setEditCreator] = useState(item.creator)
+  const [editYear, setEditYear] = useState(item.year?.toString() ?? '')
+  const [savingMeta, setSavingMeta] = useState(false)
   const [uploadingCover, setUploadingCover] = useState(false)
   const [showCamera, setShowCamera] = useState(false)
   const coverInputRef = useRef<HTMLInputElement>(null)
@@ -104,6 +109,28 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
       toast.show('Could not save note', 'error')
     }
     setSavingNotes(false)
+  }
+
+  async function saveMeta() {
+    if (!editTitle.trim()) return
+    setSavingMeta(true)
+    const res = await fetch(`/api/items/${item.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title: editTitle.trim(),
+        creator: editCreator.trim(),
+        year: editYear ? parseInt(editYear) : null,
+      }),
+    })
+    if (res.ok) {
+      onUpdate(await res.json())
+      setEditingMeta(false)
+      toast.show('Details updated')
+    } else {
+      toast.show('Could not update details', 'error')
+    }
+    setSavingMeta(false)
   }
 
   async function handleRemoveCover() {
@@ -258,8 +285,50 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
             {coverSrc && (
               <Image src={coverSrc} alt={item.title} width={120} height={120} className="rounded-lg shadow mx-auto" />
             )}
-            <h2 className="font-serif text-xl font-bold text-center">{item.title}</h2>
-            <p className="text-center subtitle">{item.creator}{item.year ? ` · ${item.year}` : ''}</p>
+            {editingMeta ? (
+              <div className="flex flex-col gap-2">
+                <input
+                  className="input text-center font-serif font-bold"
+                  value={editTitle}
+                  onChange={e => setEditTitle(e.target.value)}
+                  placeholder="Title"
+                />
+                <input
+                  className="input text-center text-sm"
+                  value={editCreator}
+                  onChange={e => setEditCreator(e.target.value)}
+                  placeholder="Artist / Author"
+                />
+                <input
+                  className="input text-center text-sm"
+                  type="number"
+                  value={editYear}
+                  onChange={e => setEditYear(e.target.value)}
+                  placeholder="Year"
+                />
+                <div className="flex gap-2 justify-center">
+                  <button onClick={saveMeta} disabled={savingMeta || !editTitle.trim()} className="btn-primary text-sm px-4">
+                    {savingMeta ? 'Saving…' : 'Save'}
+                  </button>
+                  <button onClick={() => { setEditingMeta(false); setEditTitle(item.title); setEditCreator(item.creator); setEditYear(item.year?.toString() ?? '') }} className="btn-ghost text-sm px-4">
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="relative">
+                <h2 className="font-serif text-xl font-bold text-center">{item.title}</h2>
+                <p className="text-center subtitle">{item.creator}{item.year ? ` · ${item.year}` : ''}</p>
+                {isEditor && (
+                  <button
+                    onClick={() => setEditingMeta(true)}
+                    className="absolute -right-1 top-0 text-xs px-1.5 py-0.5"
+                    style={{ color: 'var(--text-muted)' }}
+                    title="Edit title & creator"
+                  >✏️</button>
+                )}
+              </div>
+            )}
             {item.collection === 'lego' && item.external_id && (
               <p className="text-center text-xs font-mono" style={{ color: 'var(--text-muted)' }}>#{item.external_id}</p>
             )}
