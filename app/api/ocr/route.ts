@@ -57,8 +57,8 @@ export async function POST(request: Request) {
 
   if (!res.ok) {
     const err = await res.text()
-    console.error('OpenRouter OCR error:', err)
-    return NextResponse.json({ error: 'OCR service error' }, { status: 502 })
+    console.error('OpenRouter OCR error:', res.status, err)
+    return NextResponse.json({ error: `OpenRouter ${res.status}: ${err.slice(0, 200)}` }, { status: 502 })
   }
 
   const json = await res.json()
