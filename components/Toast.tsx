@@ -24,7 +24,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       ? { ...action, onClick: () => { dispatch({ type: 'remove', id }); action.onClick() } }
       : undefined
     dispatch({ type: 'add', toast: { id, message, type, action: wrappedAction } })
-    setTimeout(() => dispatch({ type: 'remove', id }), action ? 5000 : 2500)
+    const duration = action ? 5000 : type === 'error' ? 6000 : 2500
+    setTimeout(() => dispatch({ type: 'remove', id }), duration)
   }, [])
 
   return (
