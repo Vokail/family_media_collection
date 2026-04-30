@@ -1,10 +1,11 @@
 'use client'
 import Link from 'next/link'
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import ItemCard from './ItemCard'
 import type { Item, CollectionType, Member } from '@/lib/types'
 
 const PULL_THRESHOLD = 72
+const PAGE_SIZE = 60
 
 type SortMode = 'added' | 'creator' | 'title' | 'year' | 'rating'
 
@@ -120,6 +121,7 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<'all' | 'unconsumed' | 'consumed'>('all')
   const [legoFilter, setLegoFilter] = useState<'all' | 'built' | 'in_box' | 'disassembled'>('all')
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({})
   const [pullY, setPullY] = useState(0)
   const [refreshing, setRefreshing] = useState(false)
@@ -135,6 +137,9 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
       setRefreshing(false)
     }
   }, [member.slug, collection])
+
+  // Reset visible count whenever the active filter/sort changes
+  useEffect(() => { setVisibleCount(PAGE_SIZE) }, [isWishlist, sort, search, statusFilter, legoFilter])
 
   function onTouchStart(e: React.TouchEvent) {
     // iOS can report scrollY as slightly negative during rubber-band, so use <= 0
@@ -181,6 +186,8 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
     (!showLegoFilter || legoFilter === 'all' || i.lego_status === legoFilter)
   )
   const sorted = sortItems(filtered, sort)
+  const displayed = sorted.slice(0, visibleCount)
+  const hasMore = sorted.length > visibleCount
   const byCreator = sort === 'creator'
   const byYear = sort === 'year'
   const byRating = sort === 'rating'
@@ -193,7 +200,7 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
   const creatorGroups: { letter: string; items: Item[] }[] = []
   if (byCreator) {
     const map = new Map<string, Item[]>()
-    for (const item of sorted) {
+    for (const item of displayed) {
       // Lego: group by theme name (without LEGO prefix); others: by first letter
       const k = byLego ? stripLego(item.creator) : indexKey(item.creator, item.sort_name)
       if (!map.has(k)) map.set(k, [])
@@ -204,8 +211,8 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
     })
   }
 
-  const yearGroups: YearGroup[] = byYear ? buildYearGroups(sorted) : []
-  const ratingGroups: RatingGroup[] = byRating ? buildRatingGroups(sorted) : []
+  const yearGroups: YearGroup[] = byYear ? buildYearGroups(displayed) : []
+  const ratingGroups: RatingGroup[] = byRating ? buildRatingGroups(displayed) : []
 
   const sidebarKeys = byCreator
     ? byLego
@@ -441,12 +448,32 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
           </>
         ) : (
           <div className={viewMode === 'list' ? LIST : GRID}>
-            {sorted.map(item => (
+            {displayed.map(item => (
               <ItemCard key={item.id} item={item} isEditor={isEditor} onUpdate={handleUpdate} onDelete={handleDelete} supabaseUrl={supabaseUrl} layout={viewMode} />
             ))}
           </div>
         )}
       </div>
+
+      {/* Show more */}
+      {hasMore && (
+        <div className="flex items-center justify-center gap-3 pt-2">
+          <button
+            onClick={() => setVisibleCount(c => c + PAGE_SIZE)}
+            className="btn-ghost text-sm"
+          >
+            Show more ({sorted.length - visibleCount} remaining)
+          </button>
+          {sorted.length - visibleCount > PAGE_SIZE && (
+            <button
+              onClick={() => setVisibleCount(sorted.length)}
+              className="btn-ghost text-sm"
+            >
+              Show all
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Floating add button */}
       {isEditor && (

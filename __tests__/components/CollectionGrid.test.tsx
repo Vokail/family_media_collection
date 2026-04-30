@@ -202,3 +202,50 @@ describe('CollectionGrid lego filter', () => {
     expect(screen.queryByText('📦 In box')).toBeNull()
   })
 })
+
+describe('CollectionGrid pagination', () => {
+  // Build 65 owned items so we exceed PAGE_SIZE (60)
+  const manyItems = Array.from({ length: 65 }, (_, i) =>
+    makeItem(String(i + 1), { title: `Album ${String(i + 1).padStart(3, '0')}`, creator: 'Artist' })
+  )
+
+  it('shows only the first 60 items initially', () => {
+    render(<CollectionGrid {...defaultProps} initialItems={manyItems} />)
+    expect(screen.getAllByTestId('item-card')).toHaveLength(60)
+  })
+
+  it('shows "Show more" button with remaining count', () => {
+    render(<CollectionGrid {...defaultProps} initialItems={manyItems} />)
+    expect(screen.getByText(/Show more \(5 remaining\)/)).toBeInTheDocument()
+  })
+
+  it('renders all items after clicking Show more', () => {
+    render(<CollectionGrid {...defaultProps} initialItems={manyItems} />)
+    fireEvent.click(screen.getByText(/Show more/))
+    expect(screen.getAllByTestId('item-card')).toHaveLength(65)
+  })
+
+  it('does not show "Show more" when items fit within one page', () => {
+    render(<CollectionGrid {...defaultProps} initialItems={[makeItem('1'), makeItem('2')]} />)
+    expect(screen.queryByText(/Show more/)).toBeNull()
+  })
+
+  it('resets to first page when sort changes', () => {
+    render(<CollectionGrid {...defaultProps} initialItems={manyItems} />)
+    // Expand to see all
+    fireEvent.click(screen.getByText(/Show more/))
+    expect(screen.getAllByTestId('item-card')).toHaveLength(65)
+    // Change sort
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'title' } })
+    expect(screen.getAllByTestId('item-card')).toHaveLength(60)
+  })
+
+  it('resets to first page when search changes', () => {
+    render(<CollectionGrid {...defaultProps} initialItems={manyItems} />)
+    fireEvent.click(screen.getByText(/Show more/))
+    expect(screen.getAllByTestId('item-card')).toHaveLength(65)
+    fireEvent.change(screen.getByPlaceholderText(/Search/), { target: { value: 'Album' } })
+    // After typing, all 65 match the search — but visibleCount is reset to 60
+    expect(screen.getAllByTestId('item-card')).toHaveLength(60)
+  })
+})
