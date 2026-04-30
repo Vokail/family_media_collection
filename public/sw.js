@@ -1,8 +1,13 @@
-const CACHE = 'oc-v3'
+const CACHE = 'oc-v4'
 const COVERS_CACHE = 'oc-covers-v1'
 const COVERS_MAX = 500 // max cached cover images
 
-self.addEventListener('install', () => self.skipWaiting())
+self.addEventListener('install', e => {
+  // Pre-cache the offline fallback so it's always available
+  e.waitUntil(
+    caches.open(CACHE).then(cache => cache.add('/offline')).then(() => self.skipWaiting())
+  )
+})
 
 self.addEventListener('activate', e => {
   e.waitUntil(
@@ -55,11 +60,11 @@ self.addEventListener('fetch', e => {
     return
   }
 
-  // Network-first for page navigations — falls back to cache when offline
+  // Network-first for page navigations — falls back to cached page, then /offline
   if (request.mode === 'navigate') {
     e.respondWith(
       fetch(request).catch(() =>
-        caches.match(request).then(cached => cached ?? caches.match('/members'))
+        caches.match(request).then(cached => cached ?? caches.match('/offline'))
       )
     )
   }
