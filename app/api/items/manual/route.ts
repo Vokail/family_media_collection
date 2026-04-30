@@ -64,6 +64,7 @@ export async function POST(request: Request) {
       styles: null,
       status: null,
       lego_status: null,
+      locked_fields: null,
     })
 
     return NextResponse.json(item, { status: 201 })
