@@ -3,7 +3,7 @@
  */
 import '@testing-library/jest-dom'
 import React from 'react'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, act } from '@testing-library/react'
 
 jest.mock('next/link', () => ({ __esModule: true, default: ({ children, href }: { children: React.ReactNode; href: string }) => <a href={href}>{children}</a> }))
 jest.mock('next/image', () => ({ __esModule: true, default: ({ alt }: { alt: string }) => <img alt={alt} /> }))
@@ -209,43 +209,60 @@ describe('CollectionGrid pagination', () => {
     makeItem(String(i + 1), { title: `Album ${String(i + 1).padStart(3, '0')}`, creator: 'Artist' })
   )
 
+  // Capture the IntersectionObserver callback so tests can trigger it manually
+  let observerCallback: IntersectionObserverCallback
+  beforeEach(() => {
+    window.IntersectionObserver = jest.fn((cb) => {
+      observerCallback = cb
+      return { observe: jest.fn(), disconnect: jest.fn() }
+    }) as unknown as typeof IntersectionObserver
+  })
+
   it('shows only the first 60 items initially', () => {
     render(<CollectionGrid {...defaultProps} initialItems={manyItems} />)
     expect(screen.getAllByTestId('item-card')).toHaveLength(60)
   })
 
-  it('shows "Show more" button with remaining count', () => {
+  it('renders a sentinel element when there are more items', () => {
     render(<CollectionGrid {...defaultProps} initialItems={manyItems} />)
-    expect(screen.getByText(/Show more \(5 remaining\)/)).toBeInTheDocument()
+    // The sentinel is an aria-hidden div — check it exists via its aria attribute
+    expect(document.querySelector('[aria-hidden="true"]')).not.toBeNull()
   })
 
-  it('renders all items after clicking Show more', () => {
-    render(<CollectionGrid {...defaultProps} initialItems={manyItems} />)
-    fireEvent.click(screen.getByText(/Show more/))
-    expect(screen.getAllByTestId('item-card')).toHaveLength(65)
-  })
-
-  it('does not show "Show more" when items fit within one page', () => {
+  it('does not render a sentinel when all items fit on one page', () => {
     render(<CollectionGrid {...defaultProps} initialItems={[makeItem('1'), makeItem('2')]} />)
-    expect(screen.queryByText(/Show more/)).toBeNull()
+    expect(document.querySelector('[aria-hidden="true"]')).toBeNull()
+  })
+
+  it('loads more items when sentinel becomes visible', () => {
+    render(<CollectionGrid {...defaultProps} initialItems={manyItems} />)
+    expect(screen.getAllByTestId('item-card')).toHaveLength(60)
+    // Simulate sentinel entering viewport
+    act(() => {
+      observerCallback([{ isIntersecting: true } as IntersectionObserverEntry], {} as IntersectionObserver)
+    })
+    expect(screen.getAllByTestId('item-card')).toHaveLength(65)
   })
 
   it('resets to first page when sort changes', () => {
     render(<CollectionGrid {...defaultProps} initialItems={manyItems} />)
-    // Expand to see all
-    fireEvent.click(screen.getByText(/Show more/))
+    // Trigger load more
+    act(() => {
+      observerCallback([{ isIntersecting: true } as IntersectionObserverEntry], {} as IntersectionObserver)
+    })
     expect(screen.getAllByTestId('item-card')).toHaveLength(65)
-    // Change sort
+    // Change sort — should reset to 60
     fireEvent.change(screen.getByRole('combobox'), { target: { value: 'title' } })
     expect(screen.getAllByTestId('item-card')).toHaveLength(60)
   })
 
   it('resets to first page when search changes', () => {
     render(<CollectionGrid {...defaultProps} initialItems={manyItems} />)
-    fireEvent.click(screen.getByText(/Show more/))
+    act(() => {
+      observerCallback([{ isIntersecting: true } as IntersectionObserverEntry], {} as IntersectionObserver)
+    })
     expect(screen.getAllByTestId('item-card')).toHaveLength(65)
     fireEvent.change(screen.getByPlaceholderText(/Search/), { target: { value: 'Album' } })
-    // After typing, all 65 match the search — but visibleCount is reset to 60
     expect(screen.getAllByTestId('item-card')).toHaveLength(60)
   })
 })

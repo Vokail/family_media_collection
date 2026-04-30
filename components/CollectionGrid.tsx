@@ -122,6 +122,7 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
   const [statusFilter, setStatusFilter] = useState<'all' | 'unconsumed' | 'consumed'>('all')
   const [legoFilter, setLegoFilter] = useState<'all' | 'built' | 'in_box' | 'disassembled'>('all')
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
+  const sentinelRef = useRef<HTMLDivElement | null>(null)
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({})
   const [pullY, setPullY] = useState(0)
   const [refreshing, setRefreshing] = useState(false)
@@ -188,6 +189,22 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
   const sorted = sortItems(filtered, sort)
   const displayed = sorted.slice(0, visibleCount)
   const hasMore = sorted.length > visibleCount
+
+  // Infinite scroll — load next page when sentinel enters the viewport.
+  // Re-bind whenever sorted.length changes so a filter/sort reset reconnects
+  // the observer to the newly rendered sentinel.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    const el = sentinelRef.current
+    if (!el) return
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) setVisibleCount(c => c + PAGE_SIZE) },
+      { rootMargin: '200px' },
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [sorted.length])
+
   const byCreator = sort === 'creator'
   const byYear = sort === 'year'
   const byRating = sort === 'rating'
@@ -455,25 +472,8 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
         )}
       </div>
 
-      {/* Show more */}
-      {hasMore && (
-        <div className="flex items-center justify-center gap-3 pt-2">
-          <button
-            onClick={() => setVisibleCount(c => c + PAGE_SIZE)}
-            className="btn-ghost text-sm"
-          >
-            Show more ({sorted.length - visibleCount} remaining)
-          </button>
-          {sorted.length - visibleCount > PAGE_SIZE && (
-            <button
-              onClick={() => setVisibleCount(sorted.length)}
-              className="btn-ghost text-sm"
-            >
-              Show all
-            </button>
-          )}
-        </div>
-      )}
+      {/* Infinite scroll sentinel — invisible div that triggers loading the next page */}
+      {hasMore && <div ref={sentinelRef} className="h-4" aria-hidden="true" />}
 
       {/* Floating add button */}
       {isEditor && (
