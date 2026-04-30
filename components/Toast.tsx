@@ -35,7 +35,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         {toasts.map(t => (
           <div
             key={t.id}
-            className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium text-white shadow-lg animate-fade-in pointer-events-auto"
+            className="flex items-center gap-2 px-4 py-2 rounded-2xl text-sm font-medium text-white shadow-lg animate-fade-in pointer-events-auto max-w-[88vw] break-words"
             style={{ backgroundColor: t.type === 'error' ? '#b91c1c' : 'var(--accent)' }}
           >
             <span>{t.message}</span>

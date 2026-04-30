@@ -4,7 +4,7 @@ import sharp from 'sharp'
 
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions'
 // Free vision model on OpenRouter — switch here if a better free model becomes available
-const MODEL = 'meta-llama/llama-3.2-11b-vision-instruct:free'
+const MODEL = 'qwen/qwen2.5-vl-72b-instruct:free'
 // Max longest side before sending to vision model — keeps base64 payload small
 const MAX_PX = 1024
 
