@@ -108,7 +108,7 @@ export default function AddItemPage() {
       // on cold-start requests fired immediately after OCR.
       data = await searchOpenLibrary(q)
     } else {
-      const lang = (collection === 'book' || collection === 'comic') ? searchLang : undefined
+      const lang = collection === 'comic' ? searchLang : undefined
       const url = `/api/search?q=${encodeURIComponent(q)}&type=${collection}${lang ? `&lang=${lang}` : ''}`
       const res = await fetch(url)
       data = res.ok ? await res.json() : []
@@ -126,7 +126,7 @@ export default function AddItemPage() {
     if (collection === 'book') {
       more = await searchOpenLibrary(lastQuery, nextOffset)
     } else {
-      const lang = (collection === 'book' || collection === 'comic') ? searchLang : undefined
+      const lang = collection === 'comic' ? searchLang : undefined
       const url = `/api/search?q=${encodeURIComponent(lastQuery)}&type=${collection}&offset=${nextOffset}${lang ? `&lang=${lang}` : ''}`
       const res = await fetch(url)
       more = res.ok ? await res.json() : []
@@ -227,7 +227,7 @@ export default function AddItemPage() {
     } finally {
       setIdentifying(false)
     }
-  }, [runSearch, searchLang])
+  }, [runSearch, searchLang, toast])
 
   function goToCollection() {
     if (navTimer.current) clearTimeout(navTimer.current)

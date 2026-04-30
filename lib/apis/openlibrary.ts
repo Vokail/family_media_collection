@@ -28,32 +28,6 @@ function mapDoc(doc: Record<string, unknown>): SearchResult {
 }
 
 
-async function searchGoogleBooks(query: string): Promise<SearchResult[]> {
-  // No langRestrict — it returns zero results for many non-English queries
-  // (verified: GB naturally ranks Dutch editions first for Dutch queries)
-  const url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=10`
-  try {
-    const res = await fetch(url, { signal: AbortSignal.timeout(7000) })
-    if (!res.ok) return []
-    const data = await res.json()
-    return (data.items ?? []).map((item: Record<string, unknown>) => {
-      const vol = item.volumeInfo as Record<string, unknown>
-      const isbn = (vol.industryIdentifiers as { type: string; identifier: string }[] | undefined)
-        ?.find(i => i.type === 'ISBN_13' || i.type === 'ISBN_10')?.identifier ?? null
-      return {
-        external_id: isbn ? `isbn:${isbn}` : `gb:${(item.id as string)}`,
-        isbn,
-        title: vol.title as string,
-        creator: (vol.authors as string[])?.[0] ?? 'Unknown',
-        year: vol.publishedDate ? parseInt(vol.publishedDate as string) : null,
-        cover_url: (vol.imageLinks as Record<string, string> | undefined)?.thumbnail?.replace('http:', 'https:') ?? null,
-        source: 'google' as SearchResult['source'],
-      }
-    })
-  } catch {
-    return []
-  }
-}
 
 // Called directly from the browser (OL supports CORS) to bypass the Vercel
 // 10-second function timeout that can silently drop results on cold starts.
