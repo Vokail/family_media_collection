@@ -32,6 +32,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Invalid collection' }, { status: 400 })
   }
 
+  const force = form.get('force') === 'true'
+
   try {
     const member = await getMemberBySlug(memberSlug)
     if (!member) return NextResponse.json({ error: 'Member not found' }, { status: 404 })
@@ -39,6 +41,23 @@ export async function POST(request: Request) {
     // Members can only add to their own collection
     if (session.role === 'member' && session.editableMemberId !== member.id) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
+    // Duplicate check — case-insensitive title + creator match within same member + collection
+    if (!force) {
+      const db = createServerClient()
+      const { data: existing } = await db
+        .from('items')
+        .select('id, title, creator, year')
+        .eq('member_id', member.id)
+        .eq('collection', collection)
+        .ilike('title', title)
+        .ilike('creator', creator || '')
+        .limit(1)
+        .single()
+      if (existing) {
+        return NextResponse.json({ error: 'Duplicate', existing }, { status: 409 })
+      }
     }
 
     let cover_path: string | null = null

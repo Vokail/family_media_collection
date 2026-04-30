@@ -1,6 +1,7 @@
 const mockUpload = jest.fn()
 const mockStorageFrom = jest.fn(() => ({ upload: mockUpload }))
 const mockDbFrom = jest.fn()
+const mockDupeSingle = jest.fn()
 
 jest.mock('@/lib/supabase-server', () => ({
   createServerClient: jest.fn(() => ({
@@ -45,9 +46,22 @@ beforeEach(() => {
   mockGetMember.mockReset()
   mockGetSession.mockReset()
   mockUpload.mockReset()
+  mockDupeSingle.mockReset()
   mockUpload.mockResolvedValue({ error: null })
   // Default: authenticated editor
   mockGetSession.mockResolvedValue({ role: 'editor' })
+  // Default: no duplicate found
+  mockDupeSingle.mockResolvedValue({ data: null })
+  const dupeChain = { single: mockDupeSingle }
+  const ilike2 = jest.fn().mockReturnValue(dupeChain)
+  const ilike1 = jest.fn().mockReturnValue({ ilike: ilike2 })
+  const eq2 = jest.fn().mockReturnValue({ ilike: ilike1 })
+  const eq1 = jest.fn().mockReturnValue({ eq: eq2 })
+  const dupeSelect = jest.fn().mockReturnValue({ eq: eq1 })
+  // Also expose limit on dupeChain for chain: ilike → limit → single
+  const limitFn = jest.fn().mockReturnValue(dupeChain)
+  ilike2.mockReturnValue({ limit: limitFn })
+  mockDbFrom.mockReturnValue({ select: dupeSelect })
 })
 
 describe('POST /api/items/manual — auth', () => {
@@ -141,5 +155,40 @@ describe('POST /api/items/manual', () => {
     const req = makeFormRequest({ memberSlug: 'alice', collection: 'vinyl', title: 'Handmade' })
     const res = await POST(req)
     expect(res.status).toBe(500)
+  })
+})
+
+describe('POST /api/items/manual — duplicate detection', () => {
+  const EXISTING = { id: 'existing-uuid', title: 'Handmade', creator: '', year: null }
+
+  it('returns 409 with existing item when duplicate title+creator found', async () => {
+    mockGetMember.mockResolvedValue(MEMBER)
+    mockDupeSingle.mockResolvedValue({ data: EXISTING })
+    const req = makeFormRequest({ memberSlug: 'alice', collection: 'vinyl', title: 'Handmade' })
+    const res = await POST(req)
+    expect(res.status).toBe(409)
+    const body = await res.json()
+    expect(body.error).toBe('Duplicate')
+    expect(body.existing.id).toBe('existing-uuid')
+    expect(mockCreateItem).not.toHaveBeenCalled()
+  })
+
+  it('bypasses duplicate check and creates item when force=true', async () => {
+    mockGetMember.mockResolvedValue(MEMBER)
+    mockDupeSingle.mockResolvedValue({ data: EXISTING })
+    mockCreateItem.mockResolvedValue(ITEM)
+    const req = makeFormRequest({ memberSlug: 'alice', collection: 'vinyl', title: 'Handmade', force: 'true' })
+    const res = await POST(req)
+    expect(res.status).toBe(201)
+    expect(mockCreateItem).toHaveBeenCalled()
+  })
+
+  it('proceeds normally (201) when no duplicate exists', async () => {
+    mockGetMember.mockResolvedValue(MEMBER)
+    // mockDupeSingle already returns { data: null } by default
+    mockCreateItem.mockResolvedValue(ITEM)
+    const req = makeFormRequest({ memberSlug: 'alice', collection: 'vinyl', title: 'Brand New' })
+    const res = await POST(req)
+    expect(res.status).toBe(201)
   })
 })

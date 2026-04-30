@@ -47,6 +47,7 @@ export default function AddItemPage() {
   const [manualCover, setManualCover] = useState<File | null>(null)
   const [addingManual, setAddingManual] = useState(false)
   const [showManualCamera, setShowManualCamera] = useState(false)
+  const [pendingDupe, setPendingDupe] = useState<{ isWishlist: boolean; existing: { id: string; title: string; creator: string; year: number | null } } | null>(null)
   const manualFileRef = useRef<HTMLInputElement>(null)
   const [showScanPicker, setShowScanPicker] = useState(false)
   const [showCoverCapture, setShowCoverCapture] = useState(false)
@@ -260,9 +261,10 @@ export default function AddItemPage() {
     }
   }
 
-  async function handleManualAdd(isWishlist: boolean) {
+  async function handleManualAdd(isWishlist: boolean, force = false) {
     if (!manualTitle.trim()) return
     setAddingManual(true)
+    setPendingDupe(null)
     const body = new FormData()
     body.append('memberSlug', member)
     body.append('collection', collection)
@@ -272,8 +274,14 @@ export default function AddItemPage() {
     body.append('is_wishlist', String(isWishlist))
     if (manualIsbn) body.append('isbn', manualIsbn)
     if (manualCover) body.append('cover', manualCover)
+    if (force) body.append('force', 'true')
     const res = await fetch('/api/items/manual', { method: 'POST', body })
     setAddingManual(false)
+    if (res.status === 409) {
+      const { existing } = await res.json()
+      setPendingDupe({ isWishlist, existing })
+      return
+    }
     if (res.ok) {
       const added = await res.json()
       setExistingItems(prev => [...prev, added])
@@ -418,6 +426,29 @@ export default function AddItemPage() {
                 {manualCover && <button onClick={() => setManualCover(null)} className="text-xs" style={{ color: 'var(--text-muted)' }}>✕</button>}
               </div>
             </div>
+            {pendingDupe && (
+              <div className="card p-3 flex flex-col gap-2 border-[var(--accent)]" style={{ borderColor: 'var(--accent)' }}>
+                <p className="text-sm font-semibold">Already in collection</p>
+                <p className="subtitle text-sm">
+                  &ldquo;{pendingDupe.existing.title}&rdquo;
+                  {pendingDupe.existing.creator ? ` by ${pendingDupe.existing.creator}` : ''}
+                  {pendingDupe.existing.year ? ` (${pendingDupe.existing.year})` : ''}
+                  {' '}is already in this collection.
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleManualAdd(pendingDupe.isWishlist, true)}
+                    className="btn-ghost text-sm flex-1"
+                    disabled={addingManual}
+                  >
+                    Add anyway
+                  </button>
+                  <button onClick={() => setPendingDupe(null)} className="btn-ghost text-sm flex-1">
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
             <div className="flex gap-2 pt-1">
               <button onClick={() => handleManualAdd(false)} disabled={addingManual || !manualTitle.trim()} className="btn-primary flex-1">
                 {addingManual ? '…' : 'Add to collection'}
