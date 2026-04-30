@@ -16,6 +16,7 @@ describe('searchBooks', () => {
             author_name: ['Erin Hunter'],
             first_publish_year: 2003,
             cover_i: 12345,
+            editions: { docs: [{ key: '/books/OL37843740M', title: 'De wildernis in', cover_i: 12727576 }] },
           }],
         }),
       })
@@ -37,7 +38,28 @@ describe('searchBooks', () => {
     const results = await searchBooks('Warrior Cats De Wildernis In', 'dutch')
     // GB result comes first in merged output (prepended), OL second
     expect(results[0]).toMatchObject({ title: 'Warrior cats / De wildernis in', source: 'google' })
-    expect(results[1]).toMatchObject({ title: 'Into the Wild', source: 'openlibrary' })
+    // OL result uses edition title, not work title
+    expect(results[1]).toMatchObject({ title: 'De wildernis in', source: 'openlibrary' })
+  })
+
+  it('falls back to work title when no edition title is present', async () => {
+    mockFetch
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          docs: [{
+            key: '/works/OL1234W',
+            title: 'Dune',
+            author_name: ['Frank Herbert'],
+            first_publish_year: 1965,
+            cover_i: 99999,
+            editions: { docs: [] },
+          }],
+        }),
+      })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ items: [] }) })
+    const results = await searchBooks('Dune')
+    expect(results[0]).toMatchObject({ title: 'Dune', source: 'openlibrary' })
   })
 
   it('deduplicates results with the same title and creator', async () => {

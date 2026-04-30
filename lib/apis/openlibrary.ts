@@ -1,12 +1,28 @@
 import type { SearchResult } from '../types'
 
+type OlEditionDoc = { key?: string; title?: string; cover_i?: number }
+
 function mapDoc(doc: Record<string, unknown>): SearchResult {
+  // OL search returns the matched edition embedded in editions.docs.
+  // We search through editions (rather than blindly index 0) for the first one
+  // that has a title with cover, then title alone, then fall back to work-level data.
+  const editionDocs = (
+    (doc.editions as { docs?: OlEditionDoc[] } | undefined)?.docs ?? []
+  )
+  const edition =
+    editionDocs.find(e => e.title && e.cover_i) ??
+    editionDocs.find(e => e.title) ??
+    null
+
+  const title = edition?.title ?? (doc.title as string)
+  const cover_i = edition?.cover_i ?? (doc.cover_i as number | undefined)
+
   return {
     external_id: doc.key as string,
-    title: doc.title as string,
+    title,
     creator: (doc.author_name as string[])?.[0] ?? 'Unknown',
     year: (doc.first_publish_year as number) ?? null,
-    cover_url: doc.cover_i ? `https://covers.openlibrary.org/b/id/${doc.cover_i}-L.jpg` : null,
+    cover_url: cover_i ? `https://covers.openlibrary.org/b/id/${cover_i}-L.jpg` : null,
     source: 'openlibrary',
   }
 }
@@ -47,7 +63,7 @@ export async function searchBooks(query: string, lang?: string, offset = 0): Pro
   // GB naturally ranks localised editions first when the query contains local words.
   const [olResults, gbResults] = await Promise.all([
     (async () => {
-      const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&fields=key,title,author_name,first_publish_year,cover_i&limit=20&offset=${offset}`
+      const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&fields=key,title,author_name,first_publish_year,cover_i,editions&limit=20&offset=${offset}`
       const res = await fetch(url)
       if (!res.ok) return []
       const data = await res.json()
