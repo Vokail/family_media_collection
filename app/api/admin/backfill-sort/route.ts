@@ -246,7 +246,7 @@ async function searchLegoSetNum(title: string): Promise<string | null> {
 }
 
 async function backfillLego(db: ReturnType<typeof createServerClient>, force: boolean) {
-  const { data: allItems } = await db.from('items').select('id, title, external_id, creator, description, cover_path, member_id').eq('collection', 'lego')
+  const { data: allItems } = await db.from('items').select('id, title, external_id, creator, description, cover_path, member_id, locked_fields').eq('collection', 'lego')
   const items = force
     ? (allItems ?? [])
     : (allItems ?? []).filter(i => !i.description)
@@ -272,7 +272,11 @@ async function backfillLego(db: ReturnType<typeof createServerClient>, force: bo
       const s = await res.json()
       const theme = (themesMap.get(s.theme_id as number) ?? item.creator).replace(/\s+and\s+CUUSOO$/i, '')
       const description = s.set_num ? `Set ${s.set_num} · ${s.num_parts} parts` : null
-      const patch: Record<string, unknown> = { creator: theme, description, year: s.year ?? null, external_id: setNum }
+      const locked: string[] = item.locked_fields ?? []
+      const patch: Record<string, unknown> = { description, external_id: setNum }
+      // Respect manually locked fields — don't overwrite creator or year if user edited them
+      if (!locked.includes('creator')) patch.creator = theme
+      if (!locked.includes('year')) patch.year = s.year ?? null
       if (!item.cover_path && s.set_img_url) {
         const path = await downloadCover(s.set_img_url as string, item.member_id)
         if (path) patch.cover_path = path

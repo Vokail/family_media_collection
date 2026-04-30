@@ -18,7 +18,7 @@ export async function createItem(item: Omit<Item, 'id' | 'created_at'>): Promise
   return data
 }
 
-export async function updateItem(id: string, patch: Partial<Pick<Item, 'is_wishlist' | 'notes' | 'rating' | 'cover_path' | 'status' | 'lego_status' | 'title' | 'creator' | 'year'>>): Promise<Item> {
+export async function updateItem(id: string, patch: Partial<Pick<Item, 'is_wishlist' | 'notes' | 'rating' | 'cover_path' | 'status' | 'lego_status' | 'title' | 'creator' | 'year' | 'locked_fields'>>): Promise<Item> {
   const db = createServerClient()
   const { data, error } = await db.from('items').update(patch).eq('id', id).select().single()
   if (error) throw error
