@@ -42,6 +42,17 @@ function makeItem(id: string, title: string): Item {
 const ITEM_A = makeItem('i1', 'Album A')
 const ITEM_B = makeItem('i2', 'Album B')
 
+// 65 items to exceed PAGE_SIZE (60)
+const manyItems = Array.from({ length: 65 }, (_, i) => makeItem(`id${i}`, `Track ${i + 1}`))
+
+let observerCallback: IntersectionObserverCallback
+beforeEach(() => {
+  window.IntersectionObserver = jest.fn((cb) => {
+    observerCallback = cb
+    return { observe: jest.fn(), disconnect: jest.fn() }
+  }) as unknown as typeof IntersectionObserver
+})
+
 describe('WishlistList', () => {
   it('renders items from initialItems', () => {
     render(<WishlistList initialItems={[ITEM_A, ITEM_B]} isEditor={false} supabaseUrl="https://x.supabase.co" />)
@@ -70,5 +81,39 @@ describe('WishlistList', () => {
 
     expect(screen.queryByText('Album A')).not.toBeInTheDocument()
     expect(screen.getByText('Album B')).toBeInTheDocument()
+  })
+
+  it('shows only the first 60 items initially', () => {
+    render(<WishlistList initialItems={manyItems} isEditor={false} supabaseUrl="https://x.supabase.co" />)
+    expect(screen.getAllByTestId('item-card')).toHaveLength(60)
+  })
+
+  it('renders a sentinel when there are more items', () => {
+    render(<WishlistList initialItems={manyItems} isEditor={false} supabaseUrl="https://x.supabase.co" />)
+    expect(document.querySelector('[aria-hidden="true"]')).not.toBeNull()
+  })
+
+  it('loads more items when sentinel becomes visible', () => {
+    render(<WishlistList initialItems={manyItems} isEditor={false} supabaseUrl="https://x.supabase.co" />)
+    act(() => {
+      observerCallback([{ isIntersecting: true } as IntersectionObserverEntry], {} as IntersectionObserver)
+    })
+    expect(screen.getAllByTestId('item-card')).toHaveLength(65)
+  })
+
+  it('resets pagination when initialItems changes', () => {
+    const { rerender } = render(
+      <WishlistList initialItems={manyItems} isEditor={false} supabaseUrl="https://x.supabase.co" />,
+    )
+    act(() => {
+      observerCallback([{ isIntersecting: true } as IntersectionObserverEntry], {} as IntersectionObserver)
+    })
+    expect(screen.getAllByTestId('item-card')).toHaveLength(65)
+
+    // Simulate filter change from parent — resets to first page
+    act(() => {
+      rerender(<WishlistList initialItems={manyItems.slice(0, 65)} isEditor={false} supabaseUrl="https://x.supabase.co" />)
+    })
+    expect(screen.getAllByTestId('item-card')).toHaveLength(60)
   })
 })
