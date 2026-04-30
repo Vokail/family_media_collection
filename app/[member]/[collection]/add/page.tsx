@@ -197,8 +197,8 @@ export default function AddItemPage() {
       if (title || series) {
         // Search with series + title + creator for best specificity
         const searchQuery = [series, title, creator].filter(Boolean).join(' ')
-        // Show only the volume title in the search box (series shown via results)
-        setQuery(title || series)
+        // Show series + title in the search box so re-searches stay specific
+        setQuery([series, title].filter(Boolean).join(' '))
         await runSearch(searchQuery)
       } else {
         toast.show('OCR returned no text — please fill in manually', 'error')
