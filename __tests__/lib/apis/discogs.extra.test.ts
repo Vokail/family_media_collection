@@ -24,8 +24,9 @@ describe('fetchVinylRelease', () => {
     expect(result.tracklist[1].duration).toBeNull() // empty string → null
   })
 
-  it('returns empty tracklist and null fields on non-OK response', async () => {
-    mockFetch.mockResolvedValueOnce({ ok: false })
+  it('returns empty tracklist and null fields when both master and release endpoints fail', async () => {
+    mockFetch.mockResolvedValueOnce({ ok: false }) // masters fails
+    mockFetch.mockResolvedValueOnce({ ok: false }) // releases fails
     const result = await fetchVinylRelease('bad-id')
     expect(result.tracklist).toEqual([])
     expect(result.sortName).toBeNull()
@@ -33,7 +34,7 @@ describe('fetchVinylRelease', () => {
     expect(result.styles).toBeNull()
   })
 
-  it('handles missing artists_sort gracefully', async () => {
+  it('handles missing artists_sort and artists gracefully (returns null sortName)', async () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
       json: async () => ({ tracklist: [] }),

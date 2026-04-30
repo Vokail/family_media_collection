@@ -58,11 +58,38 @@ beforeEach(() => {
 })
 
 describe('POST /api/items/[id]/cover', () => {
-  it('returns 403 when role is not editor', async () => {
+  it('returns 403 for viewer role', async () => {
     mockGetSession.mockResolvedValue({ role: 'viewer' })
     const req = makeFormRequest({})
     const res = await POST(req, { params: { id: 'item-id' } })
     expect(res.status).toBe(403)
+  })
+
+  it('returns 401 when no session', async () => {
+    mockGetSession.mockResolvedValue({ role: undefined })
+    const req = makeFormRequest({})
+    const res = await POST(req, { params: { id: 'item-id' } })
+    expect(res.status).toBe(403) // !role || role === 'viewer' both return 403
+  })
+
+  it('returns 403 when member tries to upload cover for another member\'s item', async () => {
+    mockGetSession.mockResolvedValue({ role: 'member', editableMemberId: 'other-member' })
+    mockDbSingle.mockResolvedValue({ data: { member_id: 'owner-member', cover_path: null } })
+    const req = makeFormRequest({})
+    const res = await POST(req, { params: { id: 'item-id' } })
+    expect(res.status).toBe(403)
+  })
+
+  it('allows member to upload cover for their own item', async () => {
+    mockGetSession.mockResolvedValue({ role: 'member', editableMemberId: 'member-1' })
+    mockDbSingle.mockResolvedValue({ data: { member_id: 'member-1', cover_path: null } })
+    mockUpload.mockResolvedValue({ error: null })
+    const updatedItem = { id: 'item-id', cover_path: 'covers/manual/member-1/uuid.jpg' }
+    mockDbUpdate.mockResolvedValue({ data: updatedItem, error: null })
+    const jpegBlob = new Blob([Buffer.from('jpeg-data')], { type: 'image/jpeg' })
+    const req = makeFormRequest({ cover: jpegBlob })
+    const res = await POST(req, { params: { id: 'item-id' } })
+    expect(res.status).toBe(200)
   })
 
   it('returns 404 when item does not exist', async () => {

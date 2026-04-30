@@ -10,6 +10,7 @@ jest.mock('@/lib/supabase-server', () => ({
 }))
 jest.mock('@/lib/db/items', () => ({ createItem: jest.fn() }))
 jest.mock('@/lib/db/members', () => ({ getMemberBySlug: jest.fn() }))
+jest.mock('@/lib/session', () => ({ getSession: jest.fn() }))
 
 const mockSharpInstance = {
   resize: jest.fn().mockReturnThis(),
@@ -21,9 +22,11 @@ jest.mock('sharp', () => jest.fn(() => mockSharpInstance))
 import { POST } from '@/app/api/items/manual/route'
 import { createItem } from '@/lib/db/items'
 import { getMemberBySlug } from '@/lib/db/members'
+import { getSession } from '@/lib/session'
 
 const mockCreateItem = createItem as jest.Mock
 const mockGetMember = getMemberBySlug as jest.Mock
+const mockGetSession = getSession as jest.Mock
 
 const MEMBER = { id: 'member-uuid', name: 'Alice', slug: 'alice' }
 const ITEM = { id: 'item-uuid', title: 'Handmade', member_id: 'member-uuid', collection: 'vinyl' }
@@ -40,8 +43,44 @@ function makeFormRequest(fields: Record<string, string | Blob>) {
 beforeEach(() => {
   mockCreateItem.mockReset()
   mockGetMember.mockReset()
+  mockGetSession.mockReset()
   mockUpload.mockReset()
   mockUpload.mockResolvedValue({ error: null })
+  // Default: authenticated editor
+  mockGetSession.mockResolvedValue({ role: 'editor' })
+})
+
+describe('POST /api/items/manual — auth', () => {
+  it('returns 401 when no session', async () => {
+    mockGetSession.mockResolvedValue({ role: undefined })
+    const req = makeFormRequest({ memberSlug: 'alice', collection: 'vinyl', title: 'Test' })
+    const res = await POST(req)
+    expect(res.status).toBe(401)
+  })
+
+  it('returns 403 for viewer role', async () => {
+    mockGetSession.mockResolvedValue({ role: 'viewer' })
+    const req = makeFormRequest({ memberSlug: 'alice', collection: 'vinyl', title: 'Test' })
+    const res = await POST(req)
+    expect(res.status).toBe(403)
+  })
+
+  it('returns 403 when member tries to add to another member\'s collection', async () => {
+    mockGetSession.mockResolvedValue({ role: 'member', editableMemberId: 'other-uuid' })
+    mockGetMember.mockResolvedValue(MEMBER) // MEMBER.id = 'member-uuid'
+    const req = makeFormRequest({ memberSlug: 'alice', collection: 'vinyl', title: 'Test' })
+    const res = await POST(req)
+    expect(res.status).toBe(403)
+  })
+
+  it('allows member to add to their own collection', async () => {
+    mockGetSession.mockResolvedValue({ role: 'member', editableMemberId: 'member-uuid' })
+    mockGetMember.mockResolvedValue(MEMBER)
+    mockCreateItem.mockResolvedValue(ITEM)
+    const req = makeFormRequest({ memberSlug: 'alice', collection: 'vinyl', title: 'Test' })
+    const res = await POST(req)
+    expect(res.status).toBe(201)
+  })
 })
 
 describe('POST /api/items/manual', () => {

@@ -85,29 +85,67 @@ describe('lookupVinylByBarcode', () => {
 })
 
 describe('fetchVinylRelease', () => {
-  it('returns tracklist, sortName, genres and styles from a release', async () => {
+  it('uses master endpoint first and returns data when it succeeds', async () => {
+    // First call = /masters/:id — succeeds
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        // Masters have artists array, not artists_sort
+        artists: [{ name: 'Pink Floyd' }],
+        genres: ['Rock'],
+        styles: ['Psychedelic Rock'],
+        tracklist: [{ position: 'A1', title: 'Speak to Me', duration: '1:30' }],
+      })
+    })
+    const { tracklist, sortName, genres, styles } = await fetchVinylRelease('12345')
+    expect(sortName).toBe('Pink Floyd') // falls back to artists[0].name
+    expect(genres).toBe('Rock')
+    expect(styles).toBe('Psychedelic Rock')
+    expect(tracklist).toHaveLength(1)
+    // Should NOT have made a second fetch (release fallback not needed)
+    expect(mockFetch).toHaveBeenCalledTimes(1)
+    expect((mockFetch.mock.calls[0][0] as string)).toContain('/masters/12345')
+  })
+
+  it('falls back to release endpoint when master returns 404', async () => {
+    // First call = /masters/:id — fails
+    mockFetch.mockResolvedValueOnce({ ok: false })
+    // Second call = /releases/:id — succeeds
     mockFetch.mockResolvedValueOnce({
       ok: true,
       json: async () => ({
         artists_sort: 'Beatles, The',
         genres: ['Rock'],
-        styles: ['Psychedelic Rock', 'Classic Rock'],
-        tracklist: [
-          { position: 'A1', title: 'Come Together', duration: '4:20' },
-          { position: 'A2', title: 'Something', duration: '3:03' },
-        ],
+        styles: ['Classic Rock'],
+        tracklist: [{ position: 'A1', title: 'Come Together', duration: '4:20' }],
       })
     })
-    const { tracklist, sortName, genres, styles } = await fetchVinylRelease('12345')
-    expect(sortName).toBe('Beatles, The')
+    const { tracklist, sortName, genres, styles } = await fetchVinylRelease('67890')
+    expect(sortName).toBe('Beatles, The') // from artists_sort on release
     expect(genres).toBe('Rock')
-    expect(styles).toBe('Psychedelic Rock, Classic Rock')
-    expect(tracklist).toHaveLength(2)
-    expect(tracklist[0]).toMatchObject({ position: 'A1', title: 'Come Together', duration: '4:20' })
+    expect(tracklist).toHaveLength(1)
+    expect(mockFetch).toHaveBeenCalledTimes(2)
+    expect((mockFetch.mock.calls[1][0] as string)).toContain('/releases/67890')
   })
 
-  it('returns nulls and empty tracklist on failure', async () => {
-    mockFetch.mockResolvedValueOnce({ ok: false })
+  it('prefers artists_sort over artists[0].name when both present', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        artists_sort: 'Sinatra, Frank',
+        artists: [{ name: 'Frank Sinatra' }],
+        genres: ['Jazz'],
+        styles: [],
+        tracklist: [],
+      })
+    })
+    const { sortName } = await fetchVinylRelease('111')
+    expect(sortName).toBe('Sinatra, Frank')
+  })
+
+  it('returns nulls and empty tracklist when both endpoints fail', async () => {
+    mockFetch.mockResolvedValueOnce({ ok: false }) // masters fails
+    mockFetch.mockResolvedValueOnce({ ok: false }) // releases fails
     const { tracklist, sortName, genres, styles } = await fetchVinylRelease('99999')
     expect(tracklist).toEqual([])
     expect(sortName).toBeNull()

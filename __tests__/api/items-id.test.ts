@@ -16,14 +16,16 @@ jest.mock('@/lib/db/items', () => ({
   deleteItem: jest.fn(),
 }))
 jest.mock('@/lib/session', () => ({
-  getSession: jest.fn().mockResolvedValue({ role: 'editor' }),
+  getSession: jest.fn(),
 }))
 
-import { PATCH, DELETE } from '@/app/api/items/[id]/route'
+import { GET, PATCH, DELETE } from '@/app/api/items/[id]/route'
 import { updateItem, deleteItem } from '@/lib/db/items'
+import { getSession } from '@/lib/session'
 
 const mockUpdateItem = updateItem as jest.Mock
 const mockDeleteItem = deleteItem as jest.Mock
+const mockGetSession = getSession as jest.Mock
 
 const ITEM = {
   id: 'item-uuid', title: 'Abbey Road', creator: 'The Beatles',
@@ -38,12 +40,39 @@ beforeEach(() => {
   mockUpdateItem.mockReset()
   mockDeleteItem.mockReset()
   mockStorageRemove.mockReset()
+  mockGetSession.mockReset()
   mockStorageRemove.mockResolvedValue({ error: null })
+  mockGetSession.mockResolvedValue({ role: 'editor' })
 
   mockSingle.mockResolvedValue({ data: null, error: null })
   mockEq.mockReturnValue({ single: mockSingle })
   mockSelect.mockReturnValue({ eq: mockEq })
   mockFrom.mockReturnValue({ select: mockSelect, update: jest.fn().mockReturnValue({ eq: jest.fn().mockResolvedValue({}) }) })
+})
+
+describe('GET /api/items/[id]', () => {
+  it('returns 401 when no session', async () => {
+    mockGetSession.mockResolvedValue({ role: undefined })
+    const req = new Request('http://localhost/api/items/item-uuid')
+    const res = await GET(req, buildParams('item-uuid'))
+    expect(res.status).toBe(401)
+  })
+
+  it('returns 404 when item not found', async () => {
+    mockSingle.mockResolvedValue({ data: null, error: { message: 'not found' } })
+    const req = new Request('http://localhost/api/items/item-uuid')
+    const res = await GET(req, buildParams('item-uuid'))
+    expect(res.status).toBe(404)
+  })
+
+  it('returns item data for authenticated user', async () => {
+    mockSingle.mockResolvedValue({ data: ITEM, error: null })
+    const req = new Request('http://localhost/api/items/item-uuid')
+    const res = await GET(req, buildParams('item-uuid'))
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    expect(data.title).toBe('Abbey Road')
+  })
 })
 
 describe('PATCH /api/items/[id]', () => {
