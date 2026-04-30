@@ -277,12 +277,24 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
       </div>
 
       {/* Search */}
-      <input
-        className="input text-sm py-1.5"
-        placeholder="Search title or artist…"
-        value={search}
-        onChange={e => setSearch(e.target.value)}
-      />
+      <div className="relative">
+        <input
+          className="input text-sm py-1.5 w-full pr-8"
+          placeholder="Search title or artist…"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+        />
+        {search && (
+          <button
+            onClick={() => setSearch('')}
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-sm leading-none px-1"
+            style={{ color: 'var(--text-muted)' }}
+            title="Clear search"
+          >
+            ✕
+          </button>
+        )}
+      </div>
 
       {/* Owned / Wishlist + Sort */}
       <div className="flex items-center gap-1 sm:gap-2 flex-nowrap">
