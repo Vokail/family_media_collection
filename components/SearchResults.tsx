@@ -55,15 +55,15 @@ function VinylDetailModal({ result, onClose }: DetailModalProps) {
 
           {/* Metadata pills */}
           <div className="flex flex-wrap gap-2">
-            {result.format && <span className="text-xs px-2.5 py-1 rounded-full" style={{ backgroundColor: 'var(--border)', color: 'var(--text-muted)' }}>{result.format}</span>}
-            {result.label && <span className="text-xs px-2.5 py-1 rounded-full" style={{ backgroundColor: 'var(--border)', color: 'var(--text-muted)' }}>{result.label}</span>}
-            {result.country && <span className="text-xs px-2.5 py-1 rounded-full" style={{ backgroundColor: 'var(--border)', color: 'var(--text-muted)' }}>{result.country}</span>}
-            {result.catno && <span className="text-xs px-2.5 py-1 rounded-full font-mono" style={{ backgroundColor: 'var(--border)', color: 'var(--text-muted)' }}>{result.catno}</span>}
+            {result.format && <span className="text-xs px-2.5 py-1 rounded-full max-w-[12rem] truncate" style={{ backgroundColor: 'var(--border)', color: 'var(--text-muted)' }}>{result.format}</span>}
+            {result.label && <span className="text-xs px-2.5 py-1 rounded-full max-w-[12rem] truncate" style={{ backgroundColor: 'var(--border)', color: 'var(--text-muted)' }}>{result.label}</span>}
+            {result.country && <span className="text-xs px-2.5 py-1 rounded-full max-w-[8rem] truncate" style={{ backgroundColor: 'var(--border)', color: 'var(--text-muted)' }}>{result.country}</span>}
+            {result.catno && <span className="text-xs px-2.5 py-1 rounded-full font-mono max-w-[10rem] truncate" style={{ backgroundColor: 'var(--border)', color: 'var(--text-muted)' }}>{result.catno}</span>}
             {(detail?.genres ?? result.genres)?.split(', ').map(g => (
-              <span key={g} className="text-xs px-2.5 py-1 rounded-full font-medium" style={{ backgroundColor: 'color-mix(in srgb, var(--accent) 15%, var(--bg-card))', color: 'var(--accent)' }}>{g}</span>
+              <span key={g} className="text-xs px-2.5 py-1 rounded-full font-medium max-w-[10rem] truncate" style={{ backgroundColor: 'color-mix(in srgb, var(--accent) 15%, var(--bg-card))', color: 'var(--accent)' }}>{g}</span>
             ))}
             {(detail?.styles ?? result.styles)?.split(', ').map(s => (
-              <span key={s} className="text-xs px-2.5 py-1 rounded-full" style={{ backgroundColor: 'var(--border)', color: 'var(--text)' }}>{s}</span>
+              <span key={s} className="text-xs px-2.5 py-1 rounded-full max-w-[10rem] truncate" style={{ backgroundColor: 'var(--border)', color: 'var(--text)' }}>{s}</span>
             ))}
           </div>
 
