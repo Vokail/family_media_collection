@@ -308,13 +308,25 @@ export default function AddItemPage() {
         <p className="text-sm mb-2 text-center" style={{ color: 'var(--text-muted)' }}>{barcodeHint}</p>
       )}
       <div className="flex gap-2 mb-4">
-        <input
-          className="input flex-1"
-          placeholder="Search by title or artist…"
-          value={query}
-          onChange={e => { setQuery(e.target.value); setBarcodeHint(null) }}
-          onKeyDown={e => e.key === 'Enter' && runSearch(query)}
-        />
+        <div className="relative flex-1">
+          <input
+            className="input w-full pr-8"
+            placeholder="Search by title or artist…"
+            value={query}
+            onChange={e => { setQuery(e.target.value); setBarcodeHint(null) }}
+            onKeyDown={e => e.key === 'Enter' && runSearch(query)}
+          />
+          {query && (
+            <button
+              onClick={() => { setQuery(''); setResults([]); setOffset(0); setBarcodeHint(null) }}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-sm leading-none px-1"
+              style={{ color: 'var(--text-muted)' }}
+              title="Clear search"
+            >
+              ✕
+            </button>
+          )}
+        </div>
         <button onClick={() => setShowScanPicker(true)} className="btn-ghost px-4 text-xl md:hidden" title="Scan">
           {identifying ? '⏳' : '📷'}
         </button>
