@@ -72,6 +72,7 @@ Run all migrations in sequence:
 | `008_member_enabled_collections.sql` | Adds `enabled_collections` array to members for per-member collection visibility |
 | `009_lego_build_status.sql` | Adds `lego_status` column to items (`built` / `in_box` / `disassembled`) |
 | `010_locked_fields.sql` | Adds `locked_fields` text array to items — tracks manually-edited fields so backfill won't overwrite them |
+| `011_item_counts_fn.sql` | Adds `get_member_item_counts()` DB function — returns owned-item counts grouped by member + collection (replaces full table scan) |
 
 Then add your family members (edit names/slugs to match your family):
 
@@ -97,6 +98,7 @@ Run only the migrations you haven't applied yet, in order:
 008_member_enabled_collections.sql        — adds enabled_collections array to members
 009_lego_build_status.sql                 — adds lego_status column (built / in_box / disassembled)
 010_locked_fields.sql                     — adds locked_fields text array to protect manually-edited fields from backfill
+011_item_counts_fn.sql                    — adds get_member_item_counts() DB function for efficient member stats counts
 ```
 
 ## Local Development
