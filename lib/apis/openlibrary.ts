@@ -12,9 +12,10 @@ function mapDoc(doc: Record<string, unknown>): SearchResult {
 }
 
 
-async function searchGoogleBooks(query: string, lang?: string): Promise<SearchResult[]> {
-  const langParam = lang && GB_LANG_CODES[lang] ? `&langRestrict=${GB_LANG_CODES[lang]}` : ''
-  const url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=10${langParam}`
+async function searchGoogleBooks(query: string): Promise<SearchResult[]> {
+  // No langRestrict — it returns zero results for many non-English queries
+  // (verified: GB naturally ranks Dutch editions first for Dutch queries)
+  const url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=10`
   try {
     const res = await fetch(url, { signal: AbortSignal.timeout(7000) })
     if (!res.ok) return []
@@ -38,22 +39,21 @@ async function searchGoogleBooks(query: string, lang?: string): Promise<SearchRe
   }
 }
 
-const OL_SEARCH_LANG_CODES: Record<string, string> = { dutch: 'dut', french: 'fre', german: 'ger' }
-
 export async function searchBooks(query: string, lang?: string, offset = 0): Promise<SearchResult[]> {
   // Run OpenLibrary and Google Books in parallel — GB is especially useful for
-  // non-English editions that OL doesn't index well
-  const olLangCode = lang && lang !== 'all' && lang !== 'english' ? OL_SEARCH_LANG_CODES[lang] : null
+  // non-English editions that OL doesn't index well.
+  // Neither source uses a language filter: OL's language filter returns wrong/incomplete
+  // results, and GB's langRestrict kills results for many non-English queries.
+  // GB naturally ranks localised editions first when the query contains local words.
   const [olResults, gbResults] = await Promise.all([
     (async () => {
-      const langFilter = olLangCode ? `&language=${olLangCode}` : ''
-      const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&fields=key,title,author_name,first_publish_year,cover_i&limit=20&offset=${offset}${langFilter}`
+      const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&fields=key,title,author_name,first_publish_year,cover_i&limit=20&offset=${offset}`
       const res = await fetch(url)
       if (!res.ok) return []
       const data = await res.json()
       return (data.docs ?? []).map(mapDoc) as SearchResult[]
     })(),
-    offset === 0 ? searchGoogleBooks(query, lang) : Promise.resolve([]),
+    offset === 0 ? searchGoogleBooks(query) : Promise.resolve([]),
   ])
 
   // Merge: deduplicate by normalised title+creator, prefer results with cover art
