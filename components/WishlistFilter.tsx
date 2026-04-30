@@ -64,13 +64,24 @@ export default function WishlistFilter({ members, initialItems, isEditor, supaba
     <>
       {/* Search + filter controls */}
       <div className="flex flex-col gap-3 mb-6">
-        <input
-          type="search"
-          className="input"
-          placeholder="Search by title or creator…"
-          value={query}
-          onChange={e => setQuery(e.target.value)}
-        />
+        <div className="relative">
+          <input
+            type="search"
+            className="input pr-8"
+            placeholder="Search by title or creator…"
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+          />
+          {query && (
+            <button
+              onClick={() => setQuery('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text)] transition-colors"
+              aria-label="Clear search"
+            >
+              ✕
+            </button>
+          )}
+        </div>
         <div className="flex gap-2 flex-wrap">
           <button
             className={`btn-ghost text-sm${collectionFilter === null ? ' active' : ''}`}

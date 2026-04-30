@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import ItemCard from './ItemCard'
 import type { Item } from '@/lib/types'
 
@@ -11,6 +11,9 @@ interface Props {
 
 export default function WishlistList({ initialItems, isEditor, supabaseUrl }: Props) {
   const [items, setItems] = useState(initialItems)
+
+  // Sync when the parent filter changes the set of items passed in
+  useEffect(() => { setItems(initialItems) }, [initialItems])
 
   if (items.length === 0) return null
 
