@@ -36,10 +36,9 @@ describe('searchBooks', () => {
         }),
       })
     const results = await searchBooks('Warrior Cats De Wildernis In', 'dutch')
-    // GB result comes first in merged output (prepended), OL second
-    expect(results[0]).toMatchObject({ title: 'Warrior cats / De wildernis in', source: 'google' })
-    // OL result uses edition title, not work title
-    expect(results[1]).toMatchObject({ title: 'De wildernis in', source: 'openlibrary' })
+    // OL result comes first, GB second
+    expect(results[0]).toMatchObject({ title: 'De wildernis in', source: 'openlibrary' })
+    expect(results[1]).toMatchObject({ title: 'Warrior cats / De wildernis in', source: 'google' })
   })
 
   it('falls back to work title when no edition title is present', async () => {

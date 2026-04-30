@@ -75,7 +75,7 @@ export async function searchBooks(query: string, lang?: string, offset = 0): Pro
   // Merge: deduplicate by normalised title+creator, prefer results with cover art
   const seen = new Set<string>()
   const merged: SearchResult[] = []
-  for (const r of [...gbResults, ...olResults]) {
+  for (const r of [...olResults, ...gbResults]) {
     const key = `${r.title?.toLowerCase().trim()}|${r.creator?.toLowerCase().trim()}`
     if (!seen.has(key)) {
       seen.add(key)
