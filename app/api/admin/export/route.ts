@@ -17,23 +17,32 @@ export async function GET() {
     db.from('items').select('*').order('created_at', { ascending: true }),
   ])
 
-  // Download each cover from Supabase Storage and embed as base64
-  const itemsWithCovers = await Promise.all(
-    (items ?? []).map(async (item) => {
-      if (!item.cover_path) return item
-      try {
-        const storagePath = item.cover_path.startsWith('covers/')
-          ? item.cover_path.slice('covers/'.length)
-          : item.cover_path
-        const { data: blob } = await db.storage.from('covers').download(storagePath)
-        if (!blob) return item
-        const buffer = Buffer.from(await blob.arrayBuffer())
-        return { ...item, cover_data: buffer.toString('base64'), cover_mime: blob.type || 'image/jpeg' }
-      } catch {
-        return item
-      }
-    }),
-  )
+  // Download each cover from Supabase Storage and embed as base64.
+  // Process in batches of 10 to avoid exhausting the connection pool on large collections.
+  const BATCH_SIZE = 10
+  const allItems = items ?? []
+  const itemsWithCovers: typeof allItems = []
+
+  for (let i = 0; i < allItems.length; i += BATCH_SIZE) {
+    const batch = allItems.slice(i, i + BATCH_SIZE)
+    const results = await Promise.all(
+      batch.map(async (item) => {
+        if (!item.cover_path) return item
+        try {
+          const storagePath = item.cover_path.startsWith('covers/')
+            ? item.cover_path.slice('covers/'.length)
+            : item.cover_path
+          const { data: blob } = await db.storage.from('covers').download(storagePath)
+          if (!blob) return item
+          const buffer = Buffer.from(await blob.arrayBuffer())
+          return { ...item, cover_data: buffer.toString('base64'), cover_mime: blob.type || 'image/jpeg' }
+        } catch {
+          return item
+        }
+      }),
+    )
+    itemsWithCovers.push(...results)
+  }
 
   const payload = {
     version: 1,

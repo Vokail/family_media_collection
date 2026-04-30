@@ -41,11 +41,13 @@ export async function updateMemberCollections(memberId: string, collections: Col
 
 export async function listMemberItemCounts(): Promise<Record<string, MemberItemCounts>> {
   const db = createServerClient()
-  const { data } = await db.from('items').select('member_id, collection').eq('is_wishlist', false)
+  // Uses a DB-level GROUP BY aggregate (see migration 011_item_counts_fn.sql)
+  // to avoid fetching all item rows into JS just to count them.
+  const { data } = await db.rpc('get_member_item_counts')
   const result: Record<string, MemberItemCounts> = {}
-  for (const row of data ?? []) {
+  for (const row of (data ?? []) as { member_id: string; collection: string; count: number }[]) {
     if (!result[row.member_id]) result[row.member_id] = {}
-    result[row.member_id][row.collection] = (result[row.member_id][row.collection] ?? 0) + 1
+    result[row.member_id][row.collection] = Number(row.count)
   }
   return result
 }

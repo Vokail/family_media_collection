@@ -1,6 +1,13 @@
 const MAX_ATTEMPTS = 5
 const LOCKOUT_MS = 15 * 60 * 1000
 
+// NOTE: This map is stored in the serverless function's module scope.
+// On Vercel each function instance has its own memory, so lockout state is lost
+// on cold starts and is not shared across concurrent instances.
+// For a small family app this is acceptable — an attacker would need to hit
+// the same warm instance to exhaust attempts. If stronger guarantees are ever
+// needed, move this state to Supabase (e.g. a `login_attempts` table with a
+// cron to prune old rows) or Redis/Upstash.
 interface Attempt { count: number; lockedUntil: number | null }
 const attempts = new Map<string, Attempt>()
 

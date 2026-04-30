@@ -4,9 +4,10 @@ const mockOrder = jest.fn()
 const mockSelect = jest.fn()
 const mockUpdate = jest.fn()
 const mockFrom = jest.fn()
+const mockRpc = jest.fn()
 
 jest.mock('@/lib/supabase-server', () => ({
-  createServerClient: jest.fn(() => ({ from: mockFrom })),
+  createServerClient: jest.fn(() => ({ from: mockFrom, rpc: mockRpc })),
 }))
 
 import { listMembers, getMemberBySlug, listMemberItemCounts, updateMemberCollections } from '@/lib/db/members'
@@ -23,6 +24,7 @@ beforeEach(() => {
   mockSelect.mockReset()
   mockUpdate.mockReset()
   mockFrom.mockReset()
+  mockRpc.mockReset()
 })
 
 describe('listMembers', () => {
@@ -69,37 +71,32 @@ describe('getMemberBySlug', () => {
 })
 
 describe('listMemberItemCounts', () => {
-  it('groups item counts by member and collection', async () => {
+  it('maps aggregate rows to nested counts by member and collection', async () => {
+    // The RPC returns one row per (member_id, collection) with a pre-computed count
     const rows = [
-      { member_id: 'uuid-1', collection: 'vinyl' },
-      { member_id: 'uuid-1', collection: 'vinyl' },
-      { member_id: 'uuid-1', collection: 'book' },
-      { member_id: 'uuid-2', collection: 'comic' },
+      { member_id: 'uuid-1', collection: 'vinyl', count: 2 },
+      { member_id: 'uuid-1', collection: 'book', count: 1 },
+      { member_id: 'uuid-2', collection: 'comic', count: 1 },
     ]
-    mockEq.mockResolvedValue({ data: rows })
-    mockSelect.mockReturnValue({ eq: mockEq })
-    mockFrom.mockReturnValue({ select: mockSelect })
+    mockRpc.mockResolvedValue({ data: rows })
 
     const result = await listMemberItemCounts()
     expect(result['uuid-1'].vinyl).toBe(2)
     expect(result['uuid-1'].book).toBe(1)
     expect(result['uuid-2'].comic).toBe(1)
     expect(result['uuid-2'].vinyl).toBeUndefined()
+    expect(mockRpc).toHaveBeenCalledWith('get_member_item_counts')
   })
 
   it('returns empty object when no items exist', async () => {
-    mockEq.mockResolvedValue({ data: [] })
-    mockSelect.mockReturnValue({ eq: mockEq })
-    mockFrom.mockReturnValue({ select: mockSelect })
+    mockRpc.mockResolvedValue({ data: [] })
 
     const result = await listMemberItemCounts()
     expect(result).toEqual({})
   })
 
   it('handles null data from Supabase', async () => {
-    mockEq.mockResolvedValue({ data: null })
-    mockSelect.mockReturnValue({ eq: mockEq })
-    mockFrom.mockReturnValue({ select: mockSelect })
+    mockRpc.mockResolvedValue({ data: null })
 
     const result = await listMemberItemCounts()
     expect(result).toEqual({})

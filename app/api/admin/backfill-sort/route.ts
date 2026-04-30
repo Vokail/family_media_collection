@@ -4,6 +4,10 @@ import { downloadCover } from '@/lib/cover'
 import { fetchBookDescription } from '@/lib/apis/openlibrary'
 import { fetchComicDescription } from '@/lib/apis/comicvine'
 
+// Backfill iterates over every item, calling external APIs with rate-limit delays.
+// 300s ceiling prevents Vercel from cutting it off on large collections.
+export const maxDuration = 300
+
 const DISCOGS_BASE = 'https://api.discogs.com'
 const discogsHeaders = () => ({
   Authorization: `Discogs token=${process.env.DISCOGS_API_KEY}`,
