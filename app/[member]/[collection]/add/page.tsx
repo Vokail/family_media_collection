@@ -195,10 +195,11 @@ export default function AddItemPage() {
       if (creator) setManualCreator(creator)
 
       if (title || series) {
-        // Search with series + title + creator for best specificity
-        const searchQuery = [series, title, creator].filter(Boolean).join(' ')
+        // Search with series + title — creator is omitted to avoid over-constraining
+        // non-English editions where author names may differ between sources
+        const searchQuery = [series, title].filter(Boolean).join(' ')
         // Show series + title in the search box so re-searches stay specific
-        setQuery([series, title].filter(Boolean).join(' '))
+        setQuery(searchQuery)
         await runSearch(searchQuery)
       } else {
         toast.show('OCR returned no text — please fill in manually', 'error')

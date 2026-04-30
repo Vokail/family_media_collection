@@ -40,6 +40,38 @@ describe('searchBooks', () => {
     expect(results[1]).toMatchObject({ title: 'Into the Wild', source: 'openlibrary' })
   })
 
+  it('passes language filter to OpenLibrary when lang is set', async () => {
+    mockFetch.mockReset()
+    mockFetch
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ docs: [] }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ items: [] }),
+      })
+    await searchBooks('Warrior Cats', 'dutch')
+    const olUrl: string = (mockFetch.mock.calls[0][0] as string)
+    expect(olUrl).toContain('language=dut')
+  })
+
+  it('does not pass language filter when lang is all', async () => {
+    mockFetch.mockReset()
+    mockFetch
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ docs: [] }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ items: [] }),
+      })
+    await searchBooks('Dune', 'all')
+    const olUrl: string = (mockFetch.mock.calls[0][0] as string)
+    expect(olUrl).not.toContain('language=')
+  })
+
   it('deduplicates results with the same title and creator', async () => {
     // OL first, GB second
     mockFetch

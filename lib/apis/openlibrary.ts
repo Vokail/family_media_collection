@@ -38,12 +38,16 @@ async function searchGoogleBooks(query: string, lang?: string): Promise<SearchRe
   }
 }
 
+const OL_SEARCH_LANG_CODES: Record<string, string> = { dutch: 'dut', french: 'fre', german: 'ger' }
+
 export async function searchBooks(query: string, lang?: string, offset = 0): Promise<SearchResult[]> {
   // Run OpenLibrary and Google Books in parallel — GB is especially useful for
   // non-English editions that OL doesn't index well
+  const olLangCode = lang && lang !== 'all' && lang !== 'english' ? OL_SEARCH_LANG_CODES[lang] : null
   const [olResults, gbResults] = await Promise.all([
     (async () => {
-      const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&fields=key,title,author_name,first_publish_year,cover_i&limit=20&offset=${offset}`
+      const langFilter = olLangCode ? `&language=${olLangCode}` : ''
+      const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&fields=key,title,author_name,first_publish_year,cover_i&limit=20&offset=${offset}${langFilter}`
       const res = await fetch(url)
       if (!res.ok) return []
       const data = await res.json()
