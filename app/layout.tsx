@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from 'next'
-import Script from 'next/script'
 import './globals.css'
 import { ToastProvider } from '@/components/Toast'
 import ServiceWorkerRegistration from '@/components/ServiceWorkerRegistration'
@@ -40,8 +39,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           {children}
         </ToastProvider>
         <ServiceWorkerRegistration />
-        {/* Splash screen: runs once on cold launch before React hydrates, ignored on client-side navigation */}
-        <Script src="/splash-init.js" strategy="beforeInteractive" />
       </body>
     </html>
   )
