@@ -27,13 +27,14 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    // style sets background before globals.css loads — prevents white flash on PWA startup
+    <html lang="en" style={{ backgroundColor: '#f5ede0' }}>
       <head>
         <link rel="icon" href="/icon.svg" type="image/svg+xml" />
         <link rel="icon" href="/icon-192.png" type="image/png" />
         <link rel="apple-touch-icon" href="/apple-touch-icon-v2.png" />
       </head>
-      <body className="min-h-screen">
+      <body className="min-h-screen" style={{ backgroundColor: '#f5ede0' }}>
         <ToastProvider>
           {children}
         </ToastProvider>
