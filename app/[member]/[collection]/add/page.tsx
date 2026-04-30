@@ -171,36 +171,26 @@ export default function AddItemPage() {
     setIdentifying(true)
 
     try {
-      // Lazy-load Tesseract only when needed — runs in the browser, no serverless timeout
-      const { createWorker } = await import('tesseract.js')
-      const worker = await createWorker('eng+nld')
-      const { data } = await worker.recognize(file)
-      await worker.terminate()
+      // Send image to server-side OCR route (OpenRouter Llama 3.2 Vision)
+      const form = new FormData()
+      form.append('image', file)
+      const res = await fetch('/api/ocr', { method: 'POST', body: form })
 
-      // Filter noise: keep lines that look like real text (>2 chars, not purely numeric/punctuation)
-      const lines = data.text
-        .split('\n')
-        .map((l: string) => l.trim())
-        .filter((l: string) => l.length > 2 && /[a-zA-Z]{2,}/.test(l))
+      if (!res.ok) throw new Error('OCR request failed')
 
-      // Title = first substantial line (covers print titles at the top)
-      // Creator = last substantial line (authors printed at the bottom)
-      const title = toTitleCase(lines[0] ?? '')
-      const creator = toTitleCase(lines.length > 1 ? lines[lines.length - 1] : '')
-      const confident = data.confidence >= 40 && title.length > 2
+      const { title: rawTitle, creator: rawCreator } = await res.json() as { title: string; creator: string }
+      const title = toTitleCase(rawTitle.trim())
+      const creator = toTitleCase(rawCreator.trim())
 
-      // Always pre-fill whatever was extracted, regardless of confidence
+      // Always pre-fill whatever was extracted
       if (title) setManualTitle(title)
       if (creator) setManualCreator(creator)
 
-      if (confident && title) {
-        // Combine title + creator in the search query so results are good even if
-        // the heuristic swapped them. Show only the title in the search box.
+      if (title) {
         const searchQuery = [title, creator].filter(Boolean).join(' ')
         setQuery(title)
         await runSearch(searchQuery)
       } else {
-        // Low confidence — go straight to manual form (fields already pre-filled above)
         setShowManual(true)
         setManualCover(file)
       }
