@@ -61,16 +61,19 @@ export async function searchBooks(query: string, lang?: string, offset = 0): Pro
   // Neither source uses a language filter: OL's language filter returns wrong/incomplete
   // results, and GB's langRestrict kills results for many non-English queries.
   // GB naturally ranks localised editions first when the query contains local words.
-  const [olResults, gbResults] = await Promise.all([
+  // allSettled so a slow/failing OL never blocks GB results (and vice versa)
+  const [olSettled, gbSettled] = await Promise.allSettled([
     (async () => {
       const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&fields=key,title,author_name,first_publish_year,cover_i,editions&limit=20&offset=${offset}`
-      const res = await fetch(url)
+      const res = await fetch(url, { signal: AbortSignal.timeout(8000) })
       if (!res.ok) return []
       const data = await res.json()
       return (data.docs ?? []).map(mapDoc) as SearchResult[]
     })(),
     offset === 0 ? searchGoogleBooks(query) : Promise.resolve([]),
   ])
+  const olResults = olSettled.status === 'fulfilled' ? olSettled.value : []
+  const gbResults = gbSettled.status === 'fulfilled' ? gbSettled.value : []
 
   // Merge: deduplicate by normalised title+creator, prefer results with cover art
   const seen = new Set<string>()
