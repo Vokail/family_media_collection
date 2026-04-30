@@ -1,5 +1,12 @@
 jest.mock('@/lib/session', () => ({ getSession: jest.fn() }))
 
+const mockSharpInstance = {
+  resize: jest.fn().mockReturnThis(),
+  jpeg: jest.fn().mockReturnThis(),
+  toBuffer: jest.fn().mockResolvedValue(Buffer.from('resized-img')),
+}
+jest.mock('sharp', () => jest.fn(() => mockSharpInstance))
+
 const mockFetch = jest.fn()
 global.fetch = mockFetch
 

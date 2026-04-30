@@ -1,9 +1,12 @@
 import { NextResponse } from 'next/server'
 import { getSession } from '@/lib/session'
+import sharp from 'sharp'
 
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions'
 // Free vision model on OpenRouter — switch here if a better free model becomes available
 const MODEL = 'meta-llama/llama-3.2-11b-vision-instruct:free'
+// Max longest side before sending to vision model — keeps base64 payload small
+const MAX_PX = 1024
 
 export async function POST(request: Request) {
   const session = await getSession()
@@ -16,10 +19,15 @@ export async function POST(request: Request) {
   const file = form.get('image') as File | null
   if (!file) return NextResponse.json({ error: 'No image provided' }, { status: 400 })
 
-  // Convert to base64 for the vision API
-  const buffer = Buffer.from(await file.arrayBuffer())
-  const base64 = buffer.toString('base64')
-  const mimeType = file.type || 'image/jpeg'
+  // Resize to max 1024px on the longest side — phone photos can be 3–8 MB which
+  // exceeds free vision model context limits when base64-encoded
+  const raw = Buffer.from(await file.arrayBuffer())
+  const resized = await sharp(raw)
+    .resize(MAX_PX, MAX_PX, { fit: 'inside', withoutEnlargement: true })
+    .jpeg({ quality: 85 })
+    .toBuffer()
+
+  const base64 = resized.toString('base64')
 
   const prompt =
     'This is a cover image of a book, vinyl record, or comic. ' +
@@ -39,7 +47,7 @@ export async function POST(request: Request) {
         {
           role: 'user',
           content: [
-            { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64}` } },
+            { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${base64}` } },
             { type: 'text', text: prompt },
           ],
         },
@@ -54,11 +62,11 @@ export async function POST(request: Request) {
   }
 
   const json = await res.json()
-  const raw = json.choices?.[0]?.message?.content ?? ''
+  const raw_text = json.choices?.[0]?.message?.content ?? ''
 
   // Parse the JSON the model returns — strip any markdown code fences if present
   try {
-    const cleaned = raw.replace(/```json|```/g, '').trim()
+    const cleaned = raw_text.replace(/```json|```/g, '').trim()
     const parsed = JSON.parse(cleaned) as { title?: string; creator?: string }
     return NextResponse.json({
       title: parsed.title ?? '',
@@ -67,6 +75,6 @@ export async function POST(request: Request) {
   } catch {
     // Model returned something unparseable — return raw text as title so the
     // user at least gets something to work with
-    return NextResponse.json({ title: raw.slice(0, 120), creator: '' })
+    return NextResponse.json({ title: raw_text.slice(0, 120), creator: '' })
   }
 }
