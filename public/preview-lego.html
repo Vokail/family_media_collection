@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lego Build Status Preview</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #f5ede0; --bg-card: #fff; --text: #2c1a0e;
+    --text-muted: #8b6914; --accent: #c67c3c; --border: #e8d5b7;
+    --shadow: rgba(0,0,0,0.10);
+  }
+  body { background: var(--bg); color: var(--text); font-family: system-ui, sans-serif; padding: 24px; max-width: 390px; margin: 0 auto; }
+  h3 { font-family: Georgia, serif; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); margin-bottom: 12px; }
+  .card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; box-shadow: 0 2px 8px var(--shadow); padding: 20px; margin-bottom: 28px; }
+
+  /* Grid card */
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .grid-tile { aspect-ratio: 1; border-radius: 12px; background: var(--border); position: relative; display: flex; align-items: center; justify-content: center; font-size: 28px; box-shadow: 0 2px 6px var(--shadow); }
+  .badge {
+    position: absolute; bottom: 4px; left: 4px; right: 4px;
+    background: rgba(0,0,0,0.55); color: #fff;
+    font-size: 10px; font-weight: 600; border-radius: 6px;
+    padding: 2px 5px; text-align: center; white-space: nowrap;
+  }
+  .badge.built { background: rgba(198,124,60,0.92); }
+  .badge.inbox { background: rgba(44,26,14,0.65); }
+  .badge.disassembled { background: rgba(100,80,50,0.75); }
+  .no-badge { color: var(--text-muted); font-size: 10px; margin-top: 4px; font-style: italic; text-align: center; }
+
+  /* List card */
+  .list-item { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .list-item:last-child { border-bottom: none; }
+  .list-thumb { width: 44px; height: 44px; border-radius: 8px; background: var(--border); display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; }
+  .list-info { flex: 1; min-width: 0; }
+  .list-title { font-size: 13px; font-weight: 600; }
+  .list-sub { font-size: 11px; color: var(--text-muted); }
+  .list-badge { flex-shrink: 0; font-size: 10px; font-weight: 600; padding: 3px 7px; border-radius: 20px; }
+  .list-badge.built { background: color-mix(in srgb, var(--accent) 15%, var(--bg-card)); color: var(--accent); }
+  .list-badge.inbox { background: var(--border); color: var(--text-muted); }
+  .list-badge.disassembled { background: var(--border); color: var(--text-muted); }
+
+  /* Detail toggle */
+  .toggle-row { display: flex; gap: 6px; }
+  .toggle-btn { flex: 1; padding: 8px 4px; border-radius: 20px; border: 1px solid var(--border); background: transparent; color: var(--text-muted); font-size: 12px; font-weight: 600; cursor: pointer; text-align: center; }
+  .toggle-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  .section-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); margin-bottom: 8px; }
+  .spacer { height: 8px; }
+</style>
+</head>
+<body>
+
+<h3>Grid card — badge in corner</h3>
+<div class="card">
+  <div class="grid">
+    <div class="grid-tile">🧱<div class="badge built">🏗 Built</div></div>
+    <div class="grid-tile">🧱<div class="badge inbox">📦 In box</div></div>
+    <div class="grid-tile">🧱<div class="badge disassembled">🔧 Apart</div></div>
+  </div>
+</div>
+
+<h3>List view — pill on right</h3>
+<div class="card">
+  <div class="list-item">
+    <div class="list-thumb">🧱</div>
+    <div class="list-info"><div class="list-title">Millennium Falcon</div><div class="list-sub">75192 · 2017</div></div>
+    <span class="list-badge built">🏗 Built</span>
+  </div>
+  <div class="list-item">
+    <div class="list-thumb">🧱</div>
+    <div class="list-info"><div class="list-title">Eiffel Tower</div><div class="list-sub">10307 · 2022</div></div>
+    <span class="list-badge inbox">📦 In box</span>
+  </div>
+  <div class="list-item">
+    <div class="list-thumb">🧱</div>
+    <div class="list-info"><div class="list-title">Technic Bugatti</div><div class="list-sub">42083 · 2018</div></div>
+    <span class="list-badge disassembled">🔧 Apart</span>
+  </div>
+</div>
+
+<h3>Detail sheet — three-way toggle</h3>
+<div class="card">
+  <div class="section-label">Build status</div>
+  <div class="toggle-row">
+    <button class="toggle-btn">📦 In box</button>
+    <button class="toggle-btn active">🏗 Built</button>
+    <button class="toggle-btn">🔧 Apart</button>
+  </div>
+  <div class="spacer"></div>
+  <p style="font-size:11px;color:var(--text-muted);margin-top:8px">Tapping the active state clears it (back to unset)</p>
+</div>
+
+</body>
+</html>

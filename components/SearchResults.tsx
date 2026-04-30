@@ -103,15 +103,19 @@ function VinylDetailModal({ result, onClose }: DetailModalProps) {
 
 interface Props {
   results: SearchResult[]
+  hasSearched?: boolean
   onAdd: (result: SearchResult, isWishlist: boolean) => Promise<void>
   adding: string | null
   getDupeStatus?: (result: SearchResult) => 'owned' | 'wishlist' | null
 }
 
-export default function SearchResults({ results, onAdd, adding, getDupeStatus }: Props) {
+export default function SearchResults({ results, hasSearched, onAdd, adding, getDupeStatus }: Props) {
   const [detailFor, setDetailFor] = useState<SearchResult | null>(null)
 
-  if (results.length === 0) return <p className="subtitle text-center py-8">No results found.</p>
+  if (results.length === 0) {
+    if (!hasSearched) return null
+    return <p className="subtitle text-center py-8">No results found.</p>
+  }
 
   return (
     <>

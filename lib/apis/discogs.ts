@@ -44,26 +44,32 @@ export async function searchVinyl(query: string, offset = 0): Promise<SearchResu
   return (data.results ?? []).map(mapResult)
 }
 
-export async function fetchVinylRelease(releaseId: string): Promise<{
+export async function fetchVinylRelease(id: string): Promise<{
   tracklist: Track[]
   sortName: string | null
   genres: string | null
   styles: string | null
 }> {
-  const url = `${BASE}/releases/${releaseId}`
-  const res = await fetch(url, { headers: headers() })
-  if (!res.ok) return { tracklist: [], sortName: null, genres: null, styles: null }
-  const data = await res.json()
-  const tracklist = (data.tracklist ?? []).map((t: Record<string, unknown>) => ({
-    position: (t.position as string) || '',
-    title: (t.title as string) || '',
-    duration: (t.duration as string) || null,
-  }))
-  // artists_sort is the Discogs filing name e.g. "Sinatra, Frank" or "Dire Straits"
-  const sortName = (data.artists_sort as string) || null
-  const genres = (data.genres as string[])?.join(', ') || null
-  const styles = (data.styles as string[])?.join(', ') || null
-  return { tracklist, sortName, genres, styles }
+  // Search results use master IDs; barcode lookups return release IDs.
+  // Try master endpoint first and fall back to release so both work.
+  for (const path of [`/masters/${id}`, `/releases/${id}`]) {
+    const res = await fetch(`${BASE}${path}`, { headers: headers() })
+    if (!res.ok) continue
+    const data = await res.json()
+    const tracklist = (data.tracklist ?? []).map((t: Record<string, unknown>) => ({
+      position: (t.position as string) || '',
+      title: (t.title as string) || '',
+      duration: (t.duration as string) || null,
+    }))
+    // artists_sort exists on releases; masters have an artists array instead
+    const sortName = (data.artists_sort as string)
+      || (data.artists as { name: string }[])?.[0]?.name
+      || null
+    const genres = (data.genres as string[])?.join(', ') || null
+    const styles = (data.styles as string[])?.join(', ') || null
+    return { tracklist, sortName, genres, styles }
+  }
+  return { tracklist: [], sortName: null, genres: null, styles: null }
 }
 
 export async function lookupVinylByBarcode(barcode: string): Promise<SearchResult | null> {

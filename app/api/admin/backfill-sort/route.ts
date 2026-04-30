@@ -36,8 +36,12 @@ async function searchDiscogsId(creator: string, title: string): Promise<string |
 }
 
 async function fetchDiscogsRelease(id: string) {
-  const res = await fetch(`${DISCOGS_BASE}/releases/${id}`, { headers: discogsHeaders() })
-  return res.ok ? res.json() : null
+  // Search results store master IDs; try master first, fall back to release
+  for (const path of [`/masters/${id}`, `/releases/${id}`]) {
+    const res = await fetch(`${DISCOGS_BASE}${path}`, { headers: discogsHeaders() })
+    if (res.ok) return res.json()
+  }
+  return null
 }
 
 async function backfillVinyl(db: ReturnType<typeof createServerClient>, force: boolean) {
@@ -60,7 +64,7 @@ async function backfillVinyl(db: ReturnType<typeof createServerClient>, force: b
         duration: (t.duration as string) || null,
       }))
       const patch: Record<string, unknown> = {
-        sort_name: (release.artists_sort as string) || null,
+        sort_name: (release.artists_sort as string) || (release.artists as { name: string }[])?.[0]?.name || null,
         tracklist: tracklist.length ? tracklist : null,
         external_id: item.external_id ?? id,
         genres: (release.genres as string[])?.join(', ') || null,

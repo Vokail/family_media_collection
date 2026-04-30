@@ -42,6 +42,9 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
   const [editCreator, setEditCreator] = useState(item.creator)
   const [editYear, setEditYear] = useState(item.year?.toString() ?? '')
   const [savingMeta, setSavingMeta] = useState(false)
+  const [savingRating, setSavingRating] = useState(false)
+  const [savingLegoStatus, setSavingLegoStatus] = useState(false)
+  const [removingCover, setRemovingCover] = useState(false)
   const [uploadingCover, setUploadingCover] = useState(false)
   const [showCamera, setShowCamera] = useState(false)
   const coverInputRef = useRef<HTMLInputElement>(null)
@@ -51,12 +54,16 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
   const showNewBadge = item.created_at ? isNew(item.created_at) : false
 
   async function setRating(rating: number | null) {
+    if (savingRating) return
+    setSavingRating(true)
     const res = await fetch(`/api/items/${item.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ rating }),
     })
     if (res.ok) onUpdate(await res.json())
+    else toast.show('Could not update rating', 'error')
+    setSavingRating(false)
   }
 
   const statusLabel = item.collection === 'vinyl' ? 'Listened' : 'Read'
@@ -134,12 +141,15 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
   }
 
   async function handleRemoveCover() {
+    setRemovingCover(true)
     const res = await fetch(`/api/items/${item.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ cover_path: null }),
     })
     if (res.ok) onUpdate(await res.json())
+    else toast.show('Could not remove cover', 'error')
+    setRemovingCover(false)
   }
 
   async function uploadCoverFile(file: File) {
@@ -177,12 +187,16 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
   ] as const
 
   async function setLegoStatus(value: 'built' | 'in_box' | 'disassembled' | null) {
+    if (savingLegoStatus) return
+    setSavingLegoStatus(true)
     const res = await fetch(`/api/items/${item.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ lego_status: value }),
     })
     if (res.ok) onUpdate(await res.json())
+    else toast.show('Could not update status', 'error')
+    setSavingLegoStatus(false)
   }
 
   const legoStatusLabel = item.lego_status === 'built' ? '🔨 Built'
@@ -348,7 +362,7 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
                 ))}
               </div>
             )}
-            <StarRating rating={item.rating} onRate={isEditor ? setRating : undefined} />
+            <StarRating rating={item.rating} onRate={isEditor && !savingRating ? setRating : undefined} />
             {isEditor && !item.is_wishlist && item.collection !== 'lego' && (
               <button
                 onClick={toggleStatus}
@@ -366,7 +380,8 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
                     <button
                       key={opt.value}
                       onClick={() => setLegoStatus(item.lego_status === opt.value ? null : opt.value)}
-                      className="btn-ghost text-xs px-3 py-1.5"
+                      disabled={savingLegoStatus}
+                      className="btn-ghost text-xs px-3 py-1.5 disabled:opacity-50"
                       style={item.lego_status === opt.value ? { backgroundColor: 'var(--accent)', color: '#fff', borderColor: 'var(--accent)' } : {}}
                     >
                       {opt.label}
@@ -407,8 +422,8 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
                     style={{ position: 'fixed', top: '-100vh', left: 0, opacity: 0, pointerEvents: 'none' }}
                   />
                   {coverSrc && (
-                    <button onClick={handleRemoveCover} className="btn-ghost text-xs" style={{ color: 'var(--text-muted)' }}>
-                      Remove cover
+                    <button onClick={handleRemoveCover} disabled={removingCover} className="btn-ghost text-xs disabled:opacity-50" style={{ color: 'var(--text-muted)' }}>
+                      {removingCover ? 'Removing…' : 'Remove cover'}
                     </button>
                   )}
                   <button onClick={handleDelete} className="btn-ghost text-red-500">Delete</button>

@@ -27,6 +27,8 @@ export default function AddItemPage() {
   const toast = useToast()
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<SearchResult[]>([])
+  const [hasSearched, setHasSearched] = useState(false)
+  const [hasMore, setHasMore] = useState(false)
   const [loading, setLoading] = useState(false)
   const [loadingMore, setLoadingMore] = useState(false)
   const [adding, setAdding] = useState<string | null>(null)
@@ -56,6 +58,9 @@ export default function AddItemPage() {
     const saved = localStorage.getItem(langStorageKey(collection))
     if (saved) setSearchLang(saved)
   }, [collection])
+
+  // Clear redirect timer if component unmounts before it fires
+  useEffect(() => () => { if (navTimer.current) clearTimeout(navTimer.current) }, [])
 
   useEffect(() => {
     fetch(`/api/items?member=${member}&collection=${collection}`)
@@ -97,7 +102,10 @@ export default function AddItemPage() {
     const lang = (collection === 'book' || collection === 'comic') ? searchLang : undefined
     const url = `/api/search?q=${encodeURIComponent(q)}&type=${collection}${lang ? `&lang=${lang}` : ''}`
     const res = await fetch(url)
-    setResults(res.ok ? await res.json() : [])
+    const data: SearchResult[] = res.ok ? await res.json() : []
+    setResults(data)
+    setHasSearched(true)
+    setHasMore(data.length === 20)
     setLoading(false)
   }, [collection, searchLang])
 
@@ -113,7 +121,10 @@ export default function AddItemPage() {
         const existingIds = new Set(prev.map(r => r.external_id))
         return [...prev, ...more.filter(r => !existingIds.has(r.external_id))]
       })
+      setHasMore(more.length === 20)
       setOffset(nextOffset)
+    } else {
+      setHasMore(false)
     }
     setLoadingMore(false)
   }, [collection, searchLang, lastQuery, offset])
@@ -136,7 +147,10 @@ export default function AddItemPage() {
       })
       if (res.ok) {
         setResults([await res.json()])
+        setHasSearched(true)
+        setHasMore(false)
       } else {
+        setHasSearched(true)
         setBarcodeHint('Barcode not found — fill in the details below to save it for future updates.')
         if (/^\d{10,13}$/.test(code)) setManualIsbn(code)
         setShowManual(true)
@@ -335,9 +349,9 @@ export default function AddItemPage() {
         </button>
       </div>
 
-      <SearchResults results={results} onAdd={handleAdd} adding={adding} getDupeStatus={getDupeStatus} />
+      <SearchResults results={results} hasSearched={hasSearched} onAdd={handleAdd} adding={adding} getDupeStatus={getDupeStatus} />
 
-      {results.length > 0 && (
+      {hasMore && results.length > 0 && (
         <div className="flex justify-center mt-4">
           <button onClick={loadMore} disabled={loadingMore} className="btn-ghost text-sm px-6">
             {loadingMore ? 'Loading…' : 'Load more results'}

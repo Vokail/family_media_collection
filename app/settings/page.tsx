@@ -1,5 +1,5 @@
 'use client'
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import PasswordField from '@/components/PasswordField'
 import AppVersion from '@/components/AppVersion'
@@ -165,12 +165,21 @@ function BackupSection() {
 
 function MemberPinsSection() {
   const [members, setMembers] = useState<Member[]>([])
+  const [membersLoading, setMembersLoading] = useState(true)
+  const [membersError, setMembersError] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [successes, setSuccesses] = useState<Record<string, boolean>>({})
 
-  useEffect(() => {
-    fetch('/api/members').then(r => r.json()).then(setMembers)
+  const loadMembers = useCallback(() => {
+    setMembersLoading(true)
+    setMembersError(false)
+    fetch('/api/members')
+      .then(r => { if (!r.ok) throw new Error(); return r.json() })
+      .then(data => { setMembers(data); setMembersLoading(false) })
+      .catch(() => { setMembersError(true); setMembersLoading(false) })
   }, [])
+
+  useEffect(() => { loadMembers() }, [loadMembers])
 
   async function updateMemberPin(memberId: string, newValue: string) {
     setErrors(prev => ({ ...prev, [memberId]: '' }))
@@ -188,7 +197,13 @@ function MemberPinsSection() {
     }
   }
 
-  if (!members.length) return <p className="subtitle text-sm">Loading members…</p>
+  if (membersLoading) return <p className="subtitle text-sm">Loading members…</p>
+  if (membersError) return (
+    <div className="flex flex-col gap-2">
+      <p className="subtitle text-sm">Could not load members.</p>
+      <button onClick={loadMembers} className="btn-ghost text-xs self-start">Retry</button>
+    </div>
+  )
 
   return (
     <div className="flex flex-col gap-6">
