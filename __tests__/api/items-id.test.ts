@@ -175,3 +175,76 @@ describe('PATCH /api/items/[id] error handling', () => {
     expect(res.status).toBe(500)
   })
 })
+
+describe('PATCH /api/items/[id] locked_fields', () => {
+  let mockUpdateFn: jest.Mock
+  let mockUpdateEqFn: jest.Mock
+
+  beforeEach(() => {
+    mockUpdateEqFn = jest.fn().mockResolvedValue({})
+    mockUpdateFn = jest.fn().mockReturnValue({ eq: mockUpdateEqFn })
+    // Return item with no existing locked fields by default
+    mockSingle.mockResolvedValue({ data: { member_id: 'member-uuid', locked_fields: null }, error: null })
+    mockFrom.mockReturnValue({ select: mockSelect, update: mockUpdateFn })
+    mockUpdateItem.mockResolvedValue(ITEM)
+  })
+
+  it('adds title to locked_fields when title is patched', async () => {
+    const req = new Request('http://localhost/api/items/item-uuid', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: 'New Title' }),
+    })
+    await PATCH(req, buildParams('item-uuid'))
+    expect(mockUpdateFn).toHaveBeenCalledWith({ locked_fields: ['title'] })
+  })
+
+  it('adds creator and year to locked_fields when both are patched', async () => {
+    const req = new Request('http://localhost/api/items/item-uuid', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ creator: 'New Artist', year: 2000 }),
+    })
+    await PATCH(req, buildParams('item-uuid'))
+    const { locked_fields } = mockUpdateFn.mock.calls[0][0]
+    expect(locked_fields).toEqual(expect.arrayContaining(['creator', 'year']))
+    expect(locked_fields).toHaveLength(2)
+  })
+
+  it('merges new locks with existing locked_fields without duplicates', async () => {
+    mockSingle.mockResolvedValue({ data: { member_id: 'member-uuid', locked_fields: ['title'] }, error: null })
+    const req = new Request('http://localhost/api/items/item-uuid', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: 'Same Title', creator: 'New Artist' }),
+    })
+    await PATCH(req, buildParams('item-uuid'))
+    const { locked_fields } = mockUpdateFn.mock.calls[0][0]
+    expect(locked_fields).toEqual(expect.arrayContaining(['title', 'creator']))
+    expect(locked_fields).toHaveLength(2) // no duplicate 'title'
+  })
+
+  it('does NOT update locked_fields when only non-lockable fields are patched', async () => {
+    const req = new Request('http://localhost/api/items/item-uuid', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ notes: 'A note', rating: 4 }),
+    })
+    await PATCH(req, buildParams('item-uuid'))
+    expect(mockUpdateFn).not.toHaveBeenCalled()
+  })
+
+  it('still returns the updated item even when locked_fields update runs', async () => {
+    const updated = { ...ITEM, title: 'New Title' }
+    mockUpdateItem.mockResolvedValue(updated)
+    const req = new Request('http://localhost/api/items/item-uuid', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: 'New Title' }),
+    })
+    const res = await PATCH(req, buildParams('item-uuid'))
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    expect(data.title).toBe('New Title')
+  })
+})

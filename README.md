@@ -70,6 +70,8 @@ Run all migrations in sequence:
 | `006_vinyl_genre_style.sql` | Adds `genres` and `styles` columns to items for Discogs genre/style tags |
 | `007_item_status.sql` | Adds `status` column to items for read/listened tracking |
 | `008_member_enabled_collections.sql` | Adds `enabled_collections` array to members for per-member collection visibility |
+| `009_lego_build_status.sql` | Adds `lego_status` column to items (`built` / `in_box` / `disassembled`) |
+| `010_locked_fields.sql` | Adds `locked_fields` text array to items — tracks manually-edited fields so backfill won't overwrite them |
 
 Then add your family members (edit names/slugs to match your family):
 
@@ -93,6 +95,8 @@ Run only the migrations you haven't applied yet, in order:
 006_vinyl_genre_style.sql                 — adds genres and styles columns to items
 007_item_status.sql                       — adds status column to items (read/listened tracking)
 008_member_enabled_collections.sql        — adds enabled_collections array to members
+009_lego_build_status.sql                 — adds lego_status column (built / in_box / disassembled)
+010_locked_fields.sql                     — adds locked_fields text array to protect manually-edited fields from backfill
 ```
 
 ## Local Development
