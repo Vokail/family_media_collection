@@ -176,7 +176,13 @@ export default function AddItemPage() {
       form.append('image', file)
       const res = await fetch('/api/ocr', { method: 'POST', body: form })
 
-      if (!res.ok) throw new Error('OCR request failed')
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({})) as { error?: string }
+        toast.show(`OCR failed (${res.status}): ${body.error ?? 'unknown error'}`, 'error')
+        setShowManual(true)
+        setManualCover(file)
+        return
+      }
 
       const { title: rawTitle, creator: rawCreator } = await res.json() as { title: string; creator: string }
       const title = toTitleCase(rawTitle.trim())
@@ -191,10 +197,12 @@ export default function AddItemPage() {
         setQuery(title)
         await runSearch(searchQuery)
       } else {
+        toast.show('OCR returned no text — please fill in manually', 'error')
         setShowManual(true)
         setManualCover(file)
       }
-    } catch {
+    } catch (err) {
+      toast.show(`OCR error: ${err instanceof Error ? err.message : 'network error'}`, 'error')
       setShowManual(true)
       setManualCover(file)
     } finally {
