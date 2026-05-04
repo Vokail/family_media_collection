@@ -6,6 +6,7 @@ import { getMemberById } from '@/lib/db/members'
 import ProfilePinForm from '@/components/ProfilePinForm'
 import AppVersion from '@/components/AppVersion'
 import BackButton from '@/components/BackButton'
+import LogoutButton from '@/components/LogoutButton'
 
 export default async function ProfilePage() {
   const session = await getSession()
@@ -21,7 +22,8 @@ export default async function ProfilePage() {
     <main className="min-h-screen p-6 max-w-sm mx-auto flex flex-col gap-6">
       <div className="flex items-center gap-3">
         <BackButton />
-        <h1 className="font-serif text-2xl font-bold">My Profile</h1>
+        <h1 className="font-serif text-2xl font-bold flex-1">My Profile</h1>
+        <LogoutButton />
       </div>
       <ProfilePinForm
         memberId={member.id}
