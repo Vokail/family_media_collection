@@ -12,35 +12,76 @@ const BACKFILL_TYPES = [
   { value: 'lego', label: 'Lego', hint: 'theme, part count, year, cover (Rebrickable)' },
 ]
 
+type CollectionStatus = 'pending' | 'running' | 'done' | 'error' | 'cancelled'
+
+interface CollectionResult {
+  status: CollectionStatus
+  total?: number
+  updated?: number
+  error?: string
+}
+
 function BackfillButton() {
-  const [status, setStatus] = useState<'idle' | 'running' | 'done' | 'error'>('idle')
-  const [result, setResult] = useState('')
+  const [running, setRunning] = useState(false)
   const [force, setForce] = useState(false)
   const [forceCovers, setForceCovers] = useState(false)
   const [types, setTypes] = useState<string[]>(['vinyl', 'book', 'comic', 'lego'])
+  const [progress, setProgress] = useState<Record<string, CollectionResult>>({})
+  const abortRef = useRef<AbortController | null>(null)
 
   function toggleType(value: string) {
     setTypes(prev => prev.includes(value) ? prev.filter(t => t !== value) : [...prev, value])
   }
 
+  function cancel() {
+    abortRef.current?.abort()
+  }
+
   async function run() {
     if (!types.length) return
-    setStatus('running')
-    setResult('')
-    const params = new URLSearchParams({ types: types.join(',') })
-    if (force) params.set('force', 'true')
-    if (forceCovers) params.set('force_covers', 'true')
-    const res = await fetch(`/api/admin/backfill-sort?${params}`)
-    const data = await res.json()
-    if (res.ok) {
-      const parts = Object.entries(data.summary as Record<string, { total: number; updated: number }>)
-        .map(([k, v]) => `${k}: ${v.updated}/${v.total}`)
-      setResult(parts.join(' · ') || 'Nothing to update')
-      setStatus('done')
-    } else {
-      setResult(data.error ?? 'Something went wrong')
-      setStatus('error')
+    const controller = new AbortController()
+    abortRef.current = controller
+    setRunning(true)
+    setProgress(Object.fromEntries(types.map(t => [t, { status: 'pending' as CollectionStatus }])))
+
+    for (const type of types) {
+      if (controller.signal.aborted) {
+        setProgress(prev => ({ ...prev, [type]: { status: 'cancelled' } }))
+        continue
+      }
+      setProgress(prev => ({ ...prev, [type]: { status: 'running' } }))
+      try {
+        const params = new URLSearchParams({ types: type })
+        if (force) params.set('force', 'true')
+        if (forceCovers) params.set('force_covers', 'true')
+        const res = await fetch(`/api/admin/backfill-sort?${params}`, { signal: controller.signal })
+        const data = await res.json()
+        if (res.ok) {
+          const s = (data.summary as Record<string, { total: number; updated: number }>)[type]
+          setProgress(prev => ({ ...prev, [type]: { status: 'done', total: s?.total ?? 0, updated: s?.updated ?? 0 } }))
+        } else {
+          setProgress(prev => ({ ...prev, [type]: { status: 'error', error: data.error ?? 'Failed' } }))
+        }
+      } catch {
+        if (controller.signal.aborted) {
+          setProgress(prev => ({ ...prev, [type]: { status: 'cancelled' } }))
+        } else {
+          setProgress(prev => ({ ...prev, [type]: { status: 'error', error: 'Request failed' } }))
+        }
+        break
+      }
     }
+
+    setRunning(false)
+    abortRef.current = null
+  }
+
+  const statusIcon: Record<CollectionStatus, string> = {
+    pending: '·',
+    running: '⟳',
+    done: '✓',
+    error: '✗',
+    cancelled: '—',
   }
 
   return (
@@ -48,24 +89,65 @@ function BackfillButton() {
       <div className="flex flex-wrap gap-3">
         {BACKFILL_TYPES.map(t => (
           <label key={t.value} className="flex items-center gap-1.5 text-sm cursor-pointer">
-            <input type="checkbox" checked={types.includes(t.value)} onChange={() => toggleType(t.value)} />
+            <input type="checkbox" checked={types.includes(t.value)} onChange={() => toggleType(t.value)} disabled={running} />
             <span>{t.label}</span>
             <span className="opacity-50 text-xs">({t.hint})</span>
           </label>
         ))}
       </div>
       <label className="flex items-center gap-2 text-sm cursor-pointer">
-        <input type="checkbox" checked={force} onChange={e => setForce(e.target.checked)} />
+        <input type="checkbox" checked={force} onChange={e => setForce(e.target.checked)} disabled={running} />
         Force re-fetch (even if already filled)
       </label>
       <label className="flex items-center gap-2 text-sm cursor-pointer">
-        <input type="checkbox" checked={forceCovers} onChange={e => setForceCovers(e.target.checked)} />
+        <input type="checkbox" checked={forceCovers} onChange={e => setForceCovers(e.target.checked)} disabled={running} />
         Re-download covers at higher resolution (skips custom photos)
       </label>
-      <button onClick={run} disabled={status === 'running' || !types.length} className="btn-ghost text-sm self-start">
-        {status === 'running' ? 'Running…' : 'Run backfill'}
-      </button>
-      {result && <p className={`text-sm ${status === 'error' ? 'text-red-500' : 'text-green-600'}`}>{result}</p>}
+      <div className="flex gap-2 items-center">
+        <button onClick={run} disabled={running || !types.length} className="btn-ghost text-sm self-start">
+          Run backfill
+        </button>
+        {running && (
+          <button onClick={cancel} className="btn-ghost text-sm self-start" style={{ color: 'var(--text-muted)' }}>
+            Cancel
+          </button>
+        )}
+      </div>
+      {Object.keys(progress).length > 0 && (
+        <div className="flex flex-col gap-1">
+          {types.filter(t => progress[t]).map(type => {
+            const s = progress[type]
+            const label = BACKFILL_TYPES.find(t => t.value === type)?.label ?? type
+            return (
+              <div key={type} className="flex items-center gap-2 text-sm">
+                <span
+                  className="w-4 text-center font-mono"
+                  style={{
+                    color: s.status === 'done' ? 'var(--accent)' : s.status === 'error' ? '#ef4444' : 'var(--text-muted)',
+                    animation: s.status === 'running' ? 'spin 1s linear infinite' : undefined,
+                  }}
+                >
+                  {statusIcon[s.status]}
+                </span>
+                <span style={{ color: s.status === 'pending' || s.status === 'cancelled' ? 'var(--text-muted)' : 'inherit' }}>
+                  {label}
+                </span>
+                {s.status === 'done' && (
+                  <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                    {s.updated}/{s.total} updated
+                  </span>
+                )}
+                {s.status === 'error' && (
+                  <span className="text-xs text-red-500">{s.error}</span>
+                )}
+                {s.status === 'running' && (
+                  <span className="text-xs" style={{ color: 'var(--text-muted)' }}>running…</span>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }
