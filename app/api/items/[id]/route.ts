@@ -22,8 +22,9 @@ export async function GET(
 const PATCHABLE_KEYS = ['is_wishlist', 'notes', 'cover_path', 'rating', 'status', 'lego_status', 'title', 'creator', 'year'] as const
 type PatchKey = typeof PATCHABLE_KEYS[number]
 
-// Fields that, when manually edited, should be locked against backfill overwrites
-const LOCKABLE_FIELDS = ['title', 'creator', 'year'] as const
+// Fields that, when manually edited, should be locked against backfill overwrites.
+// cover_path is included so that manual photo uploads are never overwritten by backfill.
+const LOCKABLE_FIELDS = ['title', 'creator', 'year', 'cover_path'] as const
 
 export async function PATCH(
   request: Request,
