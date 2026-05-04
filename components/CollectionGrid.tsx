@@ -231,15 +231,17 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
   const yearGroups: YearGroup[] = byYear ? buildYearGroups(displayed) : []
   const ratingGroups: RatingGroup[] = byRating ? buildRatingGroups(displayed) : []
 
-  const sidebarKeys = byCreator
+  // Each sidebar entry carries a display label and the ref key used to look up the section.
+  // For Lego the ref key is the full theme name; display is first 4 chars.
+  const sidebarItems: { display: string; key: string }[] = byCreator
     ? byLego
-      ? creatorGroups.map(g => g.letter.slice(0, 4))  // already stripped of "LEGO "
-      : creatorGroups.map(g => g.letter)
+      ? creatorGroups.map(g => ({ display: g.letter.slice(0, 4), key: g.letter }))
+      : creatorGroups.map(g => ({ display: g.letter, key: g.letter }))
     : byYear
-    ? yearGroups.map(g => g.shortKey)
+    ? yearGroups.map(g => ({ display: g.shortKey, key: g.shortKey }))
     : []
 
-  const hasSidebar = sidebarKeys.length > 0
+  const hasSidebar = sidebarItems.length > 0
 
   function scrollTo(key: string) {
     sectionRefs.current[key]?.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -394,16 +396,16 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
                 </div>
               </div>
             ))}
-            {sidebarKeys.length > 0 && (
+            {sidebarItems.length > 0 && (
               <div className="fixed right-1 top-1/2 -translate-y-1/2 flex flex-col z-20 select-none rounded-full py-1 px-0.5" style={{ backgroundColor: 'color-mix(in srgb, var(--bg-card) 85%, transparent)', backdropFilter: 'blur(8px)', boxShadow: '0 1px 6px var(--shadow)' }}>
-                {sidebarKeys.map(k => (
+                {sidebarItems.map(({ display, key }) => (
                   <button
-                    key={k}
-                    onClick={() => scrollTo(k)}
+                    key={key}
+                    onClick={() => scrollTo(key)}
                     className="text-xs font-bold leading-tight px-1.5 py-0.5"
                     style={{ color: 'var(--accent)' }}
                   >
-                    {k}
+                    {display}
                   </button>
                 ))}
               </div>
@@ -430,16 +432,16 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
                 </div>
               </div>
             ))}
-            {sidebarKeys.length > 0 && (
+            {sidebarItems.length > 0 && (
               <div className="fixed right-1 top-1/2 -translate-y-1/2 flex flex-col z-20 select-none rounded-full py-1 px-0.5" style={{ backgroundColor: 'color-mix(in srgb, var(--bg-card) 85%, transparent)', backdropFilter: 'blur(8px)', boxShadow: '0 1px 6px var(--shadow)' }}>
-                {sidebarKeys.map(k => (
+                {sidebarItems.map(({ display, key }) => (
                   <button
-                    key={k}
-                    onClick={() => scrollTo(k)}
+                    key={key}
+                    onClick={() => scrollTo(key)}
                     className="text-xs font-bold leading-tight px-1.5 py-0.5"
                     style={{ color: 'var(--accent)' }}
                   >
-                    {k}
+                    {display}
                   </button>
                 ))}
               </div>
