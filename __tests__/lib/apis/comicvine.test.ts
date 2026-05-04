@@ -33,6 +33,38 @@ describe('searchComics', () => {
     mockFetch.mockResolvedValueOnce({ ok: false })
     expect(await searchComics('x')).toEqual([])
   })
+
+  it('does not append language term to the ComicVine query', async () => {
+    mockFetch.mockClear()
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ status_code: 1, results: [] }),
+    })
+    await searchComics('Asterix En De Olympische Spelen', 'dutch')
+    const calledUrl: string = mockFetch.mock.calls[0][0]
+    expect(calledUrl).toContain('Asterix%20En%20De%20Olympische%20Spelen')
+    expect(calledUrl).not.toContain('Dutch')
+  })
+
+  it('retries with normalized query (no diacritics) when first search returns 0 results', async () => {
+    // First call with "Astérix" returns nothing; second call with "Asterix" finds results
+    mockFetch.mockClear()
+    mockFetch
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ status_code: 1, results: [] }) })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          status_code: 1,
+          results: [{ id: 3001, name: 'Astérix aux Jeux olympiques', start_year: '2004', image: { medium_url: null }, publisher: { name: 'Dargaud' } }],
+        }),
+      })
+    const results = await searchComics('Astérix aux Jeux olympiques')
+    expect(results).toHaveLength(1)
+    expect(results[0].title).toBe('Astérix aux Jeux olympiques')
+    // Second call should use the normalized (diacritic-stripped) version
+    const secondUrl: string = mockFetch.mock.calls[1][0]
+    expect(secondUrl).toContain('Asterix')
+  })
 })
 
 describe('lookupComicByBarcode', () => {

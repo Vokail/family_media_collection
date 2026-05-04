@@ -7,31 +7,37 @@ const CV_HEADERS = {
   'Accept': 'application/json',
 }
 
-const LANG_TERMS: Record<string, string> = {
-  dutch: 'Dutch',
-  english: 'English',
-  french: 'French',
-  german: 'German',
+async function cvSearch(query: string, offset: number): Promise<SearchResult[]> {
+  const url = `${BASE}/search/?api_key=${process.env.COMICVINE_API_KEY}&format=json&query=${encodeURIComponent(query)}&resources=volume&field_list=id,name,start_year,image,publisher&limit=20&offset=${offset}`
+  const res = await fetch(url, { headers: CV_HEADERS, signal: AbortSignal.timeout(9000) })
+  if (!res.ok) return []
+  const data = await res.json()
+  if (data.status_code !== 1) return []
+  return (data.results ?? []).map((r: Record<string, unknown>) => ({
+    external_id: String(r.id),
+    title: r.name as string,
+    creator: (r.publisher as Record<string, string>)?.name ?? 'Unknown',
+    year: r.start_year ? parseInt(r.start_year as string) : null,
+    cover_url: (r.image as Record<string, string>)?.medium_url ?? null,
+    source: 'comicvine' as const,
+  }))
 }
 
-export async function searchComics(query: string, lang?: string, offset = 0): Promise<SearchResult[]> {
-  const q = lang && lang !== 'all' && LANG_TERMS[lang]
-    ? `${query} ${LANG_TERMS[lang]}`
-    : query
-  const url = `${BASE}/search/?api_key=${process.env.COMICVINE_API_KEY}&format=json&query=${encodeURIComponent(q)}&resources=volume&field_list=id,name,start_year,image,publisher&limit=20&offset=${offset}`
+// Normalize diacritics so e.g. "Astérix" also matches "Asterix"
+function normalize(q: string): string {
+  return q.normalize('NFD').replace(/[̀-ͯ]/g, '')
+}
+
+export async function searchComics(query: string, _lang?: string, offset = 0): Promise<SearchResult[]> {
+  // ComicVine has no language filter — appending a language word hurts text matching.
+  // We deliberately ignore `lang` here and search with the exact query as typed.
   try {
-    const res = await fetch(url, { headers: CV_HEADERS })
-    if (!res.ok) return []
-    const data = await res.json()
-    if (data.status_code !== 1) return []
-    return (data.results ?? []).map((r: Record<string, unknown>) => ({
-      external_id: String(r.id),
-      title: r.name as string,
-      creator: (r.publisher as Record<string, string>)?.name ?? 'Unknown',
-      year: r.start_year ? parseInt(r.start_year as string) : null,
-      cover_url: (r.image as Record<string, string>)?.medium_url ?? null,
-      source: 'comicvine' as const,
-    }))
+    const results = await cvSearch(query, offset)
+    if (results.length > 0) return results
+    // Fallback: strip diacritics (helps when user typed "Asterix" but CV stores "Astérix" or vice-versa)
+    const normalized = normalize(query)
+    if (normalized === query) return results
+    return await cvSearch(normalized, offset)
   } catch {
     return []
   }
