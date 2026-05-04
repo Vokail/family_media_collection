@@ -6,7 +6,6 @@
 :root {
   --bg: #f5ede0;
   --bg-card: #fff;
-  --bg-input: #fff;
   --text: #2c1a0e;
   --text-muted: #8b6914;
   --accent: #c67c3c;
@@ -15,19 +14,6 @@
   --shadow: rgba(0,0,0,0.10);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #18110c;
-    --bg-card: #2e2016;
-    --bg-input: #231710;
-    --text: #f0e6d3;
-    --text-muted: #c9a96e;
-    --accent: #d4854a;
-    --accent-hover: #e8994f;
-    --border: #4a3525;
-    --shadow: rgba(0,0,0,0.55);
-  }
-}
 
 body {
   background-color: var(--bg);
@@ -63,7 +49,7 @@ h1, h2, h3 { font-family: 'Lora', Georgia, serif; }
   }
 
   .input {
-    background-color: var(--bg-input, var(--bg-card));
+    background-color: var(--bg-card);
     border: 1px solid var(--border);
     color: var(--text);
     @apply w-full px-4 py-2 rounded-xl outline-none;
