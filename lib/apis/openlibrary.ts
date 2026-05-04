@@ -230,30 +230,52 @@ async function kbSruByISBN(isbn: string): Promise<SearchResult> {
 }
 
 
+async function fetchCoverForISBN(isbn: string): Promise<string | null> {
+  // Try OL bibkeys and Google Books in parallel — return first cover found
+  try {
+    return await Promise.any([
+      olBibKeysByISBN(isbn).then(r => { if (!r.cover_url) throw new Error('no cover'); return r.cover_url! }),
+      googleBooksByISBN(isbn).then(r => { if (!r.cover_url) throw new Error('no cover'); return r.cover_url! }),
+    ])
+  } catch {
+    return null
+  }
+}
+
 export async function lookupBookByISBN(isbn: string, lang?: string): Promise<SearchResult | null> {
   try {
+    let result: SearchResult
     if (lang === 'dutch') {
       // For Dutch ISBNs prefer edition-level sources (KB, OL bibkeys, Google Books)
       // over olSearchByISBN which may surface the English work title.
       // If all three fail (e.g. Google Books doesn't know the ISBN, KB/OL are slow),
       // fall back to olSearchByISBN rather than returning null.
       try {
-        return await Promise.any([
+        result = await Promise.any([
           kbSruByISBN(isbn),
           olBibKeysByISBN(isbn),
           googleBooksByISBN(isbn),
         ])
       } catch {
-        return await olSearchByISBN(isbn)
+        result = await olSearchByISBN(isbn)
       }
+    } else {
+      // Default: race all sources — fastest valid result wins
+      result = await Promise.any([
+        olSearchByISBN(isbn),
+        olBibKeysByISBN(isbn),
+        googleBooksByISBN(isbn),
+        kbSruByISBN(isbn),
+      ])
     }
-    // Default: race all sources — fastest valid result wins
-    return await Promise.any([
-      olSearchByISBN(isbn),
-      olBibKeysByISBN(isbn),
-      googleBooksByISBN(isbn),
-      kbSruByISBN(isbn),
-    ])
+
+    // If the winning source had no cover (e.g. KB SRU never provides covers),
+    // do a quick cover-only fetch from the remaining sources and patch it in.
+    if (!result.cover_url) {
+      result = { ...result, cover_url: await fetchCoverForISBN(isbn) }
+    }
+
+    return result
   } catch {
     return null
   }

@@ -91,9 +91,10 @@ describe('searchBooks (server-side, used by /api/search)', () => {
 describe('lookupBookByISBN', () => {
   it('returns a result for a valid ISBN', async () => {
     // 4 racers fire concurrently: olSearch, olBibKeys, google, kbSru (in order)
+    // olBibKeys wins with a cover — no cover fallback fetch needed
     mockFetch
       .mockResolvedValueOnce({ ok: false })                          // olSearchByISBN fails
-      .mockResolvedValueOnce({                                        // olBibKeysByISBN succeeds
+      .mockResolvedValueOnce({                                        // olBibKeysByISBN succeeds with cover
         ok: true,
         json: async () => ({
           'ISBN:9780441013593': {
@@ -109,6 +110,7 @@ describe('lookupBookByISBN', () => {
     const result = await lookupBookByISBN('9780441013593')
     expect(result).not.toBeNull()
     expect(result!.title).toBe('Dune')
+    expect(result!.cover_url).toContain('12345')
   })
 
   it('returns null when ISBN not found', async () => {
@@ -120,5 +122,55 @@ describe('lookupBookByISBN', () => {
       .mockResolvedValueOnce({ ok: false })
     const result = await lookupBookByISBN('0000000000')
     expect(result).toBeNull()
+  })
+
+  it('patches cover from Google Books when winning source (e.g. KB) has no cover', async () => {
+    // Dutch path: KB wins first (no cover), OL bibkeys and Google Books discarded in race
+    // Then fetchCoverForISBN fires: olBibKeys (no cover) + Google Books (has cover)
+    mockFetch
+      .mockResolvedValueOnce({                                        // kbSruByISBN succeeds — no cover
+        ok: true,
+        text: async () => `<srw:numberOfRecords>1</srw:numberOfRecords>
+          <dc:title>De wildernis in</dc:title>
+          <dc:creator>Erin Hunter</dc:creator>`,
+      })
+      .mockResolvedValueOnce({ ok: false })                          // olBibKeysByISBN fails in race
+      .mockResolvedValueOnce({ ok: false })                          // googleBooksByISBN fails in race
+      // fetchCoverForISBN fires next (olBibKeys + Google Books in parallel)
+      .mockResolvedValueOnce({ ok: true, json: async () => ({}) })  // olBibKeys — no book entry
+      .mockResolvedValueOnce({                                        // googleBooksByISBN — has cover
+        ok: true,
+        json: async () => ({
+          items: [{ volumeInfo: {
+            title: 'De wildernis in',
+            authors: ['Erin Hunter'],
+            publishedDate: '2003',
+            imageLinks: { thumbnail: 'https://books.google.com/cover.jpg' },
+          }}],
+        }),
+      })
+    const result = await lookupBookByISBN('9789055798278', 'dutch')
+    expect(result).not.toBeNull()
+    expect(result!.title).toBe('De wildernis in')
+    expect(result!.cover_url).toBe('https://books.google.com/cover.jpg')
+  })
+
+  it('returns null cover_url when no source has a cover', async () => {
+    // Dutch path: KB wins, all cover fallback sources also fail
+    mockFetch
+      .mockResolvedValueOnce({                                        // kbSruByISBN — no cover
+        ok: true,
+        text: async () => `<srw:numberOfRecords>1</srw:numberOfRecords>
+          <dc:title>Some Book</dc:title><dc:creator>Author</dc:creator>`,
+      })
+      .mockResolvedValueOnce({ ok: false })                          // olBibKeys fails in race
+      .mockResolvedValueOnce({ ok: false })                          // Google Books fails in race
+      // fetchCoverForISBN — both fail
+      .mockResolvedValueOnce({ ok: false })                          // olBibKeys cover fetch fails
+      .mockResolvedValueOnce({ ok: false })                          // Google Books cover fetch fails
+    const result = await lookupBookByISBN('9789000000000', 'dutch')
+    expect(result).not.toBeNull()
+    expect(result!.title).toBe('Some Book')
+    expect(result!.cover_url).toBeNull()
   })
 })
