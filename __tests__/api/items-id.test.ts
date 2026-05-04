@@ -18,6 +18,7 @@ jest.mock('@/lib/db/items', () => ({
 jest.mock('@/lib/session', () => ({
   getSession: jest.fn(),
 }))
+jest.mock('next/cache', () => ({ revalidatePath: jest.fn() }))
 
 import { GET, PATCH, DELETE } from '@/app/api/items/[id]/route'
 import { updateItem, deleteItem } from '@/lib/db/items'

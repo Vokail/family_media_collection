@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { revalidatePath } from 'next/cache'
 import { updateItem, deleteItem } from '@/lib/db/items'
 import { createServerClient } from '@/lib/supabase-server'
 import { getSession } from '@/lib/session'
@@ -79,6 +80,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
     await deleteItem(id)
+    revalidatePath('/', 'layout')
     if (data?.cover_path) {
       const key = data.cover_path.startsWith('covers/') ? data.cover_path.slice('covers/'.length) : data.cover_path
       await db.storage.from('covers').remove([key])
