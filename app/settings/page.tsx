@@ -24,7 +24,6 @@ interface CollectionResult {
 function BackfillButton() {
   const [running, setRunning] = useState(false)
   const [force, setForce] = useState(false)
-  const [forceCovers, setForceCovers] = useState(false)
   const [types, setTypes] = useState<string[]>(['vinyl', 'book', 'comic', 'lego'])
   const [progress, setProgress] = useState<Record<string, CollectionResult>>({})
   const abortRef = useRef<AbortController | null>(null)
@@ -53,7 +52,6 @@ function BackfillButton() {
       try {
         const params = new URLSearchParams({ types: type })
         if (force) params.set('force', 'true')
-        if (forceCovers) params.set('force_covers', 'true')
         const res = await fetch(`/api/admin/backfill-sort?${params}`, { signal: controller.signal })
         const data = await res.json()
         if (res.ok) {
@@ -97,11 +95,7 @@ function BackfillButton() {
       </div>
       <label className="flex items-center gap-2 text-sm cursor-pointer">
         <input type="checkbox" checked={force} onChange={e => setForce(e.target.checked)} disabled={running} />
-        Force re-fetch (even if already filled)
-      </label>
-      <label className="flex items-center gap-2 text-sm cursor-pointer">
-        <input type="checkbox" checked={forceCovers} onChange={e => setForceCovers(e.target.checked)} disabled={running} />
-        Re-download covers at higher resolution (skips custom photos)
+        Force re-fetch (re-fills metadata even if already filled; never replaces existing covers)
       </label>
       <div className="flex gap-2 items-center">
         <button onClick={run} disabled={running || !types.length} className="btn-ghost text-sm self-start">

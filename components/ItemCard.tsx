@@ -299,8 +299,9 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
             </div>
             <div className="p-6 flex flex-col gap-4 overflow-y-auto">
             {coverSrc && (
-              <button onClick={() => setCoverZoom(true)} className="mx-auto block rounded-lg shadow overflow-hidden hover:opacity-90 transition-opacity focus:outline-none" title="View full size">
-                <Image src={coverSrc} alt={item.title} width={120} height={120} className="rounded-lg" />
+              <button onClick={() => setCoverZoom(true)} className="mx-auto block hover:opacity-90 transition-opacity focus:outline-none" title="View full size">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={coverSrc} alt={item.title} className="rounded-lg shadow object-contain" style={{ maxWidth: '160px', maxHeight: '240px', width: 'auto', height: 'auto', display: 'block', margin: '0 auto' }} />
               </button>
             )}
             {editingMeta ? (
@@ -483,14 +484,12 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
             aria-label="Close"
           >✕</button>
           <div className="w-full h-full flex items-center justify-center p-6" onClick={e => e.stopPropagation()}>
-            <Image
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
               src={coverSrc}
               alt={item.title}
-              width={800}
-              height={800}
-              className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
-              style={{ maxHeight: 'calc(100vh - 3rem)' }}
-              unoptimized
+              className="rounded-lg shadow-2xl object-contain"
+              style={{ maxWidth: '100%', maxHeight: 'calc(100vh - 3rem)', width: 'auto', height: 'auto' }}
               onClick={() => setCoverZoom(false)}
             />
           </div>

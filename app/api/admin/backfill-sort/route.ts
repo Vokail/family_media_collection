@@ -64,10 +64,10 @@ async function fetchDiscogsRelease(id: string) {
   return null
 }
 
-async function backfillVinyl(db: ReturnType<typeof createServerClient>, force: boolean, forceCovers: boolean) {
+async function backfillVinyl(db: ReturnType<typeof createServerClient>, force: boolean) {
   const q = db.from('items').select('id, creator, title, external_id, cover_path, member_id, sort_name, tracklist, genres, styles, locked_fields').eq('collection', 'vinyl')
   const { data: allItems } = await q
-  const items = force || forceCovers
+  const items = force
     ? (allItems ?? [])
     : (allItems ?? []).filter(i => !i.sort_name || !i.tracklist || !i.cover_path || !i.genres)
   const result = { total: items.length, updated: 0 }
@@ -90,7 +90,7 @@ async function backfillVinyl(db: ReturnType<typeof createServerClient>, force: b
         genres: (release.genres as string[])?.join(', ') || null,
         styles: (release.styles as string[])?.join(', ') || null,
       }
-      if (!item.cover_path || forceCovers) {
+      if (!item.cover_path) {
         const locked: string[] = (item as Record<string, unknown>).locked_fields as string[] ?? []
         if (!locked.includes('cover_path')) {
           const coverUrl = (release.images as { uri: string }[])?.[0]?.uri ?? null
@@ -133,9 +133,9 @@ async function fetchBookIsbn(worksKey: string): Promise<string | null> {
   } catch { return null }
 }
 
-async function backfillBooks(db: ReturnType<typeof createServerClient>, force: boolean, forceCovers: boolean) {
+async function backfillBooks(db: ReturnType<typeof createServerClient>, force: boolean) {
   const { data: allItems } = await db.from('items').select('id, title, creator, external_id, description, isbn, cover_path, member_id, locked_fields').eq('collection', 'book')
-  const fullItems = force || forceCovers
+  const fullItems = force
     ? (allItems ?? [])
     : (allItems ?? []).filter(i => !i.description || !i.isbn || !i.cover_path)
   const result = { total: fullItems.length, updated: 0 }
@@ -168,7 +168,7 @@ async function backfillBooks(db: ReturnType<typeof createServerClient>, force: b
     }
     if (isbn) patch.isbn = isbn
 
-    if (!item.cover_path || forceCovers) {
+    if (!item.cover_path) {
       const locked: string[] = (item as Record<string, unknown>).locked_fields as string[] ?? []
       if (!locked.includes('cover_path')) {
         const coverUrl = await findBookCoverUrl(worksKey, isbn ?? null)
@@ -210,9 +210,9 @@ async function fetchComicCoverUrl(externalId: string): Promise<string | null> {
   } catch { return null }
 }
 
-async function backfillComics(db: ReturnType<typeof createServerClient>, force: boolean, forceCovers: boolean) {
+async function backfillComics(db: ReturnType<typeof createServerClient>, force: boolean) {
   const { data: allItems } = await db.from('items').select('id, title, creator, external_id, description, isbn, cover_path, member_id, locked_fields').eq('collection', 'comic')
-  const fullItems = force || forceCovers
+  const fullItems = force
     ? (allItems ?? [])
     : (allItems ?? []).filter(i => !i.external_id || !i.cover_path || !i.description)
   const result = { total: fullItems.length, updated: 0 }
@@ -230,7 +230,7 @@ async function backfillComics(db: ReturnType<typeof createServerClient>, force: 
 
       const patch: Record<string, unknown> = { external_id: externalId }
 
-      if (!item.cover_path || forceCovers) {
+      if (!item.cover_path) {
         const locked: string[] = (item as Record<string, unknown>).locked_fields as string[] ?? []
         // ISBN-based comics (manga) don't have ComicVine cover — skip
         if (!isIsbnBased && !locked.includes('cover_path')) {
@@ -276,9 +276,9 @@ async function searchLegoSetNum(title: string): Promise<string | null> {
   } catch { return null }
 }
 
-async function backfillLego(db: ReturnType<typeof createServerClient>, force: boolean, forceCovers: boolean) {
+async function backfillLego(db: ReturnType<typeof createServerClient>, force: boolean) {
   const { data: allItems } = await db.from('items').select('id, title, external_id, creator, description, cover_path, member_id, locked_fields').eq('collection', 'lego')
-  const items = force || forceCovers
+  const items = force
     ? (allItems ?? [])
     : (allItems ?? []).filter(i => !i.description)
   const result = { total: items.length, updated: 0 }
@@ -308,7 +308,7 @@ async function backfillLego(db: ReturnType<typeof createServerClient>, force: bo
       // Respect manually locked fields — don't overwrite creator or year if user edited them
       if (!locked.includes('creator')) patch.creator = theme
       if (!locked.includes('year')) patch.year = s.year ?? null
-      if ((!item.cover_path || forceCovers) && s.set_img_url) {
+      if (!item.cover_path && s.set_img_url) {
         const locked: string[] = item.locked_fields ?? []
         if (!locked.includes('cover_path')) {
           const path = await replaceCover(db, item, s.set_img_url as string)
@@ -330,16 +330,15 @@ export async function GET(request: Request) {
 
   const params = new URL(request.url).searchParams
   const force = params.get('force') === 'true'
-  const forceCovers = params.get('force_covers') === 'true'
   const types = params.get('types')?.split(',') ?? ['vinyl', 'book', 'comic', 'lego']
 
   const db = createServerClient()
   const summary: Record<string, { total: number; updated: number }> = {}
 
-  if (types.includes('vinyl')) summary.vinyl = await backfillVinyl(db, force, forceCovers)
-  if (types.includes('book')) summary.book = await backfillBooks(db, force, forceCovers)
-  if (types.includes('comic')) summary.comic = await backfillComics(db, force, forceCovers)
-  if (types.includes('lego')) summary.lego = await backfillLego(db, force, forceCovers)
+  if (types.includes('vinyl')) summary.vinyl = await backfillVinyl(db, force)
+  if (types.includes('book')) summary.book = await backfillBooks(db, force)
+  if (types.includes('comic')) summary.comic = await backfillComics(db, force)
+  if (types.includes('lego')) summary.lego = await backfillLego(db, force)
 
-  return NextResponse.json({ force, forceCovers, types, summary })
+  return NextResponse.json({ force, types, summary })
 }
