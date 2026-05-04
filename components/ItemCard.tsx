@@ -252,8 +252,11 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
             {showNewBadge && (
               <span className="px-1.5 py-0.5 rounded text-white text-[10px] font-bold leading-none" style={{ backgroundColor: 'var(--accent)' }}>NEW</span>
             )}
-            {consumed && item.collection !== 'lego' && (
+            {consumed && item.collection === 'vinyl' && (
               <span className="text-xs font-medium" style={{ color: 'var(--accent)' }}>✓</span>
+            )}
+            {consumed && (item.collection === 'book' || item.collection === 'comic') && (
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full text-white leading-none" style={{ backgroundColor: 'var(--accent)' }}>Read</span>
             )}
             {item.rating && (
               <span className="text-xs" style={{ color: 'var(--accent)' }}>{'★'.repeat(item.rating)}</span>
@@ -300,9 +303,14 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
               NEW
             </div>
           )}
-          {consumed && item.collection !== 'lego' && (
+          {consumed && item.collection === 'vinyl' && (
             <div className="absolute top-1 left-1 w-5 h-5 rounded-full flex items-center justify-center text-white text-[11px] font-bold shadow" style={{ backgroundColor: 'var(--accent)' }}>
               ✓
+            </div>
+          )}
+          {consumed && (item.collection === 'book' || item.collection === 'comic') && (
+            <div className="absolute top-1 left-1 px-1.5 py-0.5 rounded text-white text-[9px] font-bold leading-none shadow" style={{ backgroundColor: 'var(--accent)' }}>
+              Read
             </div>
           )}
           {item.collection === 'lego' && legoStatusLabel && (

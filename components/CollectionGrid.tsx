@@ -7,7 +7,7 @@ import type { Item, CollectionType, Member } from '@/lib/types'
 const PULL_THRESHOLD = 72
 const PAGE_SIZE = 60
 
-type SortMode = 'added' | 'creator' | 'title' | 'year' | 'rating' | 'condition'
+type SortMode = 'added' | 'creator' | 'title' | 'year' | 'rating' | 'condition' | 'status'
 
 const TABS: { label: string; value: CollectionType }[] = [
   { label: 'Vinyl', value: 'vinyl' },
@@ -45,6 +45,12 @@ function sortItems(items: Item[], mode: SortMode): Item[] {
   if (mode === 'title') return copy.sort((a, b) => a.title.toLowerCase().localeCompare(b.title.toLowerCase()))
   if (mode === 'year') return copy.sort((a, b) => (a.year ?? 9999) - (b.year ?? 9999))
   if (mode === 'rating') return copy.sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0))
+  if (mode === 'status') return copy.sort((a, b) => {
+    const ac = a.status === 'consumed' ? 1 : 0
+    const bc = b.status === 'consumed' ? 1 : 0
+    if (ac !== bc) return ac - bc // unread first
+    return sortKey(a.creator, a.sort_name).localeCompare(sortKey(b.creator, b.sort_name))
+  })
   if (mode === 'condition') return copy.sort((a, b) => {
     const ai = a.condition ? CONDITION_ORDER.indexOf(a.condition as typeof CONDITION_ORDER[number]) : CONDITION_ORDER.length
     const bi = b.condition ? CONDITION_ORDER.indexOf(b.condition as typeof CONDITION_ORDER[number]) : CONDITION_ORDER.length
@@ -236,6 +242,7 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
   const byYear = sort === 'year'
   const byRating = sort === 'rating'
   const byCondition = sort === 'condition'
+  const byStatus = sort === 'status'
   const byLego = byCreator && collection === 'lego'
 
   // Strip "LEGO " prefix from theme names for display/grouping
@@ -280,6 +287,10 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
   const yearGroups: YearGroup[] = byYear ? buildYearGroups(displayed) : []
   const ratingGroups: RatingGroup[] = byRating ? buildRatingGroups(displayed) : []
   const conditionGroups: ConditionGroup[] = byCondition ? buildConditionGroups(displayed) : []
+  const statusGroups: { label: string; items: Item[] }[] = byStatus ? [
+    { label: 'Unread', items: displayed.filter(i => i.status !== 'consumed') },
+    { label: 'Read',   items: displayed.filter(i => i.status === 'consumed') },
+  ].filter(g => g.items.length > 0) : []
 
   // Each sidebar entry carries a display label and the ref key used to look up the section.
   // For Lego the ref key is the full theme name; display is first 4 chars.
@@ -391,6 +402,7 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
             <option value="year">Year</option>
             <option value="rating">Rating</option>
             {collection === 'vinyl' && <option value="condition">Condition</option>}
+            {(collection === 'book' || collection === 'comic') && <option value="status">Read / Unread</option>}
           </select>
           <button
             onClick={() => {
@@ -545,6 +557,21 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
                   style={{ color: g.key === '0' ? 'var(--text-muted)' : 'var(--accent)' }}
                 >
                   {g.label}
+                </h3>
+                <div className={viewMode === 'list' ? LIST : GRID}>
+                  {g.items.map(item => (
+                    <ItemCard key={item.id} item={item} isEditor={isEditor} onUpdate={handleUpdate} onDelete={handleDelete} supabaseUrl={supabaseUrl} layout={viewMode} />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </>
+        ) : byStatus ? (
+          <>
+            {statusGroups.map(g => (
+              <div key={g.label} className="mb-6">
+                <h3 className="font-serif text-lg font-bold mb-2 px-1" style={{ color: g.label === 'Read' ? 'var(--accent)' : 'var(--text-muted)' }}>
+                  {g.label === 'Read' ? '✓ Read' : g.label}
                 </h3>
                 <div className={viewMode === 'list' ? LIST : GRID}>
                   {g.items.map(item => (
