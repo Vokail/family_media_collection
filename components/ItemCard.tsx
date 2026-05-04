@@ -278,7 +278,7 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
                 alt={item.title}
                 width={200}
                 height={200}
-                className="w-full h-full object-cover"
+                className={`w-full h-full ${item.collection === 'lego' ? 'object-contain p-1' : 'object-cover'}`}
               />
             </div>
           ) : (
