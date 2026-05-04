@@ -44,6 +44,7 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
   const [savingMeta, setSavingMeta] = useState(false)
   const [savingRating, setSavingRating] = useState(false)
   const [savingLegoStatus, setSavingLegoStatus] = useState(false)
+  const [savingCondition, setSavingCondition] = useState(false)
   const [removingCover, setRemovingCover] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [uploadingCover, setUploadingCover] = useState(false)
@@ -206,6 +207,28 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
     : item.lego_status === 'disassembled' ? '🔧 Apart'
     : null
 
+  const CONDITION_OPTIONS = [
+    { value: 'mint',      label: 'M',  title: 'Mint',      color: '#16a34a' },
+    { value: 'near_mint', label: 'NM', title: 'Near Mint', color: '#0891b2' },
+    { value: 'good',      label: 'G',  title: 'Good',      color: '#d97706' },
+    { value: 'poor',      label: 'P',  title: 'Poor',      color: '#dc2626' },
+  ] as const
+
+  const conditionOption = CONDITION_OPTIONS.find(o => o.value === item.condition) ?? null
+
+  async function setCondition(value: typeof CONDITION_OPTIONS[number]['value'] | null) {
+    if (savingCondition) return
+    setSavingCondition(true)
+    const res = await fetch(`/api/items/${item.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ condition: value }),
+    })
+    if (res.ok) onUpdate(await res.json())
+    else toast.show('Could not update condition', 'error')
+    setSavingCondition(false)
+  }
+
   return (
     <>
       {layout === 'list' ? (
@@ -237,6 +260,9 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
             )}
             {item.collection === 'lego' && legoStatusLabel && (
               <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full" style={{ backgroundColor: 'var(--border)', color: 'var(--text-muted)' }}>{legoStatusLabel}</span>
+            )}
+            {item.collection === 'vinyl' && conditionOption && (
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full text-white" style={{ backgroundColor: conditionOption.color }}>{conditionOption.label}</span>
             )}
           </div>
         </button>
@@ -283,6 +309,12 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
             <div className="absolute top-1 left-1 px-1.5 py-0.5 rounded text-white text-[9px] font-bold leading-none shadow"
               style={{ backgroundColor: item.lego_status === 'built' ? 'var(--accent)' : 'rgba(44,26,14,0.65)' }}>
               {legoStatusLabel}
+            </div>
+          )}
+          {item.collection === 'vinyl' && conditionOption && (
+            <div className="absolute top-1 left-1 px-1.5 py-0.5 rounded text-white text-[9px] font-bold leading-none shadow"
+              style={{ backgroundColor: conditionOption.color }}>
+              {conditionOption.label}
             </div>
           )}
         </button>
@@ -394,6 +426,28 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
                       style={item.lego_status === opt.value ? { backgroundColor: 'var(--accent)', color: '#fff', borderColor: 'var(--accent)' } : {}}
                     >
                       {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            {item.collection === 'vinyl' && (
+              <div className="flex flex-col gap-2">
+                <p className="label text-center">Condition</p>
+                <div className="flex gap-2 justify-center flex-wrap">
+                  {CONDITION_OPTIONS.map(opt => (
+                    <button
+                      key={opt.value}
+                      onClick={isEditor ? () => setCondition(item.condition === opt.value ? null : opt.value) : undefined}
+                      disabled={isEditor ? savingCondition : true}
+                      title={opt.title}
+                      className="btn-ghost text-xs px-3 py-1.5 disabled:opacity-50 font-semibold"
+                      style={item.condition === opt.value
+                        ? { backgroundColor: opt.color, color: '#fff', borderColor: opt.color }
+                        : isEditor ? {} : { opacity: item.condition ? (item.condition === opt.value ? 1 : 0.35) : 0.35 }
+                      }
+                    >
+                      {opt.label} <span className="font-normal opacity-75 text-[10px]">{opt.title}</span>
                     </button>
                   ))}
                 </div>

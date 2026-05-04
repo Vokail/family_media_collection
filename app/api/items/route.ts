@@ -79,6 +79,7 @@ export async function POST(request: Request) {
     styles: vinylRelease?.styles ?? styles ?? null,
     status: null,
     lego_status: null,
+    condition: null,
     locked_fields: null,
   })
   revalidatePath(`/${memberSlug}/${collection}`)

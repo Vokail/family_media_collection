@@ -19,7 +19,7 @@ export async function GET(
   }
 }
 
-const PATCHABLE_KEYS = ['is_wishlist', 'notes', 'cover_path', 'rating', 'status', 'lego_status', 'title', 'creator', 'year'] as const
+const PATCHABLE_KEYS = ['is_wishlist', 'notes', 'cover_path', 'rating', 'status', 'lego_status', 'condition', 'title', 'creator', 'year'] as const
 type PatchKey = typeof PATCHABLE_KEYS[number]
 
 // Fields that, when manually edited, should be locked against backfill overwrites.

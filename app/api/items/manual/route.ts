@@ -93,6 +93,7 @@ export async function POST(request: Request) {
       styles: null,
       status: null,
       lego_status: null,
+      condition: null,
       locked_fields: null,
     })
 

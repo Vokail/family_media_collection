@@ -34,6 +34,7 @@ export interface Item {
   styles: string | null
   status: 'consumed' | null
   lego_status: 'built' | 'in_box' | 'disassembled' | null
+  condition: 'mint' | 'near_mint' | 'good' | 'poor' | null
   locked_fields: string[] | null
   created_at: string
 }
