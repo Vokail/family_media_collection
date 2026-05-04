@@ -103,7 +103,6 @@ function VinylDetailModal({ result, onClose }: DetailModalProps) {
 
 function LegoDetailModal({ result, onClose }: DetailModalProps) {
   const setNum = result.external_id
-  const rebrickableUrl = `https://rebrickable.com/sets/${encodeURIComponent(setNum)}/`
 
   return (
     <div className="fixed inset-0 bg-black/60 flex items-end z-50" onClick={onClose}>
@@ -139,15 +138,6 @@ function LegoDetailModal({ result, onClose }: DetailModalProps) {
             )}
           </div>
 
-          <a
-            href={rebrickableUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-sm underline self-start"
-            style={{ color: 'var(--text-muted)' }}
-          >
-            View on Rebrickable →
-          </a>
         </div>
       </div>
     </div>
