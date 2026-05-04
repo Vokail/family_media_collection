@@ -16,6 +16,7 @@ function BackfillButton() {
   const [status, setStatus] = useState<'idle' | 'running' | 'done' | 'error'>('idle')
   const [result, setResult] = useState('')
   const [force, setForce] = useState(false)
+  const [forceCovers, setForceCovers] = useState(false)
   const [types, setTypes] = useState<string[]>(['vinyl', 'book', 'comic', 'lego'])
 
   function toggleType(value: string) {
@@ -28,6 +29,7 @@ function BackfillButton() {
     setResult('')
     const params = new URLSearchParams({ types: types.join(',') })
     if (force) params.set('force', 'true')
+    if (forceCovers) params.set('force_covers', 'true')
     const res = await fetch(`/api/admin/backfill-sort?${params}`)
     const data = await res.json()
     if (res.ok) {
@@ -55,6 +57,10 @@ function BackfillButton() {
       <label className="flex items-center gap-2 text-sm cursor-pointer">
         <input type="checkbox" checked={force} onChange={e => setForce(e.target.checked)} />
         Force re-fetch (even if already filled)
+      </label>
+      <label className="flex items-center gap-2 text-sm cursor-pointer">
+        <input type="checkbox" checked={forceCovers} onChange={e => setForceCovers(e.target.checked)} />
+        Re-download covers at higher resolution (skips custom photos)
       </label>
       <button onClick={run} disabled={status === 'running' || !types.length} className="btn-ghost text-sm self-start">
         {status === 'running' ? 'Running…' : 'Run backfill'}
