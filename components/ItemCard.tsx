@@ -48,6 +48,7 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [uploadingCover, setUploadingCover] = useState(false)
   const [showCamera, setShowCamera] = useState(false)
+  const [coverZoom, setCoverZoom] = useState(false)
   const coverInputRef = useRef<HTMLInputElement>(null)
   const coverSrc = item.cover_path
     ? `${supabaseUrl}/storage/v1/object/public/${item.cover_path}`
@@ -298,7 +299,9 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
             </div>
             <div className="p-6 flex flex-col gap-4 overflow-y-auto">
             {coverSrc && (
-              <Image src={coverSrc} alt={item.title} width={120} height={120} className="rounded-lg shadow mx-auto" />
+              <button onClick={() => setCoverZoom(true)} className="mx-auto block rounded-lg shadow overflow-hidden hover:opacity-90 transition-opacity focus:outline-none" title="View full size">
+                <Image src={coverSrc} alt={item.title} width={120} height={120} className="rounded-lg" />
+              </button>
             )}
             {editingMeta ? (
               <div className="flex flex-col gap-2">
@@ -468,6 +471,30 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
           onCapture={file => { setShowCamera(false); uploadCoverFile(file) }}
           onClose={() => setShowCamera(false)}
         />
+      )}
+      {coverZoom && coverSrc && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90"
+          onClick={() => setCoverZoom(false)}
+        >
+          <button
+            onClick={() => setCoverZoom(false)}
+            className="absolute top-4 right-4 text-white/70 hover:text-white text-3xl leading-none z-10"
+            aria-label="Close"
+          >✕</button>
+          <div className="w-full h-full flex items-center justify-center p-6" onClick={e => e.stopPropagation()}>
+            <Image
+              src={coverSrc}
+              alt={item.title}
+              width={800}
+              height={800}
+              className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
+              style={{ maxHeight: 'calc(100vh - 3rem)' }}
+              unoptimized
+              onClick={() => setCoverZoom(false)}
+            />
+          </div>
+        </div>
       )}
     </>
   )
