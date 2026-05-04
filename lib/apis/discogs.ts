@@ -37,7 +37,7 @@ function mapResult(r: Record<string, unknown>): SearchResult {
 
 export async function searchVinyl(query: string, offset = 0): Promise<SearchResult[]> {
   const page = Math.floor(offset / 20) + 1
-  const url = `${BASE}/database/search?q=${encodeURIComponent(query)}&type=master&per_page=20&page=${page}`
+  const url = `${BASE}/database/search?q=${encodeURIComponent(query)}&type=master&format=vinyl&per_page=20&page=${page}`
   const res = await fetch(url, { headers: headers() })
   if (!res.ok) return []
   const data = await res.json()
