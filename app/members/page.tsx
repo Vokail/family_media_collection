@@ -32,7 +32,7 @@ export default async function MembersPage() {
         </div>
       </div>
       <div className="grid grid-cols-2 gap-4 mb-8">
-        {members.map(m => <MemberCard key={m.id} member={m} counts={memberCounts[m.id]} />)}
+        {members.map(m => <MemberCard key={m.id} member={m} counts={memberCounts[m.id]} supabaseUrl={process.env.NEXT_PUBLIC_SUPABASE_URL!} />)}
       </div>
       <ActivityFeed items={activity} supabaseUrl={process.env.NEXT_PUBLIC_SUPABASE_URL!} />
     </main>

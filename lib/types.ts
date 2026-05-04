@@ -6,6 +6,7 @@ export interface Member {
   name: string
   slug: string
   enabled_collections: CollectionType[]
+  avatar_path: string | null
 }
 
 export interface Track {

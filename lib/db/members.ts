@@ -39,6 +39,11 @@ export async function updateMemberCollections(memberId: string, collections: Col
   await db.from('members').update({ enabled_collections: collections }).eq('id', memberId)
 }
 
+export async function updateMemberAvatar(memberId: string, avatarPath: string | null): Promise<void> {
+  const db = createServerClient()
+  await db.from('members').update({ avatar_path: avatarPath }).eq('id', memberId)
+}
+
 export async function listMemberItemCounts(): Promise<Record<string, MemberItemCounts>> {
   const db = createServerClient()
   // Uses a DB-level GROUP BY aggregate (see migration 011_item_counts_fn.sql)

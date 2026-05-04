@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/session'
 import { getMemberById } from '@/lib/db/members'
 import ProfilePinForm from '@/components/ProfilePinForm'
+import AvatarUpload from '@/components/AvatarUpload'
 import AppVersion from '@/components/AppVersion'
 import BackButton from '@/components/BackButton'
 import LogoutButton from '@/components/LogoutButton'
@@ -25,6 +26,11 @@ export default async function ProfilePage() {
         <h1 className="font-serif text-2xl font-bold flex-1">My Profile</h1>
         <LogoutButton />
       </div>
+      <AvatarUpload
+        memberName={member.name}
+        avatarPath={member.avatar_path ?? null}
+        supabaseUrl={process.env.NEXT_PUBLIC_SUPABASE_URL!}
+      />
       <ProfilePinForm
         memberId={member.id}
         memberName={member.name}
