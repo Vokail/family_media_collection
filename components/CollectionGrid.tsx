@@ -7,7 +7,7 @@ import type { Item, CollectionType, Member } from '@/lib/types'
 const PULL_THRESHOLD = 72
 const PAGE_SIZE = 60
 
-type SortMode = 'added' | 'creator' | 'title' | 'year' | 'rating'
+type SortMode = 'added' | 'creator' | 'title' | 'year' | 'rating' | 'condition'
 
 const TABS: { label: string; value: CollectionType }[] = [
   { label: 'Vinyl', value: 'vinyl' },
@@ -37,12 +37,20 @@ function sortKey(creator: string, sortName?: string | null): string {
   return (sortName ?? creator.replace(/^(the|a|an)\s+/i, '').trim()).toLowerCase()
 }
 
+const CONDITION_ORDER = ['mint', 'near_mint', 'good', 'poor'] as const
+
 function sortItems(items: Item[], mode: SortMode): Item[] {
   const copy = [...items]
   if (mode === 'creator') return copy.sort((a, b) => sortKey(a.creator, a.sort_name).localeCompare(sortKey(b.creator, b.sort_name)))
   if (mode === 'title') return copy.sort((a, b) => a.title.toLowerCase().localeCompare(b.title.toLowerCase()))
   if (mode === 'year') return copy.sort((a, b) => (a.year ?? 9999) - (b.year ?? 9999))
   if (mode === 'rating') return copy.sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0))
+  if (mode === 'condition') return copy.sort((a, b) => {
+    const ai = a.condition ? CONDITION_ORDER.indexOf(a.condition as typeof CONDITION_ORDER[number]) : CONDITION_ORDER.length
+    const bi = b.condition ? CONDITION_ORDER.indexOf(b.condition as typeof CONDITION_ORDER[number]) : CONDITION_ORDER.length
+    if (ai !== bi) return ai - bi
+    return sortKey(a.creator, a.sort_name).localeCompare(sortKey(b.creator, b.sort_name))
+  })
   return copy // 'added' — already newest-first from DB
 }
 
@@ -88,6 +96,24 @@ function buildYearGroups(items: Item[]): YearGroup[] {
     })
 
   if (noYear.length > 0) groups.push({ label: 'Unknown', shortKey: '?', items: noYear })
+  return groups
+}
+
+interface ConditionGroup { label: string; abbr: string; color: string; items: Item[] }
+
+const CONDITION_GRADES: ConditionGroup[] = [
+  { label: 'Mint',      abbr: 'M',  color: '#16a34a', items: [] },
+  { label: 'Near Mint', abbr: 'NM', color: '#0891b2', items: [] },
+  { label: 'Good',      abbr: 'G',  color: '#d97706', items: [] },
+  { label: 'Poor',      abbr: 'P',  color: '#dc2626', items: [] },
+]
+
+function buildConditionGroups(items: Item[]): ConditionGroup[] {
+  const groups: ConditionGroup[] = CONDITION_GRADES
+    .map(g => ({ ...g, items: items.filter(i => i.condition === g.label.toLowerCase().replace(' ', '_')) }))
+    .filter(g => g.items.length > 0)
+  const ungraded = items.filter(i => !i.condition)
+  if (ungraded.length > 0) groups.push({ label: 'Ungraded', abbr: '–', color: 'var(--text-muted)', items: ungraded })
   return groups
 }
 
@@ -140,7 +166,7 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
   }, [member.slug, collection])
 
   // Reset visible count whenever the active filter/sort changes
-  useEffect(() => { setVisibleCount(PAGE_SIZE) }, [isWishlist, sort, search, statusFilter, legoFilter])
+  useEffect(() => { setVisibleCount(PAGE_SIZE) }, [isWishlist, sort, search, statusFilter, legoFilter, collection])
 
   function onTouchStart(e: React.TouchEvent) {
     // iOS can report scrollY as slightly negative during rubber-band, so use <= 0
@@ -209,6 +235,7 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
   const byTitle = sort === 'title'
   const byYear = sort === 'year'
   const byRating = sort === 'rating'
+  const byCondition = sort === 'condition'
   const byLego = byCreator && collection === 'lego'
 
   // Strip "LEGO " prefix from theme names for display/grouping
@@ -252,6 +279,7 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
 
   const yearGroups: YearGroup[] = byYear ? buildYearGroups(displayed) : []
   const ratingGroups: RatingGroup[] = byRating ? buildRatingGroups(displayed) : []
+  const conditionGroups: ConditionGroup[] = byCondition ? buildConditionGroups(displayed) : []
 
   // Each sidebar entry carries a display label and the ref key used to look up the section.
   // For Lego the ref key is the full theme name; display is first 4 chars.
@@ -362,6 +390,7 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
             <option value="title">Title</option>
             <option value="year">Year</option>
             <option value="rating">Rating</option>
+            {collection === 'vinyl' && <option value="condition">Condition</option>}
           </select>
           <button
             onClick={() => {
@@ -516,6 +545,27 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
                   style={{ color: g.key === '0' ? 'var(--text-muted)' : 'var(--accent)' }}
                 >
                   {g.label}
+                </h3>
+                <div className={viewMode === 'list' ? LIST : GRID}>
+                  {g.items.map(item => (
+                    <ItemCard key={item.id} item={item} isEditor={isEditor} onUpdate={handleUpdate} onDelete={handleDelete} supabaseUrl={supabaseUrl} layout={viewMode} />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </>
+        ) : byCondition ? (
+          <>
+            {conditionGroups.map(g => (
+              <div key={g.label} className="mb-6">
+                <h3 className="font-serif text-lg font-bold mb-2 px-1 flex items-center gap-2">
+                  <span
+                    className="text-xs font-bold px-1.5 py-0.5 rounded text-white leading-none"
+                    style={{ backgroundColor: g.color }}
+                  >
+                    {g.abbr}
+                  </span>
+                  <span style={{ color: g.label === 'Ungraded' ? 'var(--text-muted)' : 'var(--text)' }}>{g.label}</span>
                 </h3>
                 <div className={viewMode === 'list' ? LIST : GRID}>
                   {g.items.map(item => (

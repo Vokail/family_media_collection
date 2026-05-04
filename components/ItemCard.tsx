@@ -441,13 +441,13 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
                       onClick={isEditor ? () => setCondition(item.condition === opt.value ? null : opt.value) : undefined}
                       disabled={isEditor ? savingCondition : true}
                       title={opt.title}
-                      className="btn-ghost text-xs px-3 py-1.5 disabled:opacity-50 font-semibold"
+                      className="btn-ghost text-xs px-3 py-1.5 disabled:opacity-50"
                       style={item.condition === opt.value
                         ? { backgroundColor: opt.color, color: '#fff', borderColor: opt.color }
                         : isEditor ? {} : { opacity: item.condition ? (item.condition === opt.value ? 1 : 0.35) : 0.35 }
                       }
                     >
-                      {opt.label} <span className="font-normal opacity-75 text-[10px]">{opt.title}</span>
+                      {opt.title}
                     </button>
                   ))}
                 </div>
