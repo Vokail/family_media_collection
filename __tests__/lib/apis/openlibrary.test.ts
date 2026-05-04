@@ -1,4 +1,4 @@
-import { searchBooks, searchOpenLibrary, lookupBookByISBN } from '@/lib/apis/openlibrary'
+import { searchBooks, searchOpenLibrary, lookupBookByISBN, cleanDescription } from '@/lib/apis/openlibrary'
 
 global.fetch = jest.fn()
 const mockFetch = fetch as jest.Mock
@@ -172,5 +172,47 @@ describe('lookupBookByISBN', () => {
     expect(result).not.toBeNull()
     expect(result!.title).toBe('Some Book')
     expect(result!.cover_url).toBeNull()
+  })
+})
+
+describe('cleanDescription', () => {
+  it('strips OL wiki links with slash path: [[/works/OL123W|Dune]] → Dune', () => {
+    expect(cleanDescription('A novel [[/works/OL123W|Dune]] by Herbert.')).toBe('A novel Dune by Herbert.')
+  })
+
+  it('strips OL wiki links without slash: [[Dune|the book]] → the book', () => {
+    expect(cleanDescription('Read [[Dune|the book]] today.')).toBe('Read the book today.')
+  })
+
+  it('removes bare OL wiki links: [[/works/OL123W]] → empty', () => {
+    expect(cleanDescription('See [[/works/OL123W]] for details.')).toBe('See  for details.')
+  })
+
+  it('strips hyperlinks with label: [https://example.com Click here] → Click here', () => {
+    expect(cleanDescription('[https://example.com Click here] for more.')).toBe('Click here for more.')
+  })
+
+  it('removes bare URL brackets: [https://example.com] → empty', () => {
+    expect(cleanDescription('See [https://example.com] for info.')).toBe('See  for info.')
+  })
+
+  it('strips HTML tags from Google Books descriptions', () => {
+    expect(cleanDescription('A <b>great</b> book.<br/>Really good.')).toBe('A  great  book. Really good.')
+  })
+
+  it('decodes common HTML entities', () => {
+    expect(cleanDescription('Fish &amp; chips &quot;delicious&quot;')).toBe('Fish & chips "delicious"')
+  })
+
+  it('removes Source: lines', () => {
+    expect(cleanDescription('Good story.\nSource: Wikipedia\nMore text.')).toBe('Good story.\n\nMore text.')
+  })
+
+  it('removes divider lines', () => {
+    expect(cleanDescription('Part one.\n----------\nPart two.')).toBe('Part one.\n\nPart two.')
+  })
+
+  it('collapses excessive blank lines', () => {
+    expect(cleanDescription('Line one.\n\n\n\nLine two.')).toBe('Line one.\n\nLine two.')
   })
 })

@@ -60,13 +60,48 @@ export async function searchBooks(query: string, lang?: string, offset = 0): Pro
 const OL_LANG_CODES_DESC: Record<string, string> = { dutch: 'dut', french: 'fre', german: 'ger' }
 const GB_LANG_CODES: Record<string, string> = { dutch: 'nl', french: 'fr', german: 'de' }
 
+// Shared description cleaner for OL and Google Books text:
+// - strips OL wiki-style links: [[/path|label]] → label, [[path|label]] → label, [[path]] → ''
+// - strips OL/GB hyperlinks: [url label] → label, [url] → ''
+// - strips HTML tags and decodes common entities
+// - removes "Source: …" and "----------" metadata lines
+// - collapses excessive whitespace / blank lines
+export function cleanDescription(raw: string): string {
+  return raw
+    // OL wiki links with label: [[/path|label]] or [[path|label]] → label
+    .replace(/\[\[[^\]|]*\|([^\]]+)\]\]/g, '$1')
+    // OL bare wiki links: [[/path]] or [[word]] → ''
+    .replace(/\[\[[^\]]*\]\]/g, '')
+    // Hyperlinks with label: [url label text] → label text
+    .replace(/\[https?:\/\/\S+\s+([^\]]+)\]/g, '$1')
+    // Bare URLs in brackets: [https://...] → ''
+    .replace(/\[https?:\/\/[^\]]*\]/g, '')
+    // HTML tags
+    .replace(/<[^>]+>/g, ' ')
+    // Common HTML entities
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&nbsp;/g, ' ')
+    // "Source: …" lines (OL metadata)
+    .replace(/^Source:.*$/gim, '')
+    // Divider lines
+    .replace(/^[-─═]{3,}$/gm, '')
+    // Collapse 3+ blank lines → 2, then trim
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}
+
 async function googleBooksDescription(query: string, langRestrict?: string): Promise<string | null> {
   const langParam = langRestrict ? `&langRestrict=${langRestrict}` : ''
   const res = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=1${langParam}`, { signal: AbortSignal.timeout(7000) })
   if (!res.ok) return null
   const data = await res.json()
   const desc = data.items?.[0]?.volumeInfo?.description as string | undefined
-  return desc?.trim() || null
+  if (!desc?.trim()) return null
+  return cleanDescription(desc) || null
 }
 
 export async function fetchBookDescription(
@@ -150,8 +185,7 @@ export async function fetchBookDescription(
     if (!desc) return null
     const raw = typeof desc === 'string' ? desc : (desc.value as string) ?? null
     if (!raw) return null
-    // Strip OL internal wiki-style links e.g. [[/works/OL123W|title]]
-    return raw.replace(/\[\[\/[^\]|]+\|([^\]]+)\]\]/g, '$1').replace(/\[https?:\/\/\S+ ([^\]]+)\]/g, '$1').trim()
+    return cleanDescription(raw) || null
   } catch {
     return null
   }
