@@ -206,12 +206,20 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
   }, [sorted.length])
 
   const byCreator = sort === 'creator'
+  const byTitle = sort === 'title'
   const byYear = sort === 'year'
   const byRating = sort === 'rating'
   const byLego = byCreator && collection === 'lego'
 
   // Strip "LEGO " prefix from theme names for display/grouping
   function stripLego(name: string) { return name.replace(/^LEGO\s+/i, '').trim() }
+
+  // First letter of title (stripping leading articles) for index grouping
+  function titleIndexKey(title: string): string {
+    const base = title.replace(/^(the|a|an)\s+/i, '').trim()
+    const ch = base[0]?.toUpperCase() ?? '#'
+    return /[A-Z]/.test(ch) ? ch : '#'
+  }
 
   // Build groups when sorted by creator
   const creatorGroups: { letter: string; items: Item[] }[] = []
@@ -228,6 +236,20 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
     })
   }
 
+  // Build groups when sorted by title
+  const titleGroups: { letter: string; items: Item[] }[] = []
+  if (byTitle) {
+    const map = new Map<string, Item[]>()
+    for (const item of displayed) {
+      const k = titleIndexKey(item.title)
+      if (!map.has(k)) map.set(k, [])
+      map.get(k)!.push(item)
+    }
+    Array.from(map.entries()).forEach(([letter, groupItems]) => {
+      titleGroups.push({ letter, items: groupItems })
+    })
+  }
+
   const yearGroups: YearGroup[] = byYear ? buildYearGroups(displayed) : []
   const ratingGroups: RatingGroup[] = byRating ? buildRatingGroups(displayed) : []
 
@@ -237,6 +259,8 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
     ? byLego
       ? creatorGroups.map(g => ({ display: g.letter.slice(0, 4), key: g.letter }))
       : creatorGroups.map(g => ({ display: g.letter, key: g.letter }))
+    : byTitle
+    ? titleGroups.map(g => ({ display: g.letter, key: g.letter }))
     : byYear
     ? yearGroups.map(g => ({ display: g.shortKey, key: g.shortKey }))
     : []
@@ -378,6 +402,42 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
         {byCreator ? (
           <>
             {creatorGroups.map(g => (
+              <div
+                key={g.letter}
+                ref={el => { sectionRefs.current[g.letter] = el }}
+                className="mb-6"
+              >
+                <h3
+                  className="font-serif text-lg font-bold mb-2 px-1"
+                  style={{ color: 'var(--accent)' }}
+                >
+                  {g.letter}
+                </h3>
+                <div className={viewMode === 'list' ? LIST : GRID}>
+                  {g.items.map(item => (
+                    <ItemCard key={item.id} item={item} isEditor={isEditor} onUpdate={handleUpdate} onDelete={handleDelete} supabaseUrl={supabaseUrl} layout={viewMode} />
+                  ))}
+                </div>
+              </div>
+            ))}
+            {sidebarItems.length > 0 && (
+              <div className="fixed right-1 top-1/2 -translate-y-1/2 flex flex-col z-20 select-none rounded-full py-1 px-0.5" style={{ backgroundColor: 'color-mix(in srgb, var(--bg-card) 85%, transparent)', backdropFilter: 'blur(8px)', boxShadow: '0 1px 6px var(--shadow)' }}>
+                {sidebarItems.map(({ display, key }) => (
+                  <button
+                    key={key}
+                    onClick={() => scrollTo(key)}
+                    className="text-xs font-bold leading-tight px-1.5 py-0.5"
+                    style={{ color: 'var(--accent)' }}
+                  >
+                    {display}
+                  </button>
+                ))}
+              </div>
+            )}
+          </>
+        ) : byTitle ? (
+          <>
+            {titleGroups.map(g => (
               <div
                 key={g.letter}
                 ref={el => { sectionRefs.current[g.letter] = el }}

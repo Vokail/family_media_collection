@@ -266,3 +266,49 @@ describe('CollectionGrid pagination', () => {
     expect(screen.getAllByTestId('item-card')).toHaveLength(60)
   })
 })
+
+describe('CollectionGrid title sort grouping', () => {
+  const items = [
+    makeItem('1', { title: 'Abbey Road' }),
+    makeItem('2', { title: 'Born To Run' }),
+    makeItem('3', { title: 'Animals' }),
+    makeItem('4', { title: 'The Wall' }),       // "The" stripped → W
+    makeItem('5', { title: 'A Night At The Opera' }), // "A" stripped → N
+    makeItem('6', { title: '1984' }),            // digit → #
+  ]
+
+  it('shows letter section headers when sorted by title', () => {
+    render(<CollectionGrid {...defaultProps} initialItems={items} />)
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'title' } })
+    // A, B, W, N, # sections expected (each letter appears in header + sidebar)
+    expect(screen.getAllByText('A').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText('B').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText('W').length).toBeGreaterThanOrEqual(1)
+  })
+
+  it('strips leading articles from titles for grouping', () => {
+    render(<CollectionGrid {...defaultProps} initialItems={items} />)
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'title' } })
+    // "The Wall" → W section, "A Night At The Opera" → N section
+    expect(screen.getAllByText('W').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText('N').length).toBeGreaterThanOrEqual(1)
+    // There should be no "T" section (The Wall must not group under T)
+    expect(screen.queryAllByText('T')).toHaveLength(0)
+  })
+
+  it('groups digits and non-alpha titles under #', () => {
+    render(<CollectionGrid {...defaultProps} initialItems={items} />)
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'title' } })
+    expect(screen.getAllByText('#').length).toBeGreaterThanOrEqual(1)
+  })
+
+  it('shows A-Z index sidebar when sorted by title', () => {
+    render(<CollectionGrid {...defaultProps} initialItems={items} />)
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'title' } })
+    // Sidebar buttons for each section letter should exist
+    const sidebarButtons = screen.getAllByRole('button').filter(b =>
+      ['A', 'B', 'N', 'W', '#'].includes(b.textContent ?? '')
+    )
+    expect(sidebarButtons.length).toBeGreaterThanOrEqual(4)
+  })
+})
