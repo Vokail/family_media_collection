@@ -6,10 +6,11 @@ const mockFetch = fetch as jest.Mock
 beforeEach(() => (fetch as jest.Mock).mockReset())
 
 describe('searchVinyl', () => {
-  it('returns mapped results from Discogs', async () => {
+  it('returns mapped results and hasMore=false when on the only page', async () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
       json: async () => ({
+        pagination: { pages: 1, page: 1 },
         results: [{
           id: 1001,
           title: 'Pink Floyd - The Dark Side of the Moon',
@@ -18,7 +19,7 @@ describe('searchVinyl', () => {
         }]
       })
     })
-    const results = await searchVinyl('Dark Side of the Moon')
+    const { results, hasMore } = await searchVinyl('Dark Side of the Moon')
     expect(results[0]).toMatchObject({
       external_id: '1001',
       title: 'The Dark Side of the Moon',
@@ -27,12 +28,33 @@ describe('searchVinyl', () => {
       cover_url: 'https://example.com/cover.jpg',
       source: 'discogs',
     })
+    expect(hasMore).toBe(false)
+  })
+
+  it('returns hasMore=true when more pages exist', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        pagination: { pages: 36, page: 1 },
+        results: Array.from({ length: 16 }, (_, i) => ({
+          id: i + 1,
+          title: `Bruce Springsteen - Album ${i + 1}`,
+          year: '1980',
+          cover_image: null,
+        }))
+      })
+    })
+    // 16 results on page 1 but 36 total pages — hasMore must be true
+    const { results, hasMore } = await searchVinyl('Bruce Springsteen')
+    expect(results).toHaveLength(16)
+    expect(hasMore).toBe(true)
   })
 
   it('includes format, label, country, catno, genres and styles when present', async () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
       json: async () => ({
+        pagination: { pages: 1, page: 1 },
         results: [{
           id: 1002,
           title: 'The Beatles - Abbey Road',
@@ -47,10 +69,10 @@ describe('searchVinyl', () => {
         }]
       })
     })
-    const results = await searchVinyl('Abbey Road')
+    const { results } = await searchVinyl('Abbey Road')
     expect(results[0]).toMatchObject({
       external_id: '1002',
-      format: 'LP, Album',   // "Vinyl" stripped
+      format: 'LP, Album',    // "Vinyl" stripped
       label: 'Apple Records', // first label
       country: 'UK',
       catno: 'PCS 7088',
@@ -59,9 +81,11 @@ describe('searchVinyl', () => {
     })
   })
 
-  it('returns empty array on fetch failure', async () => {
+  it('returns empty results and hasMore=false on fetch failure', async () => {
     mockFetch.mockResolvedValueOnce({ ok: false })
-    expect(await searchVinyl('x')).toEqual([])
+    const { results, hasMore } = await searchVinyl('x')
+    expect(results).toEqual([])
+    expect(hasMore).toBe(false)
   })
 })
 

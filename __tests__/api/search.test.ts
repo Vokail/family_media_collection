@@ -49,13 +49,24 @@ describe('GET /api/search', () => {
     expect(data[0].title).toBe('Dune')
   })
 
-  it('calls searchVinyl for type=vinyl', async () => {
-    mockSearchVinyl.mockResolvedValue([VINYL_RESULT])
+  it('calls searchVinyl for type=vinyl and returns { results, hasMore }', async () => {
+    mockSearchVinyl.mockResolvedValue({ results: [VINYL_RESULT], hasMore: false })
     const req = new Request('http://localhost/api/search?q=Abbey&type=vinyl')
     const res = await GET(req)
     expect(mockSearchVinyl).toHaveBeenCalled()
     const data = await res.json()
-    expect(data[0].title).toBe('Abbey Road')
+    expect(data.results[0].title).toBe('Abbey Road')
+    expect(data.hasMore).toBe(false)
+  })
+
+  it('passes hasMore=true through when Discogs has more pages', async () => {
+    const manyResults = Array.from({ length: 16 }, (_, i) => ({ ...VINYL_RESULT, external_id: String(i), title: `Album ${i}` }))
+    mockSearchVinyl.mockResolvedValue({ results: manyResults, hasMore: true })
+    const req = new Request('http://localhost/api/search?q=Springsteen&type=vinyl')
+    const res = await GET(req)
+    const data = await res.json()
+    expect(data.hasMore).toBe(true)
+    expect(data.results).toHaveLength(16)
   })
 
   it('calls searchComics for type=comic', async () => {
