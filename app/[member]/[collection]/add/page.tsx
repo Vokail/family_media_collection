@@ -38,6 +38,7 @@ export default function AddItemPage() {
   const [searchLang, setSearchLang] = useState('dutch')
   const [offset, setOffset] = useState(0)
   const [lastQuery, setLastQuery] = useState('')
+  const searchInputRef = useRef<HTMLInputElement>(null)
   const barcodeAbort = useRef<AbortController | null>(null)
   const navTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [showManual, setShowManual] = useState(false)
@@ -349,6 +350,7 @@ export default function AddItemPage() {
       <div className="flex gap-2 mb-4">
         <div className="relative flex-1">
           <input
+            ref={searchInputRef}
             className="input w-full pr-8"
             placeholder="Search by title or artist…"
             value={query}
@@ -357,7 +359,7 @@ export default function AddItemPage() {
           />
           {query && (
             <button
-              onClick={() => { setQuery(''); setResults([]); setOffset(0); setBarcodeHint(null) }}
+              onClick={() => { setQuery(''); setResults([]); setOffset(0); setBarcodeHint(null); searchInputRef.current?.focus() }}
               className="absolute right-2 top-1/2 -translate-y-1/2 text-sm leading-none px-1"
               style={{ color: 'var(--text-muted)' }}
               title="Clear search"
