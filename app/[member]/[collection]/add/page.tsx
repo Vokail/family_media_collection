@@ -55,6 +55,7 @@ export default function AddItemPage() {
   const [showCoverCapture, setShowCoverCapture] = useState(false)
   const [scanCover, setScanCover] = useState<File | null>(null)
   const [identifying, setIdentifying] = useState(false)
+  const [showBackToTop, setShowBackToTop] = useState(false)
   const [existingItems, setExistingItems] = useState<Item[]>([])
 
   useEffect(() => {
@@ -64,6 +65,13 @@ export default function AddItemPage() {
 
   // Clear redirect timer if component unmounts before it fires
   useEffect(() => () => { if (navTimer.current) clearTimeout(navTimer.current) }, [])
+
+  // Show back-to-top button after scrolling down 300px
+  useEffect(() => {
+    const onScroll = () => setShowBackToTop(window.scrollY > 300)
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
 
   useEffect(() => {
     fetch(`/api/items?member=${member}&collection=${collection}`)
@@ -408,6 +416,17 @@ export default function AddItemPage() {
             {loadingMore ? 'Loading…' : 'Load more results'}
           </button>
         </div>
+      )}
+
+      {showBackToTop && (
+        <button
+          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+          className="fixed bottom-6 right-6 z-30 w-11 h-11 rounded-full flex items-center justify-center text-lg font-bold shadow-lg"
+          style={{ backgroundColor: 'var(--accent)', color: '#fff' }}
+          aria-label="Back to top"
+        >
+          ↑
+        </button>
       )}
 
       <div className="mt-6 border-t pt-4" style={{ borderColor: 'var(--border)' }}>
