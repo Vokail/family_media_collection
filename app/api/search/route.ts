@@ -3,6 +3,7 @@ import { searchBooks } from '@/lib/apis/openlibrary'
 import { searchVinyl } from '@/lib/apis/discogs'
 import { searchComics } from '@/lib/apis/comicvine'
 import { searchLego } from '@/lib/apis/rebrickable'
+import type { SearchResult } from '@/lib/types'
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
@@ -13,18 +14,29 @@ export async function GET(request: Request) {
 
   const lang = searchParams.get('lang') ?? undefined
   const offset = parseInt(searchParams.get('offset') ?? '0')
-  const results = type === 'vinyl' ? await searchVinyl(q, offset)
-    : type === 'book' ? await searchBooks(q, lang, offset)
-    : type === 'lego' ? await searchLego(q, offset)
-    : await searchComics(q, lang, offset)
+
+  let rawResults: SearchResult[]
+  let hasMore: boolean | undefined
+
+  if (type === 'vinyl') {
+    const vinyl = await searchVinyl(q, offset)
+    rawResults = vinyl.results
+    hasMore = vinyl.hasMore
+  } else if (type === 'book') {
+    rawResults = await searchBooks(q, lang, offset)
+  } else if (type === 'lego') {
+    rawResults = await searchLego(q, offset)
+  } else {
+    rawResults = await searchComics(q, lang, offset)
+  }
 
   const seen = new Set<string>()
-  const unique = results.filter(r => {
+  const unique = rawResults.filter(r => {
     const key = `${r.title.toLowerCase().trim()}||${r.creator.toLowerCase().trim()}`
     if (seen.has(key)) return false
     seen.add(key)
     return true
   })
 
-  return NextResponse.json(unique)
+  return NextResponse.json(hasMore !== undefined ? { results: unique, hasMore } : unique)
 }

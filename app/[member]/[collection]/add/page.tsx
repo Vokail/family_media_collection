@@ -108,15 +108,29 @@ export default function AddItemPage() {
       // This bypasses the Vercel 10s function timeout that caused silent empty results
       // on cold-start requests fired immediately after OCR.
       data = await searchOpenLibrary(q)
+      setHasMore(data.length === 20)
     } else {
       const lang = collection === 'comic' ? searchLang : undefined
       const url = `/api/search?q=${encodeURIComponent(q)}&type=${collection}${lang ? `&lang=${lang}` : ''}`
       const res = await fetch(url)
-      data = res.ok ? await res.json() : []
+      if (res.ok) {
+        const json = await res.json()
+        // Vinyl returns { results, hasMore } so we can use Discogs pagination metadata.
+        // All other types return a plain array.
+        if (Array.isArray(json)) {
+          data = json
+          setHasMore(data.length === 20)
+        } else {
+          data = json.results ?? []
+          setHasMore(json.hasMore ?? false)
+        }
+      } else {
+        data = []
+        setHasMore(false)
+      }
     }
     setResults(data)
     setHasSearched(true)
-    setHasMore(data.length === 20)
     setLoading(false)
   }, [collection, searchLang])
 
@@ -126,21 +140,31 @@ export default function AddItemPage() {
     let more: SearchResult[]
     if (collection === 'book') {
       more = await searchOpenLibrary(lastQuery, nextOffset)
+      setHasMore(more.length === 20)
     } else {
       const lang = collection === 'comic' ? searchLang : undefined
       const url = `/api/search?q=${encodeURIComponent(lastQuery)}&type=${collection}&offset=${nextOffset}${lang ? `&lang=${lang}` : ''}`
       const res = await fetch(url)
-      more = res.ok ? await res.json() : []
+      if (res.ok) {
+        const json = await res.json()
+        if (Array.isArray(json)) {
+          more = json
+          setHasMore(more.length === 20)
+        } else {
+          more = json.results ?? []
+          setHasMore(json.hasMore ?? false)
+        }
+      } else {
+        more = []
+        setHasMore(false)
+      }
     }
     if (more.length > 0) {
       setResults(prev => {
         const existingIds = new Set(prev.map(r => r.external_id))
         return [...prev, ...more.filter(r => !existingIds.has(r.external_id))]
       })
-      setHasMore(more.length === 20)
       setOffset(nextOffset)
-    } else {
-      setHasMore(false)
     }
     setLoadingMore(false)
   }, [collection, searchLang, lastQuery, offset])

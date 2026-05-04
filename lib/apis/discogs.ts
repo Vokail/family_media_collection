@@ -35,13 +35,17 @@ function mapResult(r: Record<string, unknown>): SearchResult {
   }
 }
 
-export async function searchVinyl(query: string, offset = 0): Promise<SearchResult[]> {
+export async function searchVinyl(query: string, offset = 0): Promise<{ results: SearchResult[]; hasMore: boolean }> {
   const page = Math.floor(offset / 20) + 1
   const url = `${BASE}/database/search?q=${encodeURIComponent(query)}&type=master&format=vinyl&per_page=20&page=${page}`
   const res = await fetch(url, { headers: headers() })
-  if (!res.ok) return []
+  if (!res.ok) return { results: [], hasMore: false }
   const data = await res.json()
-  return (data.results ?? []).map(mapResult)
+  const totalPages: number = data.pagination?.pages ?? 1
+  return {
+    results: (data.results ?? []).map(mapResult),
+    hasMore: page < totalPages,
+  }
 }
 
 export async function fetchVinylRelease(id: string): Promise<{
