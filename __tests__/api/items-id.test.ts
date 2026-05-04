@@ -192,6 +192,68 @@ describe('DELETE /api/items/[id]', () => {
   })
 })
 
+describe('PATCH /api/items/[id] condition (vinyl grade)', () => {
+  it('patches condition to near_mint and passes it to updateItem', async () => {
+    const updated = { ...ITEM, condition: 'near_mint' }
+    mockUpdateItem.mockResolvedValue(updated)
+    const req = new Request('http://localhost/api/items/item-uuid', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ condition: 'near_mint' }),
+    })
+    const res = await PATCH(req, buildParams('item-uuid'))
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    expect(data.condition).toBe('near_mint')
+    expect(mockUpdateItem).toHaveBeenCalledWith('item-uuid', { condition: 'near_mint' })
+  })
+
+  it('patches condition to null (clears grade)', async () => {
+    const updated = { ...ITEM, condition: null }
+    mockUpdateItem.mockResolvedValue(updated)
+    const req = new Request('http://localhost/api/items/item-uuid', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ condition: null }),
+    })
+    const res = await PATCH(req, buildParams('item-uuid'))
+    expect(res.status).toBe(200)
+    expect(mockUpdateItem).toHaveBeenCalledWith('item-uuid', { condition: null })
+  })
+
+  it('accepts all four valid condition values', async () => {
+    for (const grade of ['mint', 'near_mint', 'good', 'poor'] as const) {
+      mockUpdateItem.mockResolvedValue({ ...ITEM, condition: grade })
+      const req = new Request('http://localhost/api/items/item-uuid', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ condition: grade }),
+      })
+      const res = await PATCH(req, buildParams('item-uuid'))
+      expect(res.status).toBe(200)
+      expect(mockUpdateItem).toHaveBeenCalledWith('item-uuid', { condition: grade })
+      mockUpdateItem.mockReset()
+    }
+  })
+
+  it('condition is not treated as a lockable field', async () => {
+    // Patching condition should NOT cause locked_fields to be updated
+    const mockUpdateFn = jest.fn().mockReturnValue({ eq: jest.fn().mockResolvedValue({}) })
+    mockSingle.mockResolvedValue({ data: { member_id: 'member-uuid', locked_fields: null }, error: null })
+    mockFrom.mockReturnValue({ select: mockSelect, update: mockUpdateFn })
+    mockUpdateItem.mockResolvedValue({ ...ITEM, condition: 'good' })
+
+    const req = new Request('http://localhost/api/items/item-uuid', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ condition: 'good' }),
+    })
+    await PATCH(req, buildParams('item-uuid'))
+    // update() should NOT have been called for locked_fields
+    expect(mockUpdateFn).not.toHaveBeenCalled()
+  })
+})
+
 describe('PATCH /api/items/[id] error handling', () => {
   it('returns 500 when updateItem throws', async () => {
     mockUpdateItem.mockRejectedValue(new Error('db error'))
