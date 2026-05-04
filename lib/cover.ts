@@ -8,7 +8,7 @@ export async function downloadCover(url: string, memberId: string): Promise<stri
     if (!res.ok) return null
     const buffer = Buffer.from(await res.arrayBuffer())
     const resized = await sharp(buffer)
-      .resize(600, 600, { fit: 'inside', withoutEnlargement: true })
+      .resize(1200, 1200, { fit: 'inside', withoutEnlargement: true })
       .jpeg({ quality: 85 })
       .toBuffer()
     const path = `${memberId}/${randomUUID()}.jpg`
