@@ -59,6 +59,8 @@ export interface SearchResult {
   description?: string | null  // short subtitle / series info
   genres?: string | null       // e.g. "Rock, Electronic"
   styles?: string | null       // e.g. "New Wave, Synth-pop"
+  // Lego / Rebrickable extras
+  num_parts?: number | null    // e.g. 7541
 }
 
 export interface ActivityItem {

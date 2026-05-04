@@ -192,6 +192,7 @@ describe('lookupBookByISBN with lang=dutch', () => {
     const { lookupBookByISBN } = await import('@/lib/apis/openlibrary')
 
     // Dutch path: 3 racers (kbSru, olBibKeys, google) — no olSearch
+    // KB SRU never provides covers, so fetchCoverForISBN fires 2 more calls after the race
     mockFetch
       .mockResolvedValueOnce({                       // kbSruByISBN wins
         ok: true,
@@ -202,14 +203,16 @@ describe('lookupBookByISBN with lang=dutch', () => {
           <dc:date>1966</dc:date>
         `,
       })
-      .mockResolvedValueOnce({ ok: false })          // olBibKeysByISBN
-      .mockResolvedValueOnce({ ok: false })          // googleBooksByISBN
+      .mockResolvedValueOnce({ ok: false })          // olBibKeysByISBN (race)
+      .mockResolvedValueOnce({ ok: false })          // googleBooksByISBN (race)
+      .mockResolvedValueOnce({ ok: false })          // olBibKeysByISBN (fetchCoverForISBN)
+      .mockResolvedValueOnce({ ok: false })          // googleBooksByISBN (fetchCoverForISBN)
 
     const result = await lookupBookByISBN('9789021615417', 'dutch')
     expect(result).not.toBeNull()
     expect(result!.title).toBe('De Kleine Prins')
-    // olSearchByISBN must NOT have been called (only 3 fetch calls for 3 racers)
-    expect(mockFetch).toHaveBeenCalledTimes(3)
+    // olSearchByISBN must NOT have been called (3 racers + 2 cover-patch fetches = 5 total)
+    expect(mockFetch).toHaveBeenCalledTimes(5)
   })
 
   it('falls back to edition-level sources when KB SRU fails', async () => {

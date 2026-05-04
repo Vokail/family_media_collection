@@ -54,7 +54,7 @@ describe('parseDiscogsTitle (via searchVinyl)', () => {
       }),
     })
     const { searchVinyl } = await import('@/lib/apis/discogs')
-    const results = await searchVinyl('dark side')
+    const { results } = await searchVinyl('dark side')
     expect(results[0].creator).toBe('Pink Floyd')
     expect(results[0].title).toBe('The Dark Side of the Moon')
   })
@@ -67,7 +67,7 @@ describe('parseDiscogsTitle (via searchVinyl)', () => {
       }),
     })
     const { searchVinyl } = await import('@/lib/apis/discogs')
-    const results = await searchVinyl('query')
+    const { results } = await searchVinyl('query')
     expect(results[0].creator).toBe('Artist')
     expect(results[0].title).toBe('Title - Subtitle')
   })
@@ -80,7 +80,7 @@ describe('parseDiscogsTitle (via searchVinyl)', () => {
       }),
     })
     const { searchVinyl } = await import('@/lib/apis/discogs')
-    const results = await searchVinyl('query')
+    const { results } = await searchVinyl('query')
     expect(results[0].creator).toBe('Unknown')
     expect(results[0].title).toBe('NoDashTitle')
   })

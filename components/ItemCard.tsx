@@ -350,9 +350,13 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
             {item.collection === 'book' && item.isbn && (
               <p className="text-center text-xs font-mono" style={{ color: 'var(--text-muted)' }}>ISBN {item.isbn}</p>
             )}
-            {item.description && (
+            {item.collection === 'lego' && item.description && /^\d+$/.test(item.description) ? (
+              <p className="text-sm text-center font-medium" style={{ color: 'var(--text-muted)' }}>
+                🧱 {parseInt(item.description).toLocaleString()} pieces
+              </p>
+            ) : item.description ? (
               <p className="text-sm leading-relaxed break-words" style={{ color: 'var(--text-muted)', overflowWrap: 'break-word', wordBreak: 'break-word' }}>{item.description}</p>
-            )}
+            ) : null}
             {item.collection === 'vinyl' && (item.genres || item.styles) && (
               <div className="flex flex-wrap gap-1.5 justify-center">
                 {item.genres && item.genres.split(', ').map(g => (

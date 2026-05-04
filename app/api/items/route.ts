@@ -29,7 +29,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   const body = await request.json()
-  const { memberSlug, collection, title, creator, year, cover_url, is_wishlist, external_id, isbn, lang, genres, styles } = body
+  const { memberSlug, collection, title, creator, year, cover_url, is_wishlist, external_id, isbn, lang, genres, styles, num_parts } = body
   if (!title?.trim()) return NextResponse.json({ error: 'Title required' }, { status: 400 })
   if (!VALID_COLLECTIONS.includes(collection)) return NextResponse.json({ error: 'Invalid collection' }, { status: 400 })
   try {
@@ -72,7 +72,7 @@ export async function POST(request: Request) {
     sort_name: vinylRelease?.sortName ?? null,
     external_id: external_id ?? null,
     isbn: isbn ?? null,
-    description: description ?? null,
+    description: collection === 'lego' && num_parts ? String(num_parts) : (description ?? null),
     rating: null,
     // Genre/style from Discogs: prefer release-level data, fall back to search result
     genres: vinylRelease?.genres ?? genres ?? null,

@@ -28,6 +28,7 @@ function mapSet(s: Record<string, unknown>, themes: Map<number, string>): Search
     year: (s.year as number) ?? null,
     cover_url: (s.set_img_url as string) || null,
     source: 'rebrickable',
+    num_parts: typeof s.num_parts === 'number' ? s.num_parts : null,
   }
 }
 

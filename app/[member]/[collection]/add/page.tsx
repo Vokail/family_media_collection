@@ -285,6 +285,7 @@ export default function AddItemPage() {
         lang: collection === 'book' ? searchLang : undefined,
         genres: result.genres ?? null,
         styles: result.styles ?? null,
+        num_parts: result.num_parts ?? null,
       }),
     })
     setAdding(null)

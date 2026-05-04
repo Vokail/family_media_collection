@@ -101,6 +101,59 @@ function VinylDetailModal({ result, onClose }: DetailModalProps) {
   )
 }
 
+function LegoDetailModal({ result, onClose }: DetailModalProps) {
+  const setNum = result.external_id
+  const rebrickableUrl = `https://rebrickable.com/sets/${encodeURIComponent(setNum)}/`
+
+  return (
+    <div className="fixed inset-0 bg-black/60 flex items-end z-50" onClick={onClose}>
+      <div
+        className="card w-full rounded-b-none flex flex-col max-h-[85vh]"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex justify-end p-3 border-b flex-shrink-0" style={{ borderColor: 'var(--border)' }}>
+          <button onClick={onClose} className="btn-ghost px-3 py-1 text-sm">✕ Close</button>
+        </div>
+        <div className="p-5 flex flex-col gap-4 overflow-y-auto">
+          <div className="flex gap-4">
+            {result.cover_url ? (
+              <Image src={result.cover_url} alt={result.title} width={100} height={100} className="w-24 h-24 rounded-lg object-cover flex-shrink-0 shadow" unoptimized />
+            ) : (
+              <div className="w-24 h-24 placeholder-tile flex-shrink-0 text-3xl flex items-center justify-center">🧱</div>
+            )}
+            <div className="flex flex-col gap-1 min-w-0">
+              <h2 className="font-serif text-lg font-bold leading-snug">{result.title}</h2>
+              <p className="subtitle text-sm">{result.creator}</p>
+              {result.year && <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{result.year}</p>}
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <span className="text-xs px-2.5 py-1 rounded-full font-mono" style={{ backgroundColor: 'var(--border)', color: 'var(--text-muted)' }}>
+              #{setNum}
+            </span>
+            {result.num_parts != null && (
+              <span className="text-xs px-2.5 py-1 rounded-full font-medium" style={{ backgroundColor: 'color-mix(in srgb, var(--accent) 15%, var(--bg-card))', color: 'var(--accent)' }}>
+                🧱 {result.num_parts.toLocaleString()} pieces
+              </span>
+            )}
+          </div>
+
+          <a
+            href={rebrickableUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm underline self-start"
+            style={{ color: 'var(--text-muted)' }}
+          >
+            View on Rebrickable →
+          </a>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 interface Props {
   results: SearchResult[]
   hasSearched?: boolean
@@ -123,6 +176,7 @@ export default function SearchResults({ results, hasSearched, onAdd, adding, get
         {results.map(r => {
           const dupe = getDupeStatus?.(r) ?? null
           const isVinyl = r.source === 'discogs'
+          const isLego = r.source === 'rebrickable'
           return (
             <li key={r.external_id} className="card p-4 flex gap-4 items-start">
               <div className="flex-shrink-0">
@@ -164,6 +218,25 @@ export default function SearchResults({ results, hasSearched, onAdd, adding, get
                     Details & tracklist
                   </button>
                 )}
+                {isLego && (
+                  <div className="flex flex-wrap gap-1.5 mt-1.5 items-center">
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full font-mono" style={{ backgroundColor: 'var(--border)', color: 'var(--text-muted)' }}>
+                      #{r.external_id}
+                    </span>
+                    {r.num_parts != null && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ backgroundColor: 'var(--border)', color: 'var(--text-muted)' }}>
+                        🧱 {r.num_parts.toLocaleString()}
+                      </span>
+                    )}
+                    <button
+                      onClick={() => setDetailFor(r)}
+                      className="text-xs underline"
+                      style={{ color: 'var(--text-muted)' }}
+                    >
+                      Details
+                    </button>
+                  </div>
+                )}
               </div>
               <div className="flex flex-col gap-2 flex-shrink-0">
                 <button
@@ -186,8 +259,11 @@ export default function SearchResults({ results, hasSearched, onAdd, adding, get
         })}
       </ul>
 
-      {detailFor && (
+      {detailFor && detailFor.source === 'discogs' && (
         <VinylDetailModal result={detailFor} onClose={() => setDetailFor(null)} />
+      )}
+      {detailFor && detailFor.source === 'rebrickable' && (
+        <LegoDetailModal result={detailFor} onClose={() => setDetailFor(null)} />
       )}
     </>
   )
