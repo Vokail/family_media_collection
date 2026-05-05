@@ -107,6 +107,30 @@ export default function AddItemPage() {
 
   const runSearch = useCallback(async (q: string) => {
     if (!q.trim()) return
+
+    // For books/comics: if the query looks like an ISBN (10 or 13 digits, hyphens ok),
+    // route straight to the barcode/ISBN lookup instead of a full-text search —
+    // text search returns 0 results for ISBNs on OpenLibrary.
+    const isbnClean = q.replace(/[-\s]/g, '')
+    if ((collection === 'book' || collection === 'comic') && /^\d{10}$|^\d{13}$/.test(isbnClean)) {
+      setLoading(true)
+      setResults([])
+      setOffset(0)
+      setHasMore(false)
+      const res = await fetch(`/api/barcode?code=${encodeURIComponent(isbnClean)}&type=${collection}&lang=${searchLang}`)
+      if (res.ok) {
+        setResults([await res.json()])
+        setHasSearched(true)
+      } else {
+        setHasSearched(true)
+        setBarcodeHint('ISBN not found in any database — fill in the details below to add it manually.')
+        setManualIsbn(isbnClean)
+        setShowManual(true)
+      }
+      setLoading(false)
+      return
+    }
+
     setLoading(true)
     setOffset(0)
     setLastQuery(q)
