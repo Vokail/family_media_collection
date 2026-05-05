@@ -573,12 +573,14 @@ export default function AddItemPage() {
             >
               📦 Scan barcode
             </button>
-            <button
-              className="btn-ghost text-sm py-3 w-full text-center"
-              onClick={() => { setShowScanPicker(false); setShowCoverCapture(true) }}
-            >
-              🖼 Scan cover (OCR)
-            </button>
+            {collection !== 'lego' && (
+              <button
+                className="btn-ghost text-sm py-3 w-full text-center"
+                onClick={() => { setShowScanPicker(false); setShowCoverCapture(true) }}
+              >
+                🖼 Scan cover (OCR)
+              </button>
+            )}
             <button className="btn-ghost text-sm py-2 w-full text-center" style={{ color: 'var(--text-muted)' }} onClick={() => setShowScanPicker(false)}>
               Cancel
             </button>
