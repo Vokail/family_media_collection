@@ -1,24 +1,31 @@
 jest.mock('@/lib/apis/openlibrary', () => ({ lookupBookByISBN: jest.fn() }))
 jest.mock('@/lib/apis/discogs', () => ({ lookupVinylByBarcode: jest.fn() }))
 jest.mock('@/lib/apis/comicvine', () => ({ lookupComicByBarcode: jest.fn() }))
-jest.mock('@/lib/apis/rebrickable', () => ({ lookupLegoBySetNum: jest.fn() }))
+jest.mock('@/lib/apis/rebrickable', () => ({
+  lookupLegoBySetNum: jest.fn(),
+  lookupLegoByEAN: jest.fn(),
+}))
 
 import { GET } from '@/app/api/barcode/route'
 import { lookupBookByISBN } from '@/lib/apis/openlibrary'
 import { lookupVinylByBarcode } from '@/lib/apis/discogs'
 import { lookupComicByBarcode } from '@/lib/apis/comicvine'
-import { lookupLegoBySetNum } from '@/lib/apis/rebrickable'
+import { lookupLegoBySetNum, lookupLegoByEAN } from '@/lib/apis/rebrickable'
 
 const mockLookupBook = lookupBookByISBN as jest.Mock
 const mockLookupVinyl = lookupVinylByBarcode as jest.Mock
 const mockLookupComic = lookupComicByBarcode as jest.Mock
 const mockLookupLego = lookupLegoBySetNum as jest.Mock
+const mockLookupLegoEAN = lookupLegoByEAN as jest.Mock
+
+const LEGO_SET = { external_id: '75192-1', title: 'Millennium Falcon', creator: 'Star Wars', year: 2017, cover_url: null, source: 'rebrickable' }
 
 beforeEach(() => {
   mockLookupBook.mockReset()
   mockLookupVinyl.mockReset()
   mockLookupComic.mockReset()
   mockLookupLego.mockReset()
+  mockLookupLegoEAN.mockReset()
 })
 
 describe('GET /api/barcode', () => {
@@ -61,12 +68,47 @@ describe('GET /api/barcode', () => {
     expect(mockLookupVinyl).toHaveBeenCalledWith('0724389862027')
   })
 
-  it('returns lego result for type=lego', async () => {
-    const result = { external_id: '75192-1', title: 'Millennium Falcon', creator: 'Star Wars', year: 2017, cover_url: null, source: 'rebrickable' }
-    mockLookupLego.mockResolvedValue(result)
+  it('routes short lego code (set number) straight to lookupLegoBySetNum', async () => {
+    mockLookupLego.mockResolvedValue(LEGO_SET)
     const req = new Request('http://localhost/api/barcode?code=75192&type=lego')
     const res = await GET(req)
     expect(res.status).toBe(200)
     expect(mockLookupLego).toHaveBeenCalledWith('75192')
+    expect(mockLookupLegoEAN).not.toHaveBeenCalled()
+  })
+
+  it('routes 13-digit EAN to lookupLegoByEAN first', async () => {
+    mockLookupLegoEAN.mockResolvedValue(LEGO_SET)
+    const req = new Request('http://localhost/api/barcode?code=5702016110319&type=lego')
+    const res = await GET(req)
+    expect(res.status).toBe(200)
+    expect(mockLookupLegoEAN).toHaveBeenCalledWith('5702016110319')
+    expect(mockLookupLego).not.toHaveBeenCalled()
+  })
+
+  it('routes 12-digit EAN to lookupLegoByEAN first', async () => {
+    mockLookupLegoEAN.mockResolvedValue(LEGO_SET)
+    const req = new Request('http://localhost/api/barcode?code=673419302951&type=lego')
+    const res = await GET(req)
+    expect(res.status).toBe(200)
+    expect(mockLookupLegoEAN).toHaveBeenCalledWith('673419302951')
+  })
+
+  it('falls back to lookupLegoBySetNum when EAN lookup returns null', async () => {
+    mockLookupLegoEAN.mockResolvedValue(null)
+    mockLookupLego.mockResolvedValue(LEGO_SET)
+    const req = new Request('http://localhost/api/barcode?code=5702016110319&type=lego')
+    const res = await GET(req)
+    expect(res.status).toBe(200)
+    expect(mockLookupLegoEAN).toHaveBeenCalledWith('5702016110319')
+    expect(mockLookupLego).toHaveBeenCalledWith('5702016110319')
+  })
+
+  it('returns 404 when both EAN and set number lookups return null', async () => {
+    mockLookupLegoEAN.mockResolvedValue(null)
+    mockLookupLego.mockResolvedValue(null)
+    const req = new Request('http://localhost/api/barcode?code=5702016110319&type=lego')
+    const res = await GET(req)
+    expect(res.status).toBe(404)
   })
 })

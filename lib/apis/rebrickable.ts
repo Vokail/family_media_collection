@@ -61,3 +61,36 @@ export async function lookupLegoBySetNum(setNum: string): Promise<SearchResult |
   }
   return null
 }
+
+// Look up a LEGO set by EAN/UPC barcode.
+// Uses upcitemdb (no API key required, 100 req/day free tier) to resolve
+// EAN → LEGO set number, then fetches full metadata from Rebrickable.
+export async function lookupLegoByEAN(ean: string): Promise<SearchResult | null> {
+  try {
+    const res = await fetch(
+      `https://api.upcitemdb.com/prod/trial/lookup?upc=${encodeURIComponent(ean)}`,
+      { signal: AbortSignal.timeout(8000) },
+    )
+    if (!res.ok) return null
+    const data = await res.json()
+    const item = data.items?.[0]
+    if (!item) return null
+
+    // upcitemdb returns the LEGO set number in the `model` field (e.g. "75192")
+    const model = (item.model as string | undefined)?.trim()
+    if (model && /^\d{4,6}$/.test(model)) {
+      return lookupLegoBySetNum(model)
+    }
+
+    // Fallback: extract a 4-6 digit number from the product title
+    const title = (item.title as string | undefined) ?? ''
+    const match = title.match(/\b(\d{4,6})\b/)
+    if (match) {
+      return lookupLegoBySetNum(match[1])
+    }
+
+    return null
+  } catch {
+    return null
+  }
+}
