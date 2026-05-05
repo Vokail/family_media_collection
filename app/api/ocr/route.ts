@@ -112,6 +112,12 @@ export async function POST(request: Request) {
     const err = await res.text()
     console.error('OpenRouter OCR error:', res.status, err)
     clearModelCache() // bust cache so we re-discover on next attempt
+
+    // Pass 429 through so the client can show a specific "daily limit reached" message.
+    // All other errors become 502.
+    if (res.status === 429) {
+      return NextResponse.json({ error: 'rate_limited' }, { status: 429 })
+    }
     return NextResponse.json({ error: `OpenRouter ${res.status} (model: ${model}): ${err.slice(0, 200)}` }, { status: 502 })
   }
 

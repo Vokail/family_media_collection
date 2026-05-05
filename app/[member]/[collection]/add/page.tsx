@@ -248,8 +248,13 @@ export default function AddItemPage() {
       const res = await fetch('/api/ocr', { method: 'POST', body: form })
 
       if (!res.ok) {
-        const body = await res.json().catch(() => ({})) as { error?: string }
-        toast.show(`OCR failed (${res.status}): ${body.error ?? 'unknown error'}`, 'error')
+        const ocrMessage =
+          res.status === 429
+            ? 'Cover scan has reached its daily limit — try again tomorrow or fill in the details below.'
+            : res.status === 503
+            ? 'Cover scan is not available right now — fill in the details below.'
+            : 'Cover scan failed — fill in the details below.'
+        toast.show(ocrMessage, 'error')
         setShowManual(true)
         setManualCover(file)
         return
@@ -273,12 +278,12 @@ export default function AddItemPage() {
         setQuery(searchQuery)
         await runSearch(searchQuery)
       } else {
-        toast.show('OCR returned no text — please fill in manually', 'error')
+        toast.show('Could not read the cover — fill in the details below.', 'error')
         setShowManual(true)
         setManualCover(file)
       }
-    } catch (err) {
-      toast.show(`OCR error: ${err instanceof Error ? err.message : 'network error'}`, 'error')
+    } catch {
+      toast.show('Cover scan failed — fill in the details below.', 'error')
       setShowManual(true)
       setManualCover(file)
     } finally {
