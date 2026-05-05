@@ -8,6 +8,7 @@ import AvatarUpload from '@/components/AvatarUpload'
 import AppVersion from '@/components/AppVersion'
 import BackButton from '@/components/BackButton'
 import LogoutButton from '@/components/LogoutButton'
+import BolImport from '@/components/BolImport'
 
 export default async function ProfilePage() {
   const session = await getSession()
@@ -36,6 +37,7 @@ export default async function ProfilePage() {
         memberName={member.name}
         enabledCollections={member.enabled_collections ?? ['vinyl', 'book', 'comic', 'lego']}
       />
+      <BolImport />
       <AppVersion />
     </main>
   )
