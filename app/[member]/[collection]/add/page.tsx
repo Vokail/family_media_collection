@@ -209,7 +209,7 @@ export default function AddItemPage() {
     setScanning(false)
     setLoading(true)
     setResults([])
-    setQuery('')
+    setQuery(code)
     setBarcodeHint(null)
 
     try {
