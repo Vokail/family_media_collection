@@ -340,3 +340,45 @@ describe('PATCH /api/items/[id] locked_fields', () => {
     expect(data.title).toBe('New Title')
   })
 })
+
+describe('PATCH/DELETE /api/items/[id] auth guards', () => {
+  it('PATCH returns 403 for viewer role', async () => {
+    mockGetSession.mockResolvedValue({ role: 'viewer' })
+    const req = new Request('http://localhost/api/items/item-uuid', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ is_wishlist: true }),
+    })
+    const res = await PATCH(req, buildParams('item-uuid'))
+    expect(res.status).toBe(403)
+    expect(mockUpdateItem).not.toHaveBeenCalled()
+  })
+
+  it('PATCH returns 403 for unauthenticated session', async () => {
+    mockGetSession.mockResolvedValue({})
+    const req = new Request('http://localhost/api/items/item-uuid', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ is_wishlist: true }),
+    })
+    const res = await PATCH(req, buildParams('item-uuid'))
+    expect(res.status).toBe(403)
+    expect(mockUpdateItem).not.toHaveBeenCalled()
+  })
+
+  it('DELETE returns 403 for viewer role', async () => {
+    mockGetSession.mockResolvedValue({ role: 'viewer' })
+    const req = new Request('http://localhost/api/items/item-uuid', { method: 'DELETE' })
+    const res = await DELETE(req, buildParams('item-uuid'))
+    expect(res.status).toBe(403)
+    expect(mockDeleteItem).not.toHaveBeenCalled()
+  })
+
+  it('DELETE returns 403 for unauthenticated session', async () => {
+    mockGetSession.mockResolvedValue({})
+    const req = new Request('http://localhost/api/items/item-uuid', { method: 'DELETE' })
+    const res = await DELETE(req, buildParams('item-uuid'))
+    expect(res.status).toBe(403)
+    expect(mockDeleteItem).not.toHaveBeenCalled()
+  })
+})
