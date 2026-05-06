@@ -96,12 +96,34 @@ describe('GET /api/search', () => {
     expect(data.results).toHaveLength(20)
   })
 
-  it('deduplicates results with the same title+creator', async () => {
+  it('deduplicates results with the same external_id', async () => {
     const dupe = { ...BOOK_RESULT }
     mockSearchBooks.mockResolvedValue([BOOK_RESULT, dupe])
     const req = new Request('http://localhost/api/search?q=Dune&type=book')
     const res = await GET(req)
     const data = await res.json()
     expect(data).toHaveLength(1)
+  })
+
+  it('keeps multiple Lego sets with the same name but different external_ids (#116)', async () => {
+    // Real case: Millennium Falcon appears across many years (75375, 75192, 75257 etc.)
+    const falcon2017 = { ...LEGO_RESULT, external_id: '75192-1', year: 2017 }
+    const falcon2019 = { ...LEGO_RESULT, external_id: '75257-1', year: 2019 }
+    const falcon2024 = { ...LEGO_RESULT, external_id: '75375-1', year: 2024 }
+    mockSearchLego.mockResolvedValue({ results: [falcon2017, falcon2019, falcon2024], hasMore: false })
+    const req = new Request('http://localhost/api/search?q=Millennium+Falcon&type=lego')
+    const res = await GET(req)
+    const data = await res.json()
+    expect(data.results).toHaveLength(3)
+    expect(data.results.map((r: { external_id: string }) => r.external_id)).toEqual(['75192-1', '75257-1', '75375-1'])
+  })
+
+  it('still deduplicates Lego results that share the same external_id', async () => {
+    const dupe = { ...LEGO_RESULT }
+    mockSearchLego.mockResolvedValue({ results: [LEGO_RESULT, dupe], hasMore: false })
+    const req = new Request('http://localhost/api/search?q=Falcon&type=lego')
+    const res = await GET(req)
+    const data = await res.json()
+    expect(data.results).toHaveLength(1)
   })
 })
