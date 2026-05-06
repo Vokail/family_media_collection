@@ -4,8 +4,11 @@ import { importBolWishlist } from '@/lib/bol-import'
 
 export async function POST(request: Request) {
   const session = await getSession()
+  if (!session.role || session.role === 'viewer') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
   if (!session.editableMemberId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
   const body = await request.json()

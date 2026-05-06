@@ -47,6 +47,9 @@ export async function PATCH(
       getSession(),
       db.from('items').select('member_id, locked_fields').eq('id', id).single(),
     ])
+    if (!session.role || session.role === 'viewer') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
     if (session.role === 'member' && session.editableMemberId !== existing?.member_id) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
@@ -76,6 +79,9 @@ export async function DELETE(
       getSession(),
       db.from('items').select('cover_path, member_id').eq('id', id).single(),
     ])
+    if (!session.role || session.role === 'viewer') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
     if (session.role === 'member' && session.editableMemberId !== data?.member_id) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }

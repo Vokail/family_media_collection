@@ -16,18 +16,38 @@ beforeEach(() => {
 })
 
 describe('POST /api/import/bol', () => {
-  it('returns 401 when session has no editableMemberId', async () => {
+  it('returns 403 for viewer role', async () => {
     mockGetSession.mockResolvedValue({ role: 'viewer' })
     const req = new Request('http://localhost/api/import/bol', {
       method: 'POST',
       body: JSON.stringify({ shareUrl: VALID_URL }),
     })
     const res = await POST(req)
-    expect(res.status).toBe(401)
+    expect(res.status).toBe(403)
+  })
+
+  it('returns 403 for unauthenticated session', async () => {
+    mockGetSession.mockResolvedValue({})
+    const req = new Request('http://localhost/api/import/bol', {
+      method: 'POST',
+      body: JSON.stringify({ shareUrl: VALID_URL }),
+    })
+    const res = await POST(req)
+    expect(res.status).toBe(403)
+  })
+
+  it('returns 403 when editor has no editableMemberId', async () => {
+    mockGetSession.mockResolvedValue({ role: 'editor' })
+    const req = new Request('http://localhost/api/import/bol', {
+      method: 'POST',
+      body: JSON.stringify({ shareUrl: VALID_URL }),
+    })
+    const res = await POST(req)
+    expect(res.status).toBe(403)
   })
 
   it('returns 400 when shareUrl is missing', async () => {
-    mockGetSession.mockResolvedValue({ editableMemberId: 'member-1' })
+    mockGetSession.mockResolvedValue({ role: 'member', editableMemberId: 'member-1' })
     const req = new Request('http://localhost/api/import/bol', {
       method: 'POST',
       body: JSON.stringify({}),
@@ -37,7 +57,7 @@ describe('POST /api/import/bol', () => {
   })
 
   it('returns 400 for non-Bol URL', async () => {
-    mockGetSession.mockResolvedValue({ editableMemberId: 'member-1' })
+    mockGetSession.mockResolvedValue({ role: 'member', editableMemberId: 'member-1' })
     const req = new Request('http://localhost/api/import/bol', {
       method: 'POST',
       body: JSON.stringify({ shareUrl: 'https://example.com/wishlist' }),
@@ -47,7 +67,7 @@ describe('POST /api/import/bol', () => {
   })
 
   it('returns 400 for Bol URL without verlanglijstje', async () => {
-    mockGetSession.mockResolvedValue({ editableMemberId: 'member-1' })
+    mockGetSession.mockResolvedValue({ role: 'member', editableMemberId: 'member-1' })
     const req = new Request('http://localhost/api/import/bol', {
       method: 'POST',
       body: JSON.stringify({ shareUrl: 'https://www.bol.com/nl/nl/p/hotel/123/' }),
@@ -57,7 +77,7 @@ describe('POST /api/import/bol', () => {
   })
 
   it('returns import result on success', async () => {
-    mockGetSession.mockResolvedValue({ editableMemberId: 'member-1' })
+    mockGetSession.mockResolvedValue({ role: 'member', editableMemberId: 'member-1' })
     mockImport.mockResolvedValue({ imported: 2, skipped: [] })
     const req = new Request('http://localhost/api/import/bol', {
       method: 'POST',
@@ -71,7 +91,7 @@ describe('POST /api/import/bol', () => {
   })
 
   it('returns 500 on import error', async () => {
-    mockGetSession.mockResolvedValue({ editableMemberId: 'member-1' })
+    mockGetSession.mockResolvedValue({ role: 'member', editableMemberId: 'member-1' })
     mockImport.mockRejectedValue(new Error('Fetch failed'))
     const req = new Request('http://localhost/api/import/bol', {
       method: 'POST',
