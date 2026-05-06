@@ -389,7 +389,7 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
       </div>
 
       {/* Owned / Wishlist + Sort */}
-      <div className="flex items-center gap-1 sm:gap-2 flex-nowrap">
+      <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
         <button className={`btn-ghost px-2 sm:px-4 text-xs sm:text-sm ${!isWishlist ? 'active' : ''}`} onClick={() => { setIsWishlist(false); localStorage.setItem(tabStorageKey, 'owned') }}>Owned <span className="opacity-70">({ownedCount})</span></button>
         <button className={`btn-ghost px-2 sm:px-4 text-xs sm:text-sm ${isWishlist ? 'active' : ''}`} onClick={() => { setIsWishlist(true); localStorage.setItem(tabStorageKey, 'wishlist') }}>Wishlist <span className="opacity-70">({wishlistCount})</span></button>
         {(isWishlist ? wishlistCount : ownedCount) > 0 && (
@@ -413,7 +413,9 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
             className="btn-ghost px-2 sm:px-3 text-xs sm:text-sm"
             title="Surprise me — pick a random item"
           >
-            🎲 Surprise
+            {/* Show only the dice on small screens to avoid overflowing the toolbar row */}
+            <span className="sm:hidden">🎲</span>
+            <span className="hidden sm:inline">🎲 Surprise</span>
           </button>
         )}
         <div className="ml-auto flex items-center gap-2">
