@@ -31,7 +31,7 @@ function VinylDetailModal({ result, onClose }: DetailModalProps) {
   }, [result.external_id])
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-end z-50" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/60 flex items-end z-50" onClick={onClose} role="dialog" aria-modal="true" aria-label={`${result.title} details`}>
       <div
         className="card w-full rounded-b-none flex flex-col max-h-[85vh]"
         onClick={e => e.stopPropagation()}
@@ -105,7 +105,7 @@ function LegoDetailModal({ result, onClose }: DetailModalProps) {
   const setNum = result.external_id
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-end z-50" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/60 flex items-end z-50" onClick={onClose} role="dialog" aria-modal="true" aria-label={`${result.title} details`}>
       <div
         className="card w-full rounded-b-none flex flex-col max-h-[85vh]"
         onClick={e => e.stopPropagation()}

@@ -74,9 +74,14 @@ async function backfillVinyl(db: ReturnType<typeof createServerClient>, force: b
   for (const item of items) {
     try {
       let id = item.external_id
-      if (!id) { id = await searchDiscogsId(item.creator, item.title); await delay(1100) }
+      if (!id) {
+        id = await searchDiscogsId(item.creator, item.title)
+        await delay(1100) // pace after search call
+      }
       if (!id) continue
-      const release = await fetchDiscogsRelease(id); await delay(1100)
+      await delay(1100) // pace before release fetch (second call for items needing a search)
+      const release = await fetchDiscogsRelease(id)
+      await delay(1100) // pace after release fetch
       if (!release) continue
       const tracklist = (release.tracklist ?? []).map((t: Record<string, unknown>) => ({
         position: (t.position as string) || '',

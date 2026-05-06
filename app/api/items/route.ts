@@ -3,7 +3,6 @@ import { revalidatePath } from 'next/cache'
 import { listItems, createItem } from '@/lib/db/items'
 import { getMemberBySlug } from '@/lib/db/members'
 import { getSession } from '@/lib/session'
-import { cleanDescription } from '@/lib/apis/openlibrary'
 import type { CollectionType } from '@/lib/types'
 
 const VALID_COLLECTIONS: CollectionType[] = ['vinyl', 'book', 'comic', 'lego']
@@ -75,7 +74,7 @@ export async function POST(request: Request) {
     isbn: isbn ?? null,
     description: collection === 'lego' && num_parts
       ? String(num_parts)
-      : (description ? cleanDescription(description) || null : null),
+      : (description ?? null),
     rating: null,
     // Genre/style from Discogs: prefer release-level data, fall back to search result
     genres: vinylRelease?.genres ?? genres ?? null,

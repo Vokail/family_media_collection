@@ -43,7 +43,7 @@ export default function PhotoCapture({ onCapture, onClose }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black z-50 flex flex-col">
+    <div className="fixed inset-0 bg-black z-50 flex flex-col" role="dialog" aria-modal="true" aria-label="Camera capture">
       <div className="flex justify-between items-center p-4">
         <span className="text-white font-semibold">Take cover photo</span>
         <button onClick={onClose} className="text-white text-2xl">✕</button>

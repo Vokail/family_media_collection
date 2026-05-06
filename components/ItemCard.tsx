@@ -28,6 +28,7 @@ function StarRating({ rating, onRate }: { rating: number | null; onRate?: (r: nu
           disabled={!onRate}
           className="text-2xl leading-none disabled:cursor-default"
           style={{ color: star <= (rating ?? 0) ? 'var(--accent)' : 'var(--border)' }}
+          aria-label={star === rating ? `Remove rating` : `Rate ${star} star${star > 1 ? 's' : ''}`}
         >★</button>
       ))}
     </div>
@@ -282,7 +283,7 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
           </div>
         </button>
       ) : (
-        <button onClick={() => setOpen(true)} className="w-full aspect-square relative">
+        <button onClick={() => setOpen(true)} className="w-full aspect-square relative" aria-label={`Open details for ${item.title}`}>
           {coverSrc ? (
             <div className="relative w-full h-full rounded-lg overflow-hidden shadow-md" style={{ backgroundColor: 'var(--border)' }}>
               <Image
@@ -341,7 +342,7 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
       )}
 
       {open && (
-        <div className="fixed inset-0 bg-black/60 flex items-end z-50" onClick={() => { closeSheet(); setConfirmDelete(false) }}>
+        <div className="fixed inset-0 bg-black/60 flex items-end z-50" onClick={() => { closeSheet(); setConfirmDelete(false) }} role="dialog" aria-modal="true" aria-label={item.title}>
           <div
             className="card w-full rounded-b-none flex flex-col max-h-[90vh]"
             onClick={e => e.stopPropagation()}
@@ -563,6 +564,9 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
         <div
           className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90"
           onClick={() => setCoverZoom(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Cover image for ${item.title}`}
         >
           <button
             onClick={() => setCoverZoom(false)}

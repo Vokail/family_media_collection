@@ -3,17 +3,32 @@ import type { SearchResult } from '../types'
 const BASE = 'https://rebrickable.com/api/v3/lego'
 const key = () => process.env.REBRICKABLE_API_KEY ?? ''
 
-// Fetch and cache theme map for the lifetime of the request
+// Module-level cache — themes rarely change, reuse across requests for the lifetime
+// of the serverless instance (re-fetched at most once per 24 hours)
+const THEMES_TTL_MS = 24 * 60 * 60 * 1000
+let themesCache: { promise: Promise<Map<number, string>>; fetchedAt: number } | null = null
+
 async function getThemes(): Promise<Map<number, string>> {
-  const map = new Map<number, string>()
-  try {
-    const res = await fetch(`${BASE}/themes/?page_size=1000&key=${key()}`)
-    if (!res.ok) return map
-    const data = await res.json()
-    for (const t of data.results ?? []) map.set(t.id, t.name)
-  } catch { /* ignore */ }
-  return map
+  const now = Date.now()
+  if (themesCache && now - themesCache.fetchedAt < THEMES_TTL_MS) {
+    return themesCache.promise
+  }
+  const promise = (async () => {
+    const map = new Map<number, string>()
+    try {
+      const res = await fetch(`${BASE}/themes/?page_size=1000&key=${key()}`)
+      if (!res.ok) return map
+      const data = await res.json()
+      for (const t of data.results ?? []) map.set(t.id, t.name)
+    } catch { /* ignore */ }
+    return map
+  })()
+  themesCache = { promise, fetchedAt: now }
+  return promise
 }
+
+/** Exposed for testing only — resets the themes cache */
+export function _resetThemesCache() { themesCache = null }
 
 function normalizeTheme(name: string): string {
   return name.replace(/\s+and\s+CUUSOO$/i, '')

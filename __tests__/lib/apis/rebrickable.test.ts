@@ -1,4 +1,4 @@
-import { searchLego, lookupLegoBySetNum, lookupLegoByEAN } from '@/lib/apis/rebrickable'
+import { searchLego, lookupLegoBySetNum, lookupLegoByEAN, _resetThemesCache } from '@/lib/apis/rebrickable'
 
 global.fetch = jest.fn()
 const mockFetch = fetch as jest.Mock
@@ -15,7 +15,7 @@ const THEMES_RESPONSE = {
   }),
 }
 
-beforeEach(() => mockFetch.mockReset())
+beforeEach(() => { mockFetch.mockReset(); _resetThemesCache() })
 
 describe('searchLego', () => {
   it('returns mapped results with theme name', async () => {
