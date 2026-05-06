@@ -311,6 +311,27 @@ describe('CollectionGrid title sort grouping', () => {
     )
     expect(sidebarButtons.length).toBeGreaterThanOrEqual(4)
   })
+
+  it('sidebar nav calls scrollIntoView after switching sort mode (#117)', () => {
+    // Regression: a useEffect was wiping sectionRefs.current after every sort change,
+    // so sidebar buttons stopped working. After the fix the refs must remain populated.
+    const scrollIntoViewMock = jest.fn()
+    HTMLElement.prototype.scrollIntoView = scrollIntoViewMock
+
+    render(<CollectionGrid {...defaultProps} initialItems={items} />)
+
+    // First switch to creator sort (populates different refs), then back to title.
+    // With the old bug both sort changes would clear the refs, leaving the sidebar dead.
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'creator' } })
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'title' } })
+
+    // Click the 'A' sidebar button — must call scrollIntoView on the A section element.
+    const sidebarA = screen.getAllByRole('button').find(b => b.textContent === 'A')
+    expect(sidebarA).toBeDefined()
+    fireEvent.click(sidebarA!)
+
+    expect(scrollIntoViewMock).toHaveBeenCalledWith({ behavior: 'smooth', block: 'start' })
+  })
 })
 
 describe('CollectionGrid Surprise button', () => {
