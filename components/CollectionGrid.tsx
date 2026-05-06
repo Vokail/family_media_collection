@@ -176,8 +176,6 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
   // Reset visible count whenever the active filter/sort changes
   useEffect(() => { setVisibleCount(PAGE_SIZE) }, [isWishlist, sort, search, statusFilter, legoFilter, collection])
 
-  // Clear stale section refs when sort mode changes (old divs may be unmounted)
-  useEffect(() => { sectionRefs.current = {} }, [sort])
 
   function onTouchStart(e: React.TouchEvent) {
     // iOS can report scrollY as slightly negative during rubber-band, so use <= 0
