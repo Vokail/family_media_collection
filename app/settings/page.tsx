@@ -114,15 +114,29 @@ function BackfillButton() {
             const label = BACKFILL_TYPES.find(t => t.value === type)?.label ?? type
             return (
               <div key={type} className="flex items-center gap-2 text-sm">
-                <span
-                  className="w-4 text-center font-mono"
-                  style={{
-                    color: s.status === 'done' ? 'var(--accent)' : s.status === 'error' ? '#ef4444' : 'var(--text-muted)',
-                    animation: s.status === 'running' ? 'spin 1s linear infinite' : undefined,
-                  }}
-                >
-                  {statusIcon[s.status]}
-                </span>
+                {s.status === 'running' ? (
+                  <span className="w-4 flex items-center justify-center flex-shrink-0">
+                    <span
+                      className="block rounded-full"
+                      style={{
+                        width: 12,
+                        height: 12,
+                        border: '2px solid var(--border)',
+                        borderTopColor: 'var(--accent)',
+                        animation: 'spin 0.75s linear infinite',
+                      }}
+                    />
+                  </span>
+                ) : (
+                  <span
+                    className="w-4 text-center font-mono flex-shrink-0"
+                    style={{
+                      color: s.status === 'done' ? 'var(--accent)' : s.status === 'error' ? '#ef4444' : 'var(--text-muted)',
+                    }}
+                  >
+                    {statusIcon[s.status]}
+                  </span>
+                )}
                 <span style={{ color: s.status === 'pending' || s.status === 'cancelled' ? 'var(--text-muted)' : 'inherit' }}>
                   {label}
                 </span>
