@@ -61,21 +61,40 @@ const OL_LANG_CODES_DESC: Record<string, string> = { dutch: 'dut', french: 'fre'
 const GB_LANG_CODES: Record<string, string> = { dutch: 'nl', french: 'fr', german: 'de' }
 
 // Shared description cleaner for OL and Google Books text:
+// - normalises line endings
+// - cuts everything from the first divider line (---) to end of string (OL metadata/contains sections)
 // - strips OL wiki-style links: [[/path|label]] → label, [[path|label]] → label, [[path]] → ''
-// - strips OL/GB hyperlinks: [url label] → label, [url] → ''
+// - strips markdown inline links: [text](url) → text
+// - strips markdown reference links: [text][ref] → text, [ref]: url → ''
+// - strips OL/GB bare-URL brackets: [url label] → label, [url] → ''
+// - strips markdown bold/italic: **text** → text, *text* → text
 // - strips HTML tags and decodes common entities
-// - removes "Source: …" and "----------" metadata lines
+// - removes "Source: …" metadata lines
 // - collapses excessive whitespace / blank lines
 export function cleanDescription(raw: string): string {
   return raw
+    // Normalise Windows line endings
+    .replace(/\r\n/g, '\n')
+    // Cut from first divider line to end of string (OL metadata/source/contains sections)
+    .replace(/\n[-─═]{4,}[\s\S]*$/, '')
     // OL wiki links with label: [[/path|label]] or [[path|label]] → label
     .replace(/\[\[[^\]|]*\|([^\]]+)\]\]/g, '$1')
     // OL bare wiki links: [[/path]] or [[word]] → ''
     .replace(/\[\[[^\]]*\]\]/g, '')
+    // Markdown inline links: [text](url) → text
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+    // Markdown reference links: [text][ref] → text
+    .replace(/\[([^\]]+)\]\[[^\]]*\]/g, '$1')
+    // Markdown reference definitions: [ref]: url (whole line) → ''
+    .replace(/^\[[^\]]+\]:\s*\S+.*$/gm, '')
     // Hyperlinks with label: [url label text] → label text
     .replace(/\[https?:\/\/\S+\s+([^\]]+)\]/g, '$1')
     // Bare URLs in brackets: [https://...] → ''
     .replace(/\[https?:\/\/[^\]]*\]/g, '')
+    // Markdown bold: **text** → text
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    // Markdown italic: *text* → text
+    .replace(/\*([^*]+)\*/g, '$1')
     // HTML tags
     .replace(/<[^>]+>/g, ' ')
     // Common HTML entities
@@ -87,8 +106,6 @@ export function cleanDescription(raw: string): string {
     .replace(/&nbsp;/g, ' ')
     // "Source: …" lines (OL metadata)
     .replace(/^Source:.*$/gim, '')
-    // Divider lines
-    .replace(/^[-─═]{3,}$/gm, '')
     // Collapse 3+ blank lines → 2, then trim
     .replace(/\n{3,}/g, '\n\n')
     .trim()

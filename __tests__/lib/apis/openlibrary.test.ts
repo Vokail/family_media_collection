@@ -188,6 +188,27 @@ describe('cleanDescription', () => {
     expect(cleanDescription('See [[/works/OL123W]] for details.')).toBe('See  for details.')
   })
 
+  it('strips markdown inline links: [text](url) → text', () => {
+    expect(cleanDescription('Read [The Hobbit](https://openlibrary.org/works/OL123W) first.')).toBe('Read The Hobbit first.')
+  })
+
+  it('strips markdown reference links: [text][1] → text', () => {
+    expect(cleanDescription('See [The Two Towers][2] for more.')).toBe('See The Two Towers for more.')
+  })
+
+  it('removes markdown reference definitions: [1]: url lines', () => {
+    const input = 'Good book.\n[1]: https://openlibrary.org/works/OL1W\n[2]: https://openlibrary.org/works/OL2W'
+    expect(cleanDescription(input)).toBe('Good book.')
+  })
+
+  it('strips markdown bold: **text** → text', () => {
+    expect(cleanDescription('**Contains**\nSome info.')).toBe('Contains\nSome info.')
+  })
+
+  it('strips markdown italic: *text* → text', () => {
+    expect(cleanDescription('A *great* adventure.')).toBe('A great adventure.')
+  })
+
   it('strips hyperlinks with label: [https://example.com Click here] → Click here', () => {
     expect(cleanDescription('[https://example.com Click here] for more.')).toBe('Click here for more.')
   })
@@ -208,8 +229,17 @@ describe('cleanDescription', () => {
     expect(cleanDescription('Good story.\nSource: Wikipedia\nMore text.')).toBe('Good story.\n\nMore text.')
   })
 
-  it('removes divider lines', () => {
-    expect(cleanDescription('Part one.\n----------\nPart two.')).toBe('Part one.\n\nPart two.')
+  it('cuts everything from divider to end of string', () => {
+    expect(cleanDescription('Part one.\n----------\nContains section.')).toBe('Part one.')
+  })
+
+  it('normalises Windows line endings before processing', () => {
+    expect(cleanDescription('Line one.\r\nLine two.\r\n----------\r\nMetadata.')).toBe('Line one.\nLine two.')
+  })
+
+  it('handles real OL Contains section (LotR pattern)', () => {
+    const input = 'An epic adventure.\n\n----------\n\n**Contains**\n\n - [The Fellowship of the Ring][1]\n\n  [1]: https://openlibrary.org/works/OL1W'
+    expect(cleanDescription(input)).toBe('An epic adventure.')
   })
 
   it('collapses excessive blank lines', () => {
