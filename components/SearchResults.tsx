@@ -113,21 +113,17 @@ function LegoDetailModal({ result, onClose }: DetailModalProps) {
         <div className="flex justify-end p-3 border-b flex-shrink-0" style={{ borderColor: 'var(--border)' }}>
           <button onClick={onClose} className="btn-ghost px-3 py-1 text-sm">✕ Close</button>
         </div>
-        <div className="p-5 flex flex-col gap-4 overflow-y-auto">
-          <div className="flex gap-4">
-            {result.cover_url ? (
-              <Image src={result.cover_url} alt={result.title} width={100} height={100} className="w-24 h-24 rounded-lg object-cover flex-shrink-0 shadow" unoptimized />
-            ) : (
-              <div className="w-24 h-24 placeholder-tile flex-shrink-0 text-3xl flex items-center justify-center">🧱</div>
-            )}
-            <div className="flex flex-col gap-1 min-w-0">
-              <h2 className="font-serif text-lg font-bold leading-snug">{result.title}</h2>
-              <p className="subtitle text-sm">{result.creator}</p>
-              {result.year && <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{result.year}</p>}
-            </div>
+        <div className="p-5 flex flex-col gap-4 overflow-y-auto items-center">
+          {result.cover_url ? (
+            <Image src={result.cover_url} alt={result.title} width={280} height={280} className="w-64 h-64 rounded-xl object-contain shadow-md" unoptimized />
+          ) : (
+            <div className="w-64 h-64 placeholder-tile text-6xl flex items-center justify-center rounded-xl">🧱</div>
+          )}
+          <div className="w-full flex flex-col gap-1 text-center">
+            <h2 className="font-serif text-xl font-bold leading-snug">{result.title}</h2>
+            <p className="subtitle text-sm">{result.creator}{result.year ? ` · ${result.year}` : ''}</p>
           </div>
-
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 justify-center">
             <span className="text-xs px-2.5 py-1 rounded-full font-mono" style={{ backgroundColor: 'var(--border)', color: 'var(--text-muted)' }}>
               #{setNum}
             </span>
@@ -137,7 +133,6 @@ function LegoDetailModal({ result, onClose }: DetailModalProps) {
               </span>
             )}
           </div>
-
         </div>
       </div>
     </div>
@@ -168,12 +163,14 @@ export default function SearchResults({ results, hasSearched, onAdd, adding, get
           const isVinyl = r.source === 'discogs'
           const isLego = r.source === 'rebrickable'
           return (
-            <li key={r.external_id} className="card p-4 flex gap-4 items-start">
+            <li key={r.external_id} className={`card p-4 flex gap-4 items-start${isLego ? ' items-center' : ''}`}>
               <div className="flex-shrink-0">
                 {r.cover_url ? (
-                  <Image src={r.cover_url} alt={r.title} width={80} height={80} className="rounded object-cover w-20 h-20" unoptimized />
+                  <Image src={r.cover_url} alt={r.title} width={isLego ? 112 : 80} height={isLego ? 112 : 80} className={`rounded object-contain${isLego ? ' w-28 h-28' : ' w-20 h-20 object-cover'}`} unoptimized />
                 ) : (
-                  <div className="w-20 h-20 placeholder-tile flex-shrink-0 text-3xl flex items-center justify-center">📄</div>
+                  <div className={`placeholder-tile flex-shrink-0 text-3xl flex items-center justify-center${isLego ? ' w-28 h-28' : ' w-20 h-20'}`}>
+                    {isLego ? '🧱' : '📄'}
+                  </div>
                 )}
               </div>
               <div className="flex-1 min-w-0">
