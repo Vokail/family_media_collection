@@ -34,7 +34,11 @@ export async function GET(request: Request) {
 
   const seen = new Set<string>()
   const unique = rawResults.filter(r => {
-    const key = `${r.source}\x00${r.title.toLowerCase().trim()}\x00${r.creator.toLowerCase().trim()}`
+    // Prefer external_id for dedup when available (e.g. Lego has many sets with identical
+    // title + theme, like multiple "Millennium Falcon" sets — title+creator is not unique)
+    const key = r.external_id
+      ? `${r.source}\x00${r.external_id}`
+      : `${r.source}\x00${r.title.toLowerCase().trim()}\x00${r.creator.toLowerCase().trim()}`
     if (seen.has(key)) return false
     seen.add(key)
     return true

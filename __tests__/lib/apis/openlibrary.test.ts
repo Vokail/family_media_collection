@@ -152,6 +152,7 @@ describe('lookupBookByISBN', () => {
     const result = await lookupBookByISBN('9789055798278', 'dutch')
     expect(result).not.toBeNull()
     expect(result!.title).toBe('De wildernis in')
+    expect(result!.source).toBe('kb')
     expect(result!.cover_url).toBe('https://books.google.com/cover.jpg')
   })
 

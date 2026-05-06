@@ -115,7 +115,7 @@ const CONDITION_GRADES: ConditionGroup[] = [
   { label: 'Poor',      abbr: 'P',  color: '#dc2626', items: [] },
 ]
 
-function buildConditionGroups(items: Item[]): ConditionGroup[] {
+export function buildConditionGroups(items: Item[]): ConditionGroup[] {
   const groups: ConditionGroup[] = CONDITION_GRADES
     .map(g => ({ ...g, items: items.filter(i => i.condition === g.label.toLowerCase().replace(/\s+/g, '_')) }))
     .filter(g => g.items.length > 0)

@@ -197,6 +197,9 @@ export default function AddItemPage() {
         return [...prev, ...more.filter(r => !existingIds.has(r.external_id))]
       })
       setOffset(nextOffset)
+    } else {
+      // No new results — hide the Load More button regardless of hasMore flag
+      setHasMore(false)
     }
     setLoadingMore(false)
   }, [collection, searchLang, lastQuery, offset])
