@@ -433,17 +433,30 @@ export default function AddItemPage() {
         <button onClick={() => setShowScanPicker(true)} className="btn-ghost px-4 text-xl md:hidden" title="Scan">
           {identifying ? '⏳' : '📷'}
         </button>
-        <button onClick={() => runSearch(query)} className="btn-primary px-4" disabled={loading || identifying}>
-          {loading ? '…' : 'Search'}
+        <button onClick={() => runSearch(query)} className="btn-primary px-4 flex items-center gap-2" disabled={loading || identifying}>
+          {loading ? (
+            <span className="inline-block w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+          ) : 'Search'}
         </button>
       </div>
 
-      <SearchResults results={results} hasSearched={hasSearched} onAdd={handleAdd} adding={adding} getDupeStatus={getDupeStatus} />
+      {loading && (
+        <div className="flex justify-center py-10">
+          <span className="inline-block w-8 h-8 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--accent)', borderTopColor: 'transparent' }} />
+        </div>
+      )}
 
-      {hasMore && results.length > 0 && (
+      {!loading && <SearchResults results={results} hasSearched={hasSearched} onAdd={handleAdd} adding={adding} getDupeStatus={getDupeStatus} />}
+
+      {!loading && hasMore && results.length > 0 && (
         <div className="flex justify-center mt-4">
-          <button onClick={loadMore} disabled={loadingMore} className="btn-ghost text-sm px-6">
-            {loadingMore ? 'Loading…' : 'Load more results'}
+          <button onClick={loadMore} disabled={loadingMore} className="btn-ghost text-sm px-6 flex items-center gap-2">
+            {loadingMore ? (
+              <>
+                <span className="inline-block w-3.5 h-3.5 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--text-muted)', borderTopColor: 'transparent' }} />
+                Loading…
+              </>
+            ) : 'Load more results'}
           </button>
         </div>
       )}
