@@ -191,16 +191,18 @@ export default function AddItemPage() {
         setHasMore(false)
       }
     }
-    if (more.length > 0) {
-      setResults(prev => {
-        const existingIds = new Set(prev.map(r => r.external_id))
-        return [...prev, ...more.filter(r => !existingIds.has(r.external_id))]
-      })
-      setOffset(nextOffset)
-    } else {
-      // No new results — hide the Load More button regardless of hasMore flag
+    setResults(prev => {
+      const existingIds = new Set(prev.map(r => r.external_id))
+      const fresh = more.filter(r => !existingIds.has(r.external_id))
+      if (fresh.length > 0) {
+        setOffset(nextOffset)
+        return [...prev, ...fresh]
+      }
+      // API returned results but all were already shown (client-side dedup removed them all),
+      // or the page was genuinely empty — either way hide the button
       setHasMore(false)
-    }
+      return prev
+    })
     setLoadingMore(false)
   }, [collection, searchLang, lastQuery, offset])
 
