@@ -10,7 +10,7 @@ jest.mock('@/lib/supabase-server', () => ({
   createServerClient: jest.fn(() => ({ from: mockFrom, rpc: mockRpc })),
 }))
 
-import { listMembers, getMemberBySlug, listMemberItemCounts, updateMemberCollections } from '@/lib/db/members'
+import { listMembers, getMemberBySlug, listMemberItemCounts, updateMemberCollections, setMemberPinHash, updateMemberAvatar } from '@/lib/db/members'
 
 const MEMBERS = [
   { id: 'uuid-1', name: 'Alice', slug: 'alice' },
@@ -121,5 +121,49 @@ describe('updateMemberCollections', () => {
 
     await updateMemberCollections('uuid-1', ['lego'])
     expect(mockUpdate).toHaveBeenCalledWith({ enabled_collections: ['lego'] })
+  })
+})
+
+describe('updateMemberCollections — error propagation (#103)', () => {
+  it('throws when Supabase returns an error', async () => {
+    const dbError = new Error('permission denied')
+    mockEq.mockResolvedValue({ error: dbError })
+    mockUpdate.mockReturnValue({ eq: mockEq })
+    mockFrom.mockReturnValue({ update: mockUpdate })
+    await expect(updateMemberCollections('uuid-1', ['vinyl'])).rejects.toThrow('permission denied')
+  })
+})
+
+describe('setMemberPinHash — error propagation (#103)', () => {
+  it('throws when Supabase returns an error', async () => {
+    const dbError = new Error('constraint violation')
+    mockEq.mockResolvedValue({ error: dbError })
+    mockUpdate.mockReturnValue({ eq: mockEq })
+    mockFrom.mockReturnValue({ update: mockUpdate })
+    await expect(setMemberPinHash('uuid-1', 'hashed')).rejects.toThrow('constraint violation')
+  })
+
+  it('resolves without error on success', async () => {
+    mockEq.mockResolvedValue({ error: null })
+    mockUpdate.mockReturnValue({ eq: mockEq })
+    mockFrom.mockReturnValue({ update: mockUpdate })
+    await expect(setMemberPinHash('uuid-1', 'hashed')).resolves.toBeUndefined()
+  })
+})
+
+describe('updateMemberAvatar — error propagation (#103)', () => {
+  it('throws when Supabase returns an error', async () => {
+    const dbError = new Error('network timeout')
+    mockEq.mockResolvedValue({ error: dbError })
+    mockUpdate.mockReturnValue({ eq: mockEq })
+    mockFrom.mockReturnValue({ update: mockUpdate })
+    await expect(updateMemberAvatar('uuid-1', 'avatars/uuid-1.jpg')).rejects.toThrow('network timeout')
+  })
+
+  it('resolves without error on success', async () => {
+    mockEq.mockResolvedValue({ error: null })
+    mockUpdate.mockReturnValue({ eq: mockEq })
+    mockFrom.mockReturnValue({ update: mockUpdate })
+    await expect(updateMemberAvatar('uuid-1', null)).resolves.toBeUndefined()
   })
 })

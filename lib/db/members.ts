@@ -31,17 +31,20 @@ export async function listMembersWithPinHashes(): Promise<(Member & { pin_hash: 
 
 export async function setMemberPinHash(memberId: string, hash: string): Promise<void> {
   const db = createServerClient()
-  await db.from('members').update({ pin_hash: hash }).eq('id', memberId)
+  const { error } = await db.from('members').update({ pin_hash: hash }).eq('id', memberId)
+  if (error) throw error
 }
 
 export async function updateMemberCollections(memberId: string, collections: CollectionType[]): Promise<void> {
   const db = createServerClient()
-  await db.from('members').update({ enabled_collections: collections }).eq('id', memberId)
+  const { error } = await db.from('members').update({ enabled_collections: collections }).eq('id', memberId)
+  if (error) throw error
 }
 
 export async function updateMemberAvatar(memberId: string, avatarPath: string | null): Promise<void> {
   const db = createServerClient()
-  await db.from('members').update({ avatar_path: avatarPath }).eq('id', memberId)
+  const { error } = await db.from('members').update({ avatar_path: avatarPath }).eq('id', memberId)
+  if (error) throw error
 }
 
 export async function listMemberItemCounts(): Promise<Record<string, MemberItemCounts>> {

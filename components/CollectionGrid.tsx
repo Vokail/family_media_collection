@@ -117,7 +117,7 @@ const CONDITION_GRADES: ConditionGroup[] = [
 
 function buildConditionGroups(items: Item[]): ConditionGroup[] {
   const groups: ConditionGroup[] = CONDITION_GRADES
-    .map(g => ({ ...g, items: items.filter(i => i.condition === g.label.toLowerCase().replace(' ', '_')) }))
+    .map(g => ({ ...g, items: items.filter(i => i.condition === g.label.toLowerCase().replace(/\s+/g, '_')) }))
     .filter(g => g.items.length > 0)
   const ungraded = items.filter(i => !i.condition)
   if (ungraded.length > 0) groups.push({ label: 'Ungraded', abbr: '–', color: 'var(--text-muted)', items: ungraded })
@@ -175,6 +175,9 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
 
   // Reset visible count whenever the active filter/sort changes
   useEffect(() => { setVisibleCount(PAGE_SIZE) }, [isWishlist, sort, search, statusFilter, legoFilter, collection])
+
+  // Clear stale section refs when sort mode changes (old divs may be unmounted)
+  useEffect(() => { sectionRefs.current = {} }, [sort])
 
   function onTouchStart(e: React.TouchEvent) {
     // iOS can report scrollY as slightly negative during rubber-band, so use <= 0

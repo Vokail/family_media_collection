@@ -8,6 +8,8 @@ import { createServerClient } from '@/lib/supabase-server'
 import { getSession } from '@/lib/session'
 
 const VALID_COLLECTIONS: CollectionType[] = ['vinyl', 'book', 'comic', 'lego']
+const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif']
+const MAX_SIZE = 10 * 1024 * 1024 // 10 MB
 
 export async function POST(request: Request) {
   const session = await getSession()
@@ -20,7 +22,8 @@ export async function POST(request: Request) {
   const title = (form.get('title') as string)?.trim()
   const creator = (form.get('creator') as string)?.trim() || ''
   const yearRaw = form.get('year') as string
-  const year = yearRaw ? parseInt(yearRaw) : null
+  const yearParsed = yearRaw ? parseInt(yearRaw) : NaN
+  const year = isNaN(yearParsed) ? null : yearParsed
   const isWishlist = form.get('is_wishlist') === 'true'
   const isbn = (form.get('isbn') as string)?.trim() || null
   const coverFile = form.get('cover') as File | null
@@ -62,6 +65,12 @@ export async function POST(request: Request) {
 
     let cover_path: string | null = null
     if (coverFile && coverFile.size > 0) {
+      if (!ALLOWED_TYPES.includes(coverFile.type)) {
+        return NextResponse.json({ error: 'Unsupported file type' }, { status: 400 })
+      }
+      if (coverFile.size > MAX_SIZE) {
+        return NextResponse.json({ error: 'File too large (max 10 MB)' }, { status: 400 })
+      }
       const buffer = Buffer.from(await coverFile.arrayBuffer())
       const resized = await sharp(buffer)
         .resize(600, 600, { fit: 'inside', withoutEnlargement: true })

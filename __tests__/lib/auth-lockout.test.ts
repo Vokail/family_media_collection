@@ -35,6 +35,33 @@ describe('checkLockout', () => {
     clearAttempts(ip)
     expect(checkLockout(ip)).toEqual({ locked: false, secondsLeft: 0 })
   })
+
+  it('returns locked:false and removes the entry when the lockout window has expired (time-expiry path)', () => {
+    const ip = newIp()
+    const realNow = Date.now
+
+    try {
+      // Trigger lockout at t=0
+      const t0 = realNow()
+      jest.spyOn(Date, 'now').mockReturnValue(t0)
+      for (let i = 0; i < 5; i++) recordFailure(ip)
+
+      // Confirm locked right after
+      expect(checkLockout(ip).locked).toBe(true)
+
+      // Advance time past the 15-minute lockout window
+      jest.spyOn(Date, 'now').mockReturnValue(t0 + 15 * 60 * 1000 + 1)
+
+      // Now checkLockout should hit the `left <= 0` branch and unlock
+      const result = checkLockout(ip)
+      expect(result).toEqual({ locked: false, secondsLeft: 0 })
+
+      // Entry should be deleted — a new check is still unlocked
+      expect(checkLockout(ip)).toEqual({ locked: false, secondsLeft: 0 })
+    } finally {
+      jest.spyOn(Date, 'now').mockRestore()
+    }
+  })
 })
 
 describe('clearAttempts', () => {

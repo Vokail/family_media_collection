@@ -192,3 +192,59 @@ describe('POST /api/items/manual — duplicate detection', () => {
     expect(res.status).toBe(201)
   })
 })
+
+describe('POST /api/items/manual — year validation (#101)', () => {
+  it('stores null year when year field is a non-numeric string', async () => {
+    mockGetMember.mockResolvedValue(MEMBER)
+    mockCreateItem.mockResolvedValue(ITEM)
+    const req = makeFormRequest({ memberSlug: 'alice', collection: 'vinyl', title: 'Handmade', year: 'abc' })
+    const res = await POST(req)
+    expect(res.status).toBe(201)
+    expect(mockCreateItem.mock.calls[0][0].year).toBeNull()
+  })
+
+  it('stores numeric year correctly', async () => {
+    mockGetMember.mockResolvedValue(MEMBER)
+    mockCreateItem.mockResolvedValue(ITEM)
+    const req = makeFormRequest({ memberSlug: 'alice', collection: 'vinyl', title: 'Handmade', year: '1991' })
+    const res = await POST(req)
+    expect(res.status).toBe(201)
+    expect(mockCreateItem.mock.calls[0][0].year).toBe(1991)
+  })
+})
+
+describe('POST /api/items/manual — cover file validation (#99)', () => {
+  beforeEach(() => {
+    mockGetMember.mockResolvedValue(MEMBER)
+    mockCreateItem.mockResolvedValue(ITEM)
+  })
+
+  it('returns 400 for unsupported cover file type', async () => {
+    const badFile = new Blob(['data'], { type: 'image/gif' })
+    const req = makeFormRequest({ memberSlug: 'alice', collection: 'vinyl', title: 'Handmade', cover: badFile })
+    const res = await POST(req)
+    expect(res.status).toBe(400)
+    const body = await res.json()
+    expect(body.error).toBe('Unsupported file type')
+    expect(mockCreateItem).not.toHaveBeenCalled()
+  })
+
+  it('returns 400 when cover file exceeds 10 MB', async () => {
+    // Use a fake request where formData() returns a File with a spoofed size,
+    // bypassing FormData serialisation which can't handle a mismatched size getter
+    const bigFile = { type: 'image/jpeg', size: 11 * 1024 * 1024 } as File
+    const fakeReq = {
+      formData: async () => ({
+        get: (key: string) => {
+          const map: Record<string, unknown> = { memberSlug: 'alice', collection: 'vinyl', title: 'Handmade', cover: bigFile }
+          return map[key] ?? null
+        },
+      }),
+    } as unknown as Request
+    const res = await POST(fakeReq)
+    expect(res.status).toBe(400)
+    const body = await res.json()
+    expect(body.error).toMatch(/too large/i)
+    expect(mockCreateItem).not.toHaveBeenCalled()
+  })
+})

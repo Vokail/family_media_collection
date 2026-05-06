@@ -6,6 +6,8 @@ import type { CollectionType } from '@/lib/types'
 import sharp from 'sharp'
 
 const ALL_COLLECTIONS: CollectionType[] = ['vinyl', 'book', 'comic', 'lego']
+const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif']
+const MAX_SIZE = 10 * 1024 * 1024 // 10 MB
 
 export async function PATCH(request: Request) {
   const session = await getSession()
@@ -40,6 +42,12 @@ export async function PUT(request: Request) {
   const file = formData.get('avatar') as File | null
   if (!file || file.size === 0) {
     return NextResponse.json({ error: 'No file provided' }, { status: 400 })
+  }
+  if (!ALLOWED_TYPES.includes(file.type)) {
+    return NextResponse.json({ error: 'Unsupported file type' }, { status: 400 })
+  }
+  if (file.size > MAX_SIZE) {
+    return NextResponse.json({ error: 'File too large (max 10 MB)' }, { status: 400 })
   }
 
   const buffer = Buffer.from(await file.arrayBuffer())

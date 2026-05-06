@@ -276,7 +276,7 @@ async function kbSruByISBN(isbn: string): Promise<SearchResult> {
     creator: dc('creator') ?? 'Unknown',
     year: (() => { const d = dc('date'); return d ? parseInt(d) : null })(),
     cover_url: null,
-    source: 'openlibrary',
+    source: 'kb',
   }
 }
 

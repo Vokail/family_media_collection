@@ -172,6 +172,7 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
     form.append('cover', file)
     const res = await fetch(`/api/items/${item.id}/cover`, { method: 'POST', body: form })
     if (res.ok) onUpdate(await res.json())
+    else toast.show('Could not upload cover', 'error')
     setUploadingCover(false)
   }
 

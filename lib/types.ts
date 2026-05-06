@@ -52,7 +52,7 @@ export interface SearchResult {
   creator: string
   year: number | null
   cover_url: string | null
-  source: 'openlibrary' | 'discogs' | 'comicvine' | 'rebrickable' | 'google'
+  source: 'openlibrary' | 'discogs' | 'comicvine' | 'rebrickable' | 'google' | 'kb'
   // Vinyl / Discogs extras
   format?: string | null       // e.g. "LP, Album"
   label?: string | null        // e.g. "Columbia"

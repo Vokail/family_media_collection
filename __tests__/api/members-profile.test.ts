@@ -154,3 +154,28 @@ describe('PUT /api/members/profile (avatar upload)', () => {
     expect(mockUpdateAvatar).not.toHaveBeenCalled()
   })
 })
+
+describe('PUT /api/members/profile — file validation (#99)', () => {
+  it('returns 400 for unsupported file type', async () => {
+    mockGetSession.mockResolvedValue({ role: 'member', editableMemberId: 'member-uuid' })
+    const file = new Blob(['data'], { type: 'image/gif' })
+    const res = await PUT(avatarReq(file))
+    expect(res.status).toBe(400)
+    const body = await res.json()
+    expect(body.error).toBe('Unsupported file type')
+    expect(mockUpdateAvatar).not.toHaveBeenCalled()
+  })
+
+  it('returns 400 when file exceeds 10 MB', async () => {
+    mockGetSession.mockResolvedValue({ role: 'member', editableMemberId: 'member-uuid' })
+    // Use a fake request where formData() returns a File with a spoofed size,
+    // bypassing FormData serialisation which can't handle a mismatched size getter
+    const bigFile = { type: 'image/jpeg', size: 11 * 1024 * 1024 } as File
+    const fakeReq = { formData: async () => ({ get: () => bigFile }) } as unknown as Request
+    const res = await PUT(fakeReq)
+    expect(res.status).toBe(400)
+    const body = await res.json()
+    expect(body.error).toMatch(/too large/i)
+    expect(mockUpdateAvatar).not.toHaveBeenCalled()
+  })
+})
