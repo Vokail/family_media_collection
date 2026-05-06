@@ -1,6 +1,6 @@
 'use client'
 import Image from 'next/image'
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import type { Item, Track } from '@/lib/types'
 import PhotoCapture from './PhotoCapture'
 import { useToast } from './Toast'
@@ -14,6 +14,8 @@ interface Props {
   supabaseUrl: string
   layout?: 'grid' | 'list'
   initialOpen?: boolean
+  forceOpen?: boolean
+  onForceClose?: () => void
 }
 
 function StarRating({ rating, onRate }: { rating: number | null; onRate?: (r: number | null) => void }) {
@@ -32,9 +34,18 @@ function StarRating({ rating, onRate }: { rating: number | null; onRate?: (r: nu
   )
 }
 
-export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseUrl, layout = 'grid', initialOpen = false }: Props) {
+export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseUrl, layout = 'grid', initialOpen = false, forceOpen, onForceClose }: Props) {
   const toast = useToast()
   const [open, setOpen] = useState(initialOpen)
+
+  useEffect(() => {
+    if (forceOpen) setOpen(true)
+  }, [forceOpen])
+
+  function closeSheet() {
+    setOpen(false)
+    onForceClose?.()
+  }
   const [notes, setNotes] = useState(item.notes ?? '')
   const [savingNotes, setSavingNotes] = useState(false)
   const [editingMeta, setEditingMeta] = useState(false)
@@ -175,7 +186,7 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
     if (res.ok) {
       toast.show('Item deleted')
       onDelete(item.id)
-      setOpen(false)
+      closeSheet()
     } else {
       toast.show('Could not delete item', 'error')
     }
@@ -329,13 +340,13 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
       )}
 
       {open && (
-        <div className="fixed inset-0 bg-black/60 flex items-end z-50" onClick={() => { setOpen(false); setConfirmDelete(false) }}>
+        <div className="fixed inset-0 bg-black/60 flex items-end z-50" onClick={() => { closeSheet(); setConfirmDelete(false) }}>
           <div
             className="card w-full rounded-b-none flex flex-col max-h-[90vh]"
             onClick={e => e.stopPropagation()}
           >
             <div className="flex justify-end p-3 border-b flex-shrink-0" style={{ borderColor: 'var(--border)' }}>
-              <button onClick={() => { setOpen(false); setConfirmDelete(false) }} className="btn-ghost px-3 py-1 text-sm">✕ Close</button>
+              <button onClick={() => { closeSheet(); setConfirmDelete(false) }} className="btn-ghost px-3 py-1 text-sm">✕ Close</button>
             </div>
             <div className="p-6 flex flex-col gap-4 overflow-y-auto">
             {coverSrc && (

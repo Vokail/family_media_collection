@@ -9,8 +9,8 @@ jest.mock('next/link', () => ({ __esModule: true, default: ({ children, href }: 
 jest.mock('next/image', () => ({ __esModule: true, default: ({ alt }: { alt: string }) => <img alt={alt} /> }))
 jest.mock('@/components/ItemCard', () => ({
   __esModule: true,
-  default: ({ item, layout }: { item: { id: string; title: string }; layout?: string }) => (
-    <div data-testid="item-card" data-layout={layout ?? 'grid'}>{item.title}</div>
+  default: ({ item, layout, forceOpen }: { item: { id: string; title: string }; layout?: string; forceOpen?: boolean }) => (
+    <div data-testid="item-card" data-layout={layout ?? 'grid'} data-force-open={forceOpen ? 'true' : 'false'}>{item.title}</div>
   ),
 }))
 jest.mock('@/components/Toast', () => ({
@@ -310,5 +310,73 @@ describe('CollectionGrid title sort grouping', () => {
       ['A', 'B', 'N', 'W', '#'].includes(b.textContent ?? '')
     )
     expect(sidebarButtons.length).toBeGreaterThanOrEqual(4)
+  })
+})
+
+describe('CollectionGrid Surprise button', () => {
+  const bookProps = { ...defaultProps, collection: 'book' as const }
+
+  const readItem = makeItem('r1', { collection: 'book', status: 'consumed' })
+  const unreadItem = makeItem('u1', { collection: 'book', status: null })
+
+  it('is visible when there are owned items', () => {
+    render(<CollectionGrid {...bookProps} initialItems={[readItem, unreadItem]} />)
+    expect(screen.getByTitle('Surprise me — pick a random item')).toBeInTheDocument()
+  })
+
+  it('is not visible when there are no items at all', () => {
+    render(<CollectionGrid {...bookProps} initialItems={[]} />)
+    expect(screen.queryByTitle('Surprise me — pick a random item')).toBeNull()
+  })
+
+  it('remains visible when on Read filter with no read items', () => {
+    render(<CollectionGrid {...bookProps} initialItems={[unreadItem]} />)
+    fireEvent.click(screen.getByText('✓ Read'))
+    // filtered view is empty but button must still appear
+    expect(screen.getByTitle('Surprise me — pick a random item')).toBeInTheDocument()
+  })
+
+  it('remains visible when on Unread filter with no unread items', () => {
+    render(<CollectionGrid {...bookProps} initialItems={[readItem]} />)
+    fireEvent.click(screen.getByText('Unread'))
+    expect(screen.getByTitle('Surprise me — pick a random item')).toBeInTheDocument()
+  })
+
+  it('picks only from read items when Read filter is active and has results', () => {
+    render(<CollectionGrid {...bookProps} initialItems={[readItem, unreadItem]} />)
+    fireEvent.click(screen.getByText('✓ Read'))
+    fireEvent.click(screen.getByTitle('Surprise me — pick a random item'))
+    const openCards = screen.getAllByTestId('item-card').filter(c => c.getAttribute('data-force-open') === 'true')
+    expect(openCards).toHaveLength(1)
+    expect(openCards[0]).toHaveTextContent('Album r1')
+  })
+
+  it('picks only from unread items when Unread filter is active and has results', () => {
+    render(<CollectionGrid {...bookProps} initialItems={[readItem, unreadItem]} />)
+    fireEvent.click(screen.getByText('Unread'))
+    fireEvent.click(screen.getByTitle('Surprise me — pick a random item'))
+    const openCards = screen.getAllByTestId('item-card').filter(c => c.getAttribute('data-force-open') === 'true')
+    expect(openCards).toHaveLength(1)
+    expect(openCards[0]).toHaveTextContent('Album u1')
+  })
+
+  it('falls back to all owned items when Read filter has no results', () => {
+    // Only unread item — Read filter yields empty set
+    render(<CollectionGrid {...bookProps} initialItems={[unreadItem]} />)
+    fireEvent.click(screen.getByText('✓ Read'))
+    fireEvent.click(screen.getByTitle('Surprise me — pick a random item'))
+    // Falls back to full owned tab — unreadItem should be force-opened
+    const openCards = screen.getAllByTestId('item-card').filter(c => c.getAttribute('data-force-open') === 'true')
+    expect(openCards).toHaveLength(1)
+    expect(openCards[0]).toHaveTextContent('Album u1')
+  })
+
+  it('falls back to all owned items when Unread filter has no results', () => {
+    render(<CollectionGrid {...bookProps} initialItems={[readItem]} />)
+    fireEvent.click(screen.getByText('Unread'))
+    fireEvent.click(screen.getByTitle('Surprise me — pick a random item'))
+    const openCards = screen.getAllByTestId('item-card').filter(c => c.getAttribute('data-force-open') === 'true')
+    expect(openCards).toHaveLength(1)
+    expect(openCards[0]).toHaveTextContent('Album r1')
   })
 })

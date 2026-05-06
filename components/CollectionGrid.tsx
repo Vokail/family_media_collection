@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { useState, useRef, useCallback, useEffect } from 'react'
 import ItemCard from './ItemCard'
 import type { Item, CollectionType, Member } from '@/lib/types'
+import { getSurprisePool } from '@/lib/surprisePool'
 
 const PULL_THRESHOLD = 72
 const PAGE_SIZE = 60
@@ -158,6 +159,7 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({})
   const [pullY, setPullY] = useState(0)
   const [refreshing, setRefreshing] = useState(false)
+  const [surpriseId, setSurpriseId] = useState<string | null>(null)
   const touchStartY = useRef(0)
   const pulling = useRef(false)
 
@@ -389,6 +391,30 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
       <div className="flex items-center gap-1 sm:gap-2 flex-nowrap">
         <button className={`btn-ghost px-2 sm:px-4 text-xs sm:text-sm ${!isWishlist ? 'active' : ''}`} onClick={() => { setIsWishlist(false); localStorage.setItem(tabStorageKey, 'owned') }}>Owned <span className="opacity-70">({ownedCount})</span></button>
         <button className={`btn-ghost px-2 sm:px-4 text-xs sm:text-sm ${isWishlist ? 'active' : ''}`} onClick={() => { setIsWishlist(true); localStorage.setItem(tabStorageKey, 'wishlist') }}>Wishlist <span className="opacity-70">({wishlistCount})</span></button>
+        {(isWishlist ? wishlistCount : ownedCount) > 0 && (
+          <button
+            onClick={() => {
+              const usingFallback = sorted.length === 0
+              const pool = getSurprisePool(sorted, items, isWishlist)
+              if (pool.length === 0) return
+              const picked = pool[Math.floor(Math.random() * pool.length)]
+              // If we fell back to the full tab, clear the status/lego filter
+              // so the picked item is actually visible after picking
+              if (usingFallback) {
+                setStatusFilter('all')
+                setLegoFilter('all')
+              }
+              // Ensure the item is within the visible page window
+              const pickedIndex = pool.indexOf(picked)
+              if (pickedIndex >= visibleCount) setVisibleCount(pickedIndex + 1)
+              setSurpriseId(picked.id)
+            }}
+            className="btn-ghost px-2 sm:px-3 text-xs sm:text-sm"
+            title="Surprise me — pick a random item"
+          >
+            🎲 Surprise
+          </button>
+        )}
         <div className="ml-auto flex items-center gap-2">
           <span className="label hidden sm:inline">Sort</span>
           <select
@@ -456,7 +482,7 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
                 </h3>
                 <div className={viewMode === 'list' ? LIST : GRID}>
                   {g.items.map(item => (
-                    <ItemCard key={item.id} item={item} isEditor={isEditor} onUpdate={handleUpdate} onDelete={handleDelete} supabaseUrl={supabaseUrl} layout={viewMode} />
+                    <ItemCard key={item.id} item={item} isEditor={isEditor} onUpdate={handleUpdate} onDelete={handleDelete} supabaseUrl={supabaseUrl} layout={viewMode} forceOpen={surpriseId === item.id} onForceClose={() => setSurpriseId(null)} />
                   ))}
                 </div>
               </div>
@@ -492,7 +518,7 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
                 </h3>
                 <div className={viewMode === 'list' ? LIST : GRID}>
                   {g.items.map(item => (
-                    <ItemCard key={item.id} item={item} isEditor={isEditor} onUpdate={handleUpdate} onDelete={handleDelete} supabaseUrl={supabaseUrl} layout={viewMode} />
+                    <ItemCard key={item.id} item={item} isEditor={isEditor} onUpdate={handleUpdate} onDelete={handleDelete} supabaseUrl={supabaseUrl} layout={viewMode} forceOpen={surpriseId === item.id} onForceClose={() => setSurpriseId(null)} />
                   ))}
                 </div>
               </div>
@@ -528,7 +554,7 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
                 </h3>
                 <div className={viewMode === 'list' ? LIST : GRID}>
                   {g.items.map(item => (
-                    <ItemCard key={item.id} item={item} isEditor={isEditor} onUpdate={handleUpdate} onDelete={handleDelete} supabaseUrl={supabaseUrl} layout={viewMode} />
+                    <ItemCard key={item.id} item={item} isEditor={isEditor} onUpdate={handleUpdate} onDelete={handleDelete} supabaseUrl={supabaseUrl} layout={viewMode} forceOpen={surpriseId === item.id} onForceClose={() => setSurpriseId(null)} />
                   ))}
                 </div>
               </div>
@@ -560,7 +586,7 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
                 </h3>
                 <div className={viewMode === 'list' ? LIST : GRID}>
                   {g.items.map(item => (
-                    <ItemCard key={item.id} item={item} isEditor={isEditor} onUpdate={handleUpdate} onDelete={handleDelete} supabaseUrl={supabaseUrl} layout={viewMode} />
+                    <ItemCard key={item.id} item={item} isEditor={isEditor} onUpdate={handleUpdate} onDelete={handleDelete} supabaseUrl={supabaseUrl} layout={viewMode} forceOpen={surpriseId === item.id} onForceClose={() => setSurpriseId(null)} />
                   ))}
                 </div>
               </div>
@@ -575,7 +601,7 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
                 </h3>
                 <div className={viewMode === 'list' ? LIST : GRID}>
                   {g.items.map(item => (
-                    <ItemCard key={item.id} item={item} isEditor={isEditor} onUpdate={handleUpdate} onDelete={handleDelete} supabaseUrl={supabaseUrl} layout={viewMode} />
+                    <ItemCard key={item.id} item={item} isEditor={isEditor} onUpdate={handleUpdate} onDelete={handleDelete} supabaseUrl={supabaseUrl} layout={viewMode} forceOpen={surpriseId === item.id} onForceClose={() => setSurpriseId(null)} />
                   ))}
                 </div>
               </div>
@@ -596,7 +622,7 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
                 </h3>
                 <div className={viewMode === 'list' ? LIST : GRID}>
                   {g.items.map(item => (
-                    <ItemCard key={item.id} item={item} isEditor={isEditor} onUpdate={handleUpdate} onDelete={handleDelete} supabaseUrl={supabaseUrl} layout={viewMode} />
+                    <ItemCard key={item.id} item={item} isEditor={isEditor} onUpdate={handleUpdate} onDelete={handleDelete} supabaseUrl={supabaseUrl} layout={viewMode} forceOpen={surpriseId === item.id} onForceClose={() => setSurpriseId(null)} />
                   ))}
                 </div>
               </div>
@@ -605,7 +631,7 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
         ) : (
           <div className={viewMode === 'list' ? LIST : GRID}>
             {displayed.map(item => (
-              <ItemCard key={item.id} item={item} isEditor={isEditor} onUpdate={handleUpdate} onDelete={handleDelete} supabaseUrl={supabaseUrl} layout={viewMode} />
+              <ItemCard key={item.id} item={item} isEditor={isEditor} onUpdate={handleUpdate} onDelete={handleDelete} supabaseUrl={supabaseUrl} layout={viewMode} forceOpen={surpriseId === item.id} onForceClose={() => setSurpriseId(null)} />
             ))}
           </div>
         )}
