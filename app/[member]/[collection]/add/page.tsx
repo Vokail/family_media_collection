@@ -180,6 +180,7 @@ export default function AddItemPage() {
     // We loop silently until we find fresh items or the API has no more pages.
     let currentOffset = offset
     const MAX_ATTEMPTS = 5
+    let foundFresh = false
 
     for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
       const nextOffset = currentOffset + 20
@@ -221,18 +222,22 @@ export default function AddItemPage() {
           return [...prev, ...fresh.filter(r => !ids.has(r.external_id))]
         })
         setHasMore(apiHasMore)
+        foundFresh = true
         break
       }
 
-      if (!apiHasMore) {
-        // No new items and API has no more pages — hide the button.
-        setHasMore(false)
-        break
-      }
+      // No fresh items on this page — either no more pages or all dupes.
+      // Either way stop looping; button will be hidden below.
+      if (!apiHasMore) break
 
       // Entire page was all-dupes but API has more pages — advance silently.
       currentOffset = nextOffset
     }
+
+    // If no fresh items were found across all attempts, hide the Load More button.
+    // This covers: (a) API said no more pages, (b) all pages were dupes,
+    // (c) safety limit hit with apiHasMore still true.
+    if (!foundFresh) setHasMore(false)
 
     setLoadingMore(false)
   }, [collection, searchLang, lastQuery, offset])

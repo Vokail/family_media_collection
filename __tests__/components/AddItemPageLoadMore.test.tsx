@@ -129,6 +129,31 @@ describe('AddItemPage Load More — auto-advance through all-dupe pages (#116)',
     expect(screen.getAllByTestId('result-item')).toHaveLength(2)
   })
 
+  it('hides Load More button when all pages are dupes even if apiHasMore stays true (#116)', async () => {
+    // Regression: loop exited after MAX_ATTEMPTS without calling setHasMore(false),
+    // so the button stayed visible forever when the API kept returning hasMore=true
+    // but all results were already shown.
+    const initial  = [makeLegoResult('75192-1'), makeLegoResult('75257-1')]
+    const dupePage = initial // all dupes on every page
+
+    await searchAndSeedResults(initial)
+
+    // Every subsequent page returns dupes + hasMore=true (e.g. Rebrickable keeps paginating
+    // through condition variants of the same sets)
+    for (let i = 0; i < 6; i++) {
+      mockFetch.mockResolvedValueOnce(apiPage(dupePage, true))
+    }
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /load more/i }))
+    })
+
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: /load more/i })).toBeNull()
+    )
+    expect(screen.getAllByTestId('result-item')).toHaveLength(2)
+  })
+
   it('shows Load More button when page has fresh items and apiHasMore=true', async () => {
     const initial  = [makeLegoResult('75192-1')]
     const freshPage = [makeLegoResult('75375-1', 'New Set')]
