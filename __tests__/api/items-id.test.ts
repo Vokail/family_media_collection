@@ -382,3 +382,37 @@ describe('PATCH/DELETE /api/items/[id] auth guards', () => {
     expect(mockDeleteItem).not.toHaveBeenCalled()
   })
 })
+
+describe('DELETE /api/items/[id] — member ownership check (#111)', () => {
+  it('allows member to delete their own item', async () => {
+    mockGetSession.mockResolvedValue({ role: 'member', editableMemberId: 'member-uuid' })
+    mockSingle.mockResolvedValue({ data: { cover_path: null, member_id: 'member-uuid' }, error: null })
+    mockDeleteItem.mockResolvedValue(undefined)
+
+    const req = new Request('http://localhost/api/items/item-uuid', { method: 'DELETE' })
+    const res = await DELETE(req, buildParams('item-uuid'))
+    expect(res.status).toBe(200)
+    expect(mockDeleteItem).toHaveBeenCalledWith('item-uuid')
+  })
+
+  it('returns 403 when member tries to delete another member\'s item', async () => {
+    mockGetSession.mockResolvedValue({ role: 'member', editableMemberId: 'member-uuid' })
+    mockSingle.mockResolvedValue({ data: { cover_path: null, member_id: 'other-member-uuid' }, error: null })
+
+    const req = new Request('http://localhost/api/items/item-uuid', { method: 'DELETE' })
+    const res = await DELETE(req, buildParams('item-uuid'))
+    expect(res.status).toBe(403)
+    expect(mockDeleteItem).not.toHaveBeenCalled()
+  })
+
+  it('allows editor to delete any item regardless of member_id', async () => {
+    mockGetSession.mockResolvedValue({ role: 'editor' })
+    mockSingle.mockResolvedValue({ data: { cover_path: null, member_id: 'any-member-uuid' }, error: null })
+    mockDeleteItem.mockResolvedValue(undefined)
+
+    const req = new Request('http://localhost/api/items/item-uuid', { method: 'DELETE' })
+    const res = await DELETE(req, buildParams('item-uuid'))
+    expect(res.status).toBe(200)
+    expect(mockDeleteItem).toHaveBeenCalled()
+  })
+})

@@ -34,7 +34,7 @@ export async function GET(request: Request) {
 
   const seen = new Set<string>()
   const unique = rawResults.filter(r => {
-    const key = `${r.title.toLowerCase().trim()}||${r.creator.toLowerCase().trim()}`
+    const key = `${r.source}\x00${r.title.toLowerCase().trim()}\x00${r.creator.toLowerCase().trim()}`
     if (seen.has(key)) return false
     seen.add(key)
     return true

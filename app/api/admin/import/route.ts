@@ -62,7 +62,7 @@ export async function POST(request: Request) {
   // Build a set of existing items to skip duplicates (member_id + collection + title)
   const { data: existingItems } = await db.from('items').select('member_id, collection, title')
   const existingSet = new Set(
-    (existingItems ?? []).map(i => `${i.member_id}|${i.collection}|${i.title.toLowerCase().trim()}`),
+    (existingItems ?? []).map(i => `${i.member_id}\x00${i.collection}\x00${i.title.toLowerCase().trim()}`),
   )
 
   // Build old-id → slug map from the export so we can resolve member_id
@@ -79,7 +79,7 @@ export async function POST(request: Request) {
 
     if (!VALID_COLLECTIONS.includes(item.collection as typeof VALID_COLLECTIONS[number])) { skipped++; continue }
 
-    const dupKey = `${memberId}|${item.collection}|${item.title.toLowerCase().trim()}`
+    const dupKey = `${memberId}\x00${item.collection}\x00${item.title.toLowerCase().trim()}`
     if (existingSet.has(dupKey)) { skipped++; continue }
 
     let cover_path: string | null = null
