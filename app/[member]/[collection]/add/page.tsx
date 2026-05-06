@@ -177,14 +177,19 @@ export default function AddItemPage() {
 
   const loadMore = useCallback(async () => {
     setLoadingMore(true)
-    // Walk pages automatically when an entire page turns out to be all-dupes
-    // (e.g. Lego: many "Millennium Falcon" sets share a name across years so the
-    // server dedup previously collapsed them, but now they each have unique
-    // external_ids — client dedup may still strip already-shown ones from a page).
-    // We loop silently until we find fresh items or the API has no more pages.
+    // Fetch up to MAX_ATTEMPTS pages per button press, accumulating all fresh items.
+    // This means one press loads everything until a natural end — the button only
+    // reappears if the last fetched page still has apiHasMore=true, indicating there
+    // are genuinely more pages left to explore.
+    //
+    // Background: Lego sets like "Millennium Falcon" exist across many years
+    // (75192, 75257, 75375 …). Rebrickable may spread unique sets across pages
+    // interleaved with duplicates; without looping, the user would need multiple
+    // button presses to reach the end.
     let currentOffset = offset
     const MAX_ATTEMPTS = 5
-    let foundFresh = false
+    const allFresh: SearchResult[] = []
+    let lastApiHasMore = false
 
     for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
       const nextOffset = currentOffset + 20
@@ -213,35 +218,30 @@ export default function AddItemPage() {
         }
       }
 
-      // Use the ref (not state) so we always see the current list even
-      // across loop iterations without stale-closure problems.
-      const existingIds = new Set(resultsRef.current.map(r => r.external_id))
+      // Dedup against both what's already shown AND what we've accumulated this pass.
+      const existingIds = new Set([
+        ...resultsRef.current.map(r => r.external_id),
+        ...allFresh.map(r => r.external_id),
+      ])
       const fresh = more.filter(r => !existingIds.has(r.external_id))
-
-      if (fresh.length > 0) {
-        // Found new items — add them, update offset, propagate API's hasMore.
-        setOffset(nextOffset)
-        setResults(prev => {
-          const ids = new Set(prev.map(r => r.external_id))
-          return [...prev, ...fresh.filter(r => !ids.has(r.external_id))]
-        })
-        setHasMore(apiHasMore)
-        foundFresh = true
-        break
-      }
-
-      // No fresh items on this page — either no more pages or all dupes.
-      // Either way stop looping; button will be hidden below.
-      if (!apiHasMore) break
-
-      // Entire page was all-dupes but API has more pages — advance silently.
+      allFresh.push(...fresh)
+      lastApiHasMore = apiHasMore
       currentOffset = nextOffset
+
+      if (!apiHasMore) break  // API has no more pages — stop early
     }
 
-    // If no fresh items were found across all attempts, hide the Load More button.
-    // This covers: (a) API said no more pages, (b) all pages were dupes,
-    // (c) safety limit hit with apiHasMore still true.
-    if (!foundFresh) setHasMore(false)
+    if (allFresh.length > 0) {
+      setOffset(currentOffset)
+      setResults(prev => {
+        const ids = new Set(prev.map(r => r.external_id))
+        return [...prev, ...allFresh.filter(r => !ids.has(r.external_id))]
+      })
+      setHasMore(lastApiHasMore)
+    } else {
+      // All pages checked were dupes or API ran out of pages
+      setHasMore(false)
+    }
 
     setLoadingMore(false)
   }, [collection, searchLang, lastQuery, offset])

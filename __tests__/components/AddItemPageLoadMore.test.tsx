@@ -154,20 +154,54 @@ describe('AddItemPage Load More — auto-advance through all-dupe pages (#116)',
     expect(screen.getAllByTestId('result-item')).toHaveLength(2)
   })
 
-  it('shows Load More button when page has fresh items and apiHasMore=true', async () => {
-    const initial  = [makeLegoResult('75192-1')]
-    const freshPage = [makeLegoResult('75375-1', 'New Set')]
+  it('shows Load More button when all fetched pages still have apiHasMore=true', async () => {
+    // The loop fetches MAX_ATTEMPTS (5) pages per button press.
+    // Button only stays visible when the LAST page fetched also has apiHasMore=true,
+    // meaning there are genuinely more pages beyond what we checked.
+    const initial = [makeLegoResult('75192-1')]
+    await searchAndSeedResults(initial)
+
+    // Mock all 5 pages of the loop, each with a unique fresh item and hasMore=true
+    for (let i = 0; i < 5; i++) {
+      mockFetch.mockResolvedValueOnce(apiPage([makeLegoResult(`new-${i}`, `Set ${i}`)], true))
+    }
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /load more/i }))
+    })
+
+    await waitFor(() => expect(screen.getAllByTestId('result-item')).toHaveLength(6)) // 1 + 5
+    // Last page had hasMore=true — button must stay visible for the next batch
+    expect(screen.getByRole('button', { name: /load more/i })).toBeInTheDocument()
+  })
+
+  it('hides Load More button when 1 new item found and subsequent pages are all dupes (key regression)', async () => {
+    // The scenario the user reported: search returns N sets, press Load More,
+    // get 1 new set + button shows, press again, button goes away.
+    // With the loop-all-pages approach, 1 press should find the item AND confirm
+    // no more unique sets remain — button should be hidden in one press.
+    const initial  = [makeLegoResult('75192-1', 'Millennium Falcon')]
+    const withNew  = [makeLegoResult('75375-1', 'Millennium Falcon 2024')]
+    const dupes    = initial // subsequent pages are all dupes
 
     await searchAndSeedResults(initial)
 
-    mockFetch.mockResolvedValueOnce(apiPage(freshPage, true))
+    // Page 1 of loop: 1 new item, hasMore=true
+    // Pages 2-4: all dupes, hasMore=true
+    // Page 5: all dupes, hasMore=false → loop stops, lastApiHasMore=false
+    mockFetch
+      .mockResolvedValueOnce(apiPage(withNew, true))   // 1 new item
+      .mockResolvedValueOnce(apiPage(dupes,  true))    // all dupes
+      .mockResolvedValueOnce(apiPage(dupes,  true))    // all dupes
+      .mockResolvedValueOnce(apiPage(dupes,  true))    // all dupes
+      .mockResolvedValueOnce(apiPage(dupes,  false))   // all dupes, no more pages
 
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /load more/i }))
     })
 
     await waitFor(() => expect(screen.getAllByTestId('result-item')).toHaveLength(2))
-    // API says more pages remain — button must stay visible
-    expect(screen.getByRole('button', { name: /load more/i })).toBeInTheDocument()
+    // Button hidden — the loop confirmed no more unique items beyond the one we found
+    expect(screen.queryByRole('button', { name: /load more/i })).toBeNull()
   })
 })
