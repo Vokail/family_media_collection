@@ -100,6 +100,10 @@ export default function AddItemPage() {
     if (result.external_id) {
       const s = dupeMap.byId.get(result.external_id)
       if (s) return s
+      // Rebrickable and Discogs assign globally unique IDs — if the ID didn't match
+      // then this is a different item (e.g. a different Lego set that shares a name).
+      // Skip the title+creator fallback to avoid false "in collection" badges.
+      if (result.source === 'rebrickable' || result.source === 'discogs') return null
     }
     const key = `${result.title.toLowerCase().trim()}|${result.creator.toLowerCase().trim()}`
     return dupeMap.byTitle.get(key) ?? null
