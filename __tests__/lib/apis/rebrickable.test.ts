@@ -24,13 +24,14 @@ describe('searchLego', () => {
       .mockResolvedValueOnce({
         ok: true,
         json: async () => ({
+          next: null,
           results: [
             { set_num: '75192-1', name: 'Millennium Falcon', year: 2017, set_img_url: 'https://example.com/img.jpg', theme_id: 1 },
           ],
         }),
       })
 
-    const results = await searchLego('Falcon')
+    const { results, hasMore } = await searchLego('Falcon')
     expect(results).toHaveLength(1)
     expect(results[0]).toMatchObject({
       external_id: '75192-1',
@@ -40,6 +41,24 @@ describe('searchLego', () => {
       cover_url: 'https://example.com/img.jpg',
       source: 'rebrickable',
     })
+    expect(hasMore).toBe(false)
+  })
+
+  it('returns hasMore=true when Rebrickable has a next page', async () => {
+    mockFetch
+      .mockResolvedValueOnce(THEMES_RESPONSE)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          next: 'https://rebrickable.com/api/v3/lego/sets/?offset=20',
+          results: Array.from({ length: 20 }, (_, i) => ({
+            set_num: `${7500 + i}-1`, name: `Set ${i}`, year: 2020, set_img_url: null, theme_id: 1,
+          })),
+        }),
+      })
+
+    const { hasMore } = await searchLego('Star Wars')
+    expect(hasMore).toBe(true)
   })
 
   it('strips "and CUUSOO" from theme names', async () => {
@@ -48,18 +67,20 @@ describe('searchLego', () => {
       .mockResolvedValueOnce({
         ok: true,
         json: async () => ({
+          next: null,
           results: [{ set_num: '42115-1', name: 'Lamborghini', year: 2020, set_img_url: null, theme_id: 2 }],
         }),
       })
 
-    const results = await searchLego('Lamborghini')
+    const { results } = await searchLego('Lamborghini')
     expect(results[0].creator).toBe('Technic')
   })
 
-  it('returns empty array when fetch fails', async () => {
+  it('returns empty results when fetch fails', async () => {
     mockFetch.mockResolvedValue({ ok: false })
-    const results = await searchLego('test')
+    const { results, hasMore } = await searchLego('test')
     expect(results).toEqual([])
+    expect(hasMore).toBe(false)
   })
 
   it('falls back to "LEGO" when theme_id is unknown', async () => {
@@ -68,11 +89,12 @@ describe('searchLego', () => {
       .mockResolvedValueOnce({
         ok: true,
         json: async () => ({
+          next: null,
           results: [{ set_num: '99999-1', name: 'Mystery Set', year: 2023, set_img_url: null, theme_id: 999 }],
         }),
       })
 
-    const results = await searchLego('mystery')
+    const { results } = await searchLego('mystery')
     expect(results[0].creator).toBe('LEGO')
   })
 })

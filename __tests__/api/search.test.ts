@@ -76,11 +76,24 @@ describe('GET /api/search', () => {
     expect(mockSearchComics).toHaveBeenCalled()
   })
 
-  it('calls searchLego for type=lego', async () => {
-    mockSearchLego.mockResolvedValue([LEGO_RESULT])
+  it('calls searchLego for type=lego and returns { results, hasMore }', async () => {
+    mockSearchLego.mockResolvedValue({ results: [LEGO_RESULT], hasMore: false })
     const req = new Request('http://localhost/api/search?q=Falcon&type=lego')
-    await GET(req)
+    const res = await GET(req)
     expect(mockSearchLego).toHaveBeenCalled()
+    const data = await res.json()
+    expect(data.results[0].title).toBe('Millennium Falcon')
+    expect(data.hasMore).toBe(false)
+  })
+
+  it('passes hasMore=true through when Rebrickable has more pages', async () => {
+    const manyResults = Array.from({ length: 20 }, (_, i) => ({ ...LEGO_RESULT, external_id: `${i}-1`, title: `Set ${i}` }))
+    mockSearchLego.mockResolvedValue({ results: manyResults, hasMore: true })
+    const req = new Request('http://localhost/api/search?q=Star+Wars&type=lego')
+    const res = await GET(req)
+    const data = await res.json()
+    expect(data.hasMore).toBe(true)
+    expect(data.results).toHaveLength(20)
   })
 
   it('deduplicates results with the same title+creator', async () => {

@@ -25,7 +25,9 @@ export async function GET(request: Request) {
   } else if (type === 'book') {
     rawResults = await searchBooks(q, lang, offset)
   } else if (type === 'lego') {
-    rawResults = await searchLego(q, offset)
+    const lego = await searchLego(q, offset)
+    rawResults = lego.results
+    hasMore = lego.hasMore
   } else {
     rawResults = await searchComics(q, lang, offset)
   }

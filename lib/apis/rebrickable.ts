@@ -32,17 +32,20 @@ function mapSet(s: Record<string, unknown>, themes: Map<number, string>): Search
   }
 }
 
-export async function searchLego(query: string, offset = 0): Promise<SearchResult[]> {
+export async function searchLego(query: string, offset = 0): Promise<{ results: SearchResult[], hasMore: boolean }> {
   try {
     const [themesMap, res] = await Promise.all([
       getThemes(),
       fetch(`${BASE}/sets/?search=${encodeURIComponent(query)}&page_size=20&offset=${offset}&key=${key()}&ordering=-year`),
     ])
-    if (!res.ok) return []
+    if (!res.ok) return { results: [], hasMore: false }
     const data = await res.json()
-    return (data.results ?? []).map((s: Record<string, unknown>) => mapSet(s, themesMap))
+    return {
+      results: (data.results ?? []).map((s: Record<string, unknown>) => mapSet(s, themesMap)),
+      hasMore: data.next !== null && data.next !== undefined,
+    }
   } catch {
-    return []
+    return { results: [], hasMore: false }
   }
 }
 
