@@ -38,6 +38,7 @@ export default function AddItemPage() {
   const [searchLang, setSearchLang] = useState('dutch')
   const [offset, setOffset] = useState(0)
   const [lastQuery, setLastQuery] = useState('')
+  const resultsRef = useRef<SearchResult[]>([])
   const searchInputRef = useRef<HTMLInputElement>(null)
   const barcodeAbort = useRef<AbortController | null>(null)
   const navTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -57,6 +58,10 @@ export default function AddItemPage() {
   const [identifying, setIdentifying] = useState(false)
   const [showBackToTop, setShowBackToTop] = useState(false)
   const [existingItems, setExistingItems] = useState<Item[]>([])
+
+  // Keep a ref in sync with results so loadMore can read the current list
+  // without stale-closure issues (results is not in loadMore's dep array)
+  useEffect(() => { resultsRef.current = results }, [results])
 
   useEffect(() => {
     const saved = localStorage.getItem(langStorageKey(collection))
@@ -167,42 +172,68 @@ export default function AddItemPage() {
   }, [collection, searchLang])
 
   const loadMore = useCallback(async () => {
-    const nextOffset = offset + 20
     setLoadingMore(true)
-    let more: SearchResult[]
-    if (collection === 'book') {
-      more = await searchOpenLibrary(lastQuery, nextOffset)
-      setHasMore(more.length === 20)
-    } else {
-      const lang = collection === 'comic' ? searchLang : undefined
-      const url = `/api/search?q=${encodeURIComponent(lastQuery)}&type=${collection}&offset=${nextOffset}${lang ? `&lang=${lang}` : ''}`
-      const res = await fetch(url)
-      if (res.ok) {
-        const json = await res.json()
-        if (Array.isArray(json)) {
-          more = json
-          setHasMore(more.length === 20)
-        } else {
-          more = json.results ?? []
-          setHasMore(json.hasMore ?? false)
-        }
+    // Walk pages automatically when an entire page turns out to be all-dupes
+    // (e.g. Lego: many "Millennium Falcon" sets share a name across years so the
+    // server dedup previously collapsed them, but now they each have unique
+    // external_ids — client dedup may still strip already-shown ones from a page).
+    // We loop silently until we find fresh items or the API has no more pages.
+    let currentOffset = offset
+    const MAX_ATTEMPTS = 5
+
+    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+      const nextOffset = currentOffset + 20
+      let more: SearchResult[]
+      let apiHasMore: boolean
+
+      if (collection === 'book') {
+        more = await searchOpenLibrary(lastQuery, nextOffset)
+        apiHasMore = more.length === 20
       } else {
-        more = []
-        setHasMore(false)
+        const lang = collection === 'comic' ? searchLang : undefined
+        const url = `/api/search?q=${encodeURIComponent(lastQuery)}&type=${collection}&offset=${nextOffset}${lang ? `&lang=${lang}` : ''}`
+        const res = await fetch(url)
+        if (res.ok) {
+          const json = await res.json()
+          if (Array.isArray(json)) {
+            more = json
+            apiHasMore = more.length === 20
+          } else {
+            more = json.results ?? []
+            apiHasMore = json.hasMore ?? false
+          }
+        } else {
+          more = []
+          apiHasMore = false
+        }
       }
-    }
-    setResults(prev => {
-      const existingIds = new Set(prev.map(r => r.external_id))
+
+      // Use the ref (not state) so we always see the current list even
+      // across loop iterations without stale-closure problems.
+      const existingIds = new Set(resultsRef.current.map(r => r.external_id))
       const fresh = more.filter(r => !existingIds.has(r.external_id))
+
       if (fresh.length > 0) {
+        // Found new items — add them, update offset, propagate API's hasMore.
         setOffset(nextOffset)
-        return [...prev, ...fresh]
+        setResults(prev => {
+          const ids = new Set(prev.map(r => r.external_id))
+          return [...prev, ...fresh.filter(r => !ids.has(r.external_id))]
+        })
+        setHasMore(apiHasMore)
+        break
       }
-      // API returned results but all were already shown (client-side dedup removed them all),
-      // or the page was genuinely empty — either way hide the button
-      setHasMore(false)
-      return prev
-    })
+
+      if (!apiHasMore) {
+        // No new items and API has no more pages — hide the button.
+        setHasMore(false)
+        break
+      }
+
+      // Entire page was all-dupes but API has more pages — advance silently.
+      currentOffset = nextOffset
+    }
+
     setLoadingMore(false)
   }, [collection, searchLang, lastQuery, offset])
 
