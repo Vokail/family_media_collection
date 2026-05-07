@@ -43,10 +43,22 @@ export default defineConfig({
   ],
 
   // Spin up `npm run dev` automatically; reuse if it's already running locally.
+  // Provides stub env vars so the middleware/Supabase clients don't crash on boot
+  // when no .env.local exists. Any real value already in process.env (loaded from
+  // .env.local by Next.js when the user runs the dev server themselves) takes
+  // precedence in those manual flows.
   webServer: {
     command: 'npm run dev',
     url: 'http://localhost:3000',
     reuseExistingServer: true,
     timeout: 60_000,
+    env: {
+      SESSION_SECRET: process.env.SESSION_SECRET ?? 'playwright-smoke-test-secret-at-least-32chars-long',
+      NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'https://placeholder.supabase.co',
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? 'placeholder-anon-key',
+      SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY ?? 'placeholder-service-role',
+      INITIAL_VIEW_PIN: process.env.INITIAL_VIEW_PIN ?? '1234',
+      INITIAL_FAMILY_PASSWORD: process.env.INITIAL_FAMILY_PASSWORD ?? 'playwright',
+    },
   },
 })
