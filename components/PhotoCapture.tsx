@@ -12,19 +12,48 @@ export default function PhotoCapture({ onCapture, onClose }: Props) {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    let cancelled = false
+
     async function start() {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: 'environment' },
         })
+        if (cancelled) {
+          // Torn down or backgrounded mid-await — release the stream immediately
+          stream.getTracks().forEach(t => t.stop())
+          return
+        }
         streamRef.current = stream
         if (videoRef.current) videoRef.current.srcObject = stream
       } catch {
         setError('Camera access denied. Please allow camera access in your browser settings.')
       }
     }
+
+    function stop() {
+      streamRef.current?.getTracks().forEach(t => t.stop())
+      streamRef.current = null
+    }
+
+    // Release the camera when the app is hidden (PWA backgrounded, tab switched,
+    // screen locked) and restart on resume. Without this the camera keeps
+    // streaming in the background, draining battery on iOS PWAs especially.
+    function onVisibilityChange() {
+      if (document.visibilityState === 'hidden') {
+        stop()
+      } else if (document.visibilityState === 'visible' && !streamRef.current) {
+        start()
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange)
+
     start()
-    return () => { streamRef.current?.getTracks().forEach(t => t.stop()) }
+    return () => {
+      cancelled = true
+      document.removeEventListener('visibilitychange', onVisibilityChange)
+      stop()
+    }
   }, [])
 
   function capture() {

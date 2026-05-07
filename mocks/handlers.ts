@@ -23,17 +23,17 @@ const SUPABASE_BASE = 'https://placeholder.supabase.co'
 /** Reads `?col=eq.value` filters from the request URL. */
 function parseEqFilters(url: URL): Record<string, string> {
   const filters: Record<string, string> = {}
-  for (const [key, value] of url.searchParams.entries()) {
-    if (key === 'select' || key === 'order' || key === 'limit') continue
+  url.searchParams.forEach((value, key) => {
+    if (key === 'select' || key === 'order' || key === 'limit') return
     if (value.startsWith('eq.')) filters[key] = value.slice(3)
-  }
+  })
   return filters
 }
 
 /** PostgREST returns a bare object (not wrapped in array) when `.single()` is
  *  used — that gets signalled via the `Accept: application/vnd.pgrst.object+json`
  *  header. supabase-js sets that header for `.single()` calls. */
-function respondPostgrest(rows: unknown[], request: Request) {
+function respondPostgrest(rows: Record<string, unknown>[], request: Request) {
   const accept = request.headers.get('accept') ?? ''
   if (accept.includes('vnd.pgrst.object+json')) {
     if (rows.length === 0) {
@@ -49,7 +49,7 @@ export const handlers = [
   http.get(`${SUPABASE_BASE}/rest/v1/members`, ({ request }) => {
     const url = new URL(request.url)
     const filters = parseEqFilters(url)
-    let rows = FIXTURE_MEMBERS as readonly Record<string, unknown>[]
+    let rows = FIXTURE_MEMBERS as unknown as Record<string, unknown>[]
     for (const [k, v] of Object.entries(filters)) {
       rows = rows.filter(r => String(r[k]) === v)
     }
@@ -60,7 +60,7 @@ export const handlers = [
   http.get(`${SUPABASE_BASE}/rest/v1/items`, ({ request }) => {
     const url = new URL(request.url)
     const filters = parseEqFilters(url)
-    let rows = FIXTURE_ITEMS as readonly Record<string, unknown>[]
+    let rows = FIXTURE_ITEMS as unknown as Record<string, unknown>[]
     for (const [k, v] of Object.entries(filters)) {
       // Convert "true"/"false" strings to booleans for is_wishlist
       const parsed = v === 'true' ? true : v === 'false' ? false : v
@@ -89,10 +89,10 @@ export const handlers = [
       const key = `${item.member_id}|${item.collection}`
       seen.set(key, (seen.get(key) ?? 0) + 1)
     }
-    for (const [key, count] of seen.entries()) {
+    seen.forEach((count, key) => {
       const [member_id, collection] = key.split('|')
       counts.push({ member_id, collection, count })
-    }
+    })
     return HttpResponse.json(counts)
   }),
 

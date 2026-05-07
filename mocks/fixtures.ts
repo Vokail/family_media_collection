@@ -30,7 +30,6 @@ const baseItem = (id: string, overrides: Partial<Item> & Pick<Item, 'title' | 'c
   status: null,
   genres: null,
   styles: null,
-  num_parts: null,
   condition: null,
   lego_status: null,
   locked_fields: null,

@@ -13,12 +13,13 @@ export default function BarcodeScanner({ onDetected, onClose }: Props) {
 
   useEffect(() => {
     let controls: IScannerControls | null = null
+    let cancelled = false
 
     async function start() {
       try {
         const { BrowserMultiFormatReader } = await import('@zxing/browser')
         const reader = new BrowserMultiFormatReader()
-        controls = await reader.decodeFromConstraints(
+        const next = await reader.decodeFromConstraints(
           { video: { facingMode: 'environment' } },
           videoRef.current!,
           (result) => {
@@ -28,13 +29,40 @@ export default function BarcodeScanner({ onDetected, onClose }: Props) {
             }
           }
         )
+        if (cancelled) {
+          // We were torn down or backgrounded while awaiting — release immediately
+          next.stop()
+          return
+        }
+        controls = next
       } catch {
         setError('Camera access denied. Please allow camera access in your browser settings and try again.')
       }
     }
 
+    function stop() {
+      controls?.stop()
+      controls = null
+    }
+
+    // Pause the camera when the app is hidden (PWA backgrounded, tab switched,
+    // screen locked) and restart when it becomes visible again. Without this
+    // the camera stream stays active in the background, causing real battery drain.
+    function onVisibilityChange() {
+      if (document.visibilityState === 'hidden') {
+        stop()
+      } else if (document.visibilityState === 'visible' && !controls) {
+        start()
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange)
+
     start()
-    return () => { controls?.stop() }
+    return () => {
+      cancelled = true
+      document.removeEventListener('visibilitychange', onVisibilityChange)
+      stop()
+    }
   }, [onDetected])
 
   return (
