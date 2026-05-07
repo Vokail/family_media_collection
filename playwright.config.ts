@@ -1,21 +1,30 @@
 import { defineConfig, devices } from '@playwright/test'
+import { defineBddConfig } from 'playwright-bdd'
 
 /**
- * Playwright e2e smoke tests — local-only, run before push.
+ * Playwright e2e tests — driven by Gherkin .feature files via playwright-bdd.
  *
  * Usage:
- *   npm run test:e2e          run all smoke tests headlessly
- *   npm run test:e2e:ui       open Playwright UI for debugging
+ *   npm run test:e2e          run all BDD scenarios
+ *   npm run test:e2e:ui       open Playwright UI
  *   npm run test:e2e:headed   run with browser windows visible
  *
- * The tests use the existing dev server (auto-started via `webServer` below)
- * and rely on `.env.local` for Supabase + INITIAL_VIEW_PIN / INITIAL_FAMILY_PASSWORD.
+ * Feature files live in e2e/features/*.feature and are paired with step
+ * definitions in e2e/features/steps/*.ts. Tests are runtime-generated under
+ * .features-gen/ (gitignored) by `bddgen` before each `playwright test` invocation.
  *
- * Tests are intentionally read-mostly; any writes must clean up after themselves.
+ * Stack-portable by design: the .feature files describe behaviour without
+ * implementation detail; if we ever migrate off Next.js/Playwright the
+ * scenarios survive — only the step definitions need rewriting.
  */
+const testDir = defineBddConfig({
+  features: 'e2e/features/*.feature',
+  steps:    'e2e/features/steps/*.ts',
+})
+
 export default defineConfig({
-  testDir: './e2e',
-  fullyParallel: false,            // single user → keep tests sequential to avoid session collisions
+  testDir,
+  fullyParallel: false,
   workers: 1,
   retries: 0,
   reporter: 'list',
@@ -28,30 +37,15 @@ export default defineConfig({
     screenshot: 'only-on-failure',
     actionTimeout: 5_000,
     navigationTimeout: 10_000,
-    // Block the PWA service worker in tests — it intercepts fetch events and
-    // prevents Playwright's `page.route` from intercepting API calls reliably
-    // (especially in WebKit, where this caused flaky test ordering issues).
     serviceWorkers: 'block',
   },
 
   projects: [
-    // Desktop Chromium for everyday flows
-    {
-      name: 'chromium-desktop',
-      use: { ...devices['Desktop Chrome'] },
-    },
-    // iPhone 12 mini viewport — the device that surfaced #118
-    {
-      name: 'mobile-safari-mini',
-      use: { ...devices['iPhone 12 Mini'] },
-    },
+    { name: 'chromium-desktop',  use: { ...devices['Desktop Chrome']    } },
+    // iPhone 12 mini WebKit — the device that surfaced #118 originally
+    { name: 'mobile-safari-mini', use: { ...devices['iPhone 12 Mini']   } },
   ],
 
-  // Spin up `npm run dev` automatically; reuse if it's already running locally.
-  // Provides stub env vars so the middleware/Supabase clients don't crash on boot
-  // when no .env.local exists. Any real value already in process.env (loaded from
-  // .env.local by Next.js when the user runs the dev server themselves) takes
-  // precedence in those manual flows.
   webServer: {
     command: 'npm run dev',
     url: 'http://localhost:3000',
@@ -64,7 +58,6 @@ export default defineConfig({
       SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY ?? 'placeholder-service-role',
       INITIAL_VIEW_PIN: process.env.INITIAL_VIEW_PIN ?? '1234',
       INITIAL_FAMILY_PASSWORD: process.env.INITIAL_FAMILY_PASSWORD ?? 'playwright',
-      // Activates MSW in instrumentation.ts so SSR Supabase calls are mocked.
       PLAYWRIGHT_TEST: '1',
     },
   },

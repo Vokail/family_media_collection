@@ -7,7 +7,7 @@
  */
 import { expect } from '@playwright/test'
 import { createBdd, DataTable } from 'playwright-bdd'
-import { setSession, mockExistingItems, mockSearch } from '../../helpers'
+import { mockExistingItems, mockSearch } from '../../helpers'
 
 const { Given, When, Then } = createBdd()
 
@@ -20,10 +20,6 @@ const FALCONS: Record<string, { external_id: string; title: string; creator: str
 function expand(setList: string) {
   return setList.split(',').map(s => FALCONS[s.trim()]).filter(Boolean)
 }
-
-Given('I am authenticated as an editor', async ({ context }) => {
-  await setSession(context, { role: 'editor' })
-})
 
 Given('I am on the Lego add page', async ({ page }) => {
   await mockExistingItems(page, [])
