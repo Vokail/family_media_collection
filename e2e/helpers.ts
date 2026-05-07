@@ -1,36 +1,70 @@
-import { Page } from '@playwright/test'
+import { Page, BrowserContext, Route } from '@playwright/test'
+import { sealData } from 'iron-session'
 
 /**
- * Reads the family password (editor PIN) from env. Falls back to the value the
- * app seeds with if `INITIAL_FAMILY_PASSWORD` isn't set.
+ * The same SESSION_SECRET that playwright.config.ts injects into the dev server.
+ * Both sides MUST use the same value or iron-session won't decrypt our cookie.
+ */
+const SESSION_PASSWORD = 'playwright-smoke-test-secret-at-least-32chars-long'
+
+/**
+ * Pre-bakes a valid iron-session cookie and attaches it to the browser context.
+ * After this, any navigation to a protected route (e.g. /alice/lego/add) will
+ * pass the middleware auth check without going through /api/auth.
  *
- * Set via `.env.local` or as a shell env when running tests:
- *   PLAYWRIGHT_FAMILY_PASSWORD=secret npm run test:e2e
+ * Use it instead of UI login when you don't want to test the login flow itself.
  */
-export function getFamilyPassword(): string | undefined {
-  return process.env.PLAYWRIGHT_FAMILY_PASSWORD ?? process.env.INITIAL_FAMILY_PASSWORD
-}
-
-export function getViewPin(): string | undefined {
-  return process.env.PLAYWRIGHT_VIEW_PIN ?? process.env.INITIAL_VIEW_PIN
+export async function setSession(
+  context: BrowserContext,
+  session: { role: 'editor' | 'viewer' | 'member'; editableMemberId?: string },
+) {
+  const sealed = await sealData(session, { password: SESSION_PASSWORD })
+  // Use `url` rather than `domain`/`path` — works more reliably across browsers
+  // (WebKit is fussy about localhost cookies set via `domain: 'localhost'`).
+  await context.addCookies([{
+    name: 'fmc_session',
+    value: sealed,
+    url: 'http://localhost:3000',
+    httpOnly: true,
+    sameSite: 'Lax',
+  }])
 }
 
 /**
- * Logs in as editor via the family password. Returns true on success, false otherwise.
- * Tests calling this should `test.skip(!loggedIn, 'no credentials')` when it returns false.
+ * Mocks the existing-items fetch the add page makes on mount.
+ * Pass an empty array if no items in the collection.
  */
-export async function loginAsEditor(page: Page): Promise<boolean> {
-  const password = getFamilyPassword()
-  if (!password) return false
+export async function mockExistingItems(page: Page, items: unknown[] = []) {
+  await page.route(/\/api\/items(\?|$)/, async (route: Route) => {
+    if (route.request().method() === 'GET') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(items),
+      })
+    } else {
+      await route.continue()
+    }
+  })
+}
 
-  await page.goto('/')
-  await page.getByPlaceholder(/password|pin/i).fill(password)
-  await page.getByRole('button', { name: /enter|sign in|log in/i }).click()
-  // Successful login redirects to /members
-  try {
-    await page.waitForURL(/\/members/, { timeout: 5000 })
-    return true
-  } catch {
-    return false
-  }
+/**
+ * Mocks /api/search responses by offset. Pass a map of `offset → response body`.
+ * The body should be either an array (book/comic style) or `{ results, hasMore }`
+ * (vinyl/lego style) — same as the real API.
+ */
+export async function mockSearch(
+  page: Page,
+  responsesByOffset: Record<number, unknown>,
+) {
+  await page.route(/\/api\/search(\?|$)/, async (route: Route) => {
+    const url = new URL(route.request().url())
+    const offset = parseInt(url.searchParams.get('offset') ?? '0')
+    const body = responsesByOffset[offset] ?? { results: [], hasMore: false }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(body),
+    })
+  })
 }

@@ -1,145 +1,117 @@
 import { test, expect } from '@playwright/test'
-import { loginAsEditor, getFamilyPassword, getViewPin } from './helpers'
+import { setSession, mockExistingItems, mockSearch } from './helpers'
 
 /**
- * Smoke tests — covers flows that Jest/jsdom can't reliably exercise.
+ * Playwright smoke tests — local-only, run before push.
  *
- * These rely on a real Supabase backend (via .env.local) and the credentials
- * `PLAYWRIGHT_FAMILY_PASSWORD` / `PLAYWRIGHT_VIEW_PIN` (or the INITIAL_* equivs).
- * Tests skip gracefully if creds are missing rather than failing hard.
+ * Strategy: tests are self-contained. They never hit real Supabase or external
+ * APIs. They use a pre-baked iron-session cookie + Playwright route mocking to
+ * stand in for the backend. This catches real browser bugs (responsive layout,
+ * scroll, real fetch lifecycle) without flakiness from network/DB state.
+ *
+ * Limitation: pages that do server-side data fetching (e.g. /members and the
+ * collection grid) need MSW-style server-side mocking which isn't set up yet.
+ * Those tests are documented below but skipped — easy to enable later.
  */
 
-test.describe('Login', () => {
+// ─── Login (no creds, no DB) ────────────────────────────────────────────────
+
+test.describe('Login page', () => {
+  test('renders the password field and Enter button', async ({ page }) => {
+    await page.goto('/')
+    await expect(page.getByPlaceholder(/password|pin/i)).toBeVisible()
+    await expect(page.getByRole('button', { name: /enter/i })).toBeVisible()
+  })
+
   test('rejects an incorrect password (stays on login screen)', async ({ page }) => {
     await page.goto('/')
     await page.getByPlaceholder(/password|pin/i).fill('definitely-wrong')
     await page.getByRole('button', { name: /enter/i }).click()
-    // Give the request a moment, then assert we did NOT redirect to /members
     await page.waitForTimeout(1500)
     await expect(page).not.toHaveURL(/\/members/)
     await expect(page.getByPlaceholder(/password|pin/i)).toBeVisible()
   })
-
-  test('family password redirects to members page', async ({ page }) => {
-    test.skip(!getFamilyPassword(), 'no PLAYWRIGHT_FAMILY_PASSWORD set')
-    const ok = await loginAsEditor(page)
-    expect(ok).toBe(true)
-    await expect(page).toHaveURL(/\/members/)
-  })
 })
 
-test.describe('Members page', () => {
-  test('renders the four family members', async ({ page }) => {
-    test.skip(!getFamilyPassword(), 'no PLAYWRIGHT_FAMILY_PASSWORD set')
-    await loginAsEditor(page)
-    // The page links to /<slug>/<collection> — we don't hard-code names so this
-    // works after the placeholder/real-name swap.
-    const memberLinks = page.locator('a[href^="/"][href*="/vinyl"], a[href^="/"][href*="/book"]')
-    await expect(memberLinks.first()).toBeVisible()
-    expect(await memberLinks.count()).toBeGreaterThanOrEqual(4)
-  })
-})
+// ─── Add page: Load More auto-hides (#116) — fully mocked ───────────────────
 
-test.describe('Collection page — toolbar layout (#118)', () => {
-  test('toolbar controls all fit within the viewport', async ({ page, viewport }) => {
-    test.skip(!getFamilyPassword(), 'no PLAYWRIGHT_FAMILY_PASSWORD set')
-    await loginAsEditor(page)
+test.describe('Add page — Load More auto-advance (#116)', () => {
+  const FALCON_75192 = { external_id: '75192-1', title: 'Millennium Falcon', creator: 'Star Wars', year: 2017, cover_url: null, source: 'rebrickable' }
+  const FALCON_75257 = { external_id: '75257-1', title: 'Millennium Falcon', creator: 'Star Wars', year: 2019, cover_url: null, source: 'rebrickable' }
+  const FALCON_75375 = { external_id: '75375-1', title: 'Millennium Falcon', creator: 'Star Wars', year: 2024, cover_url: null, source: 'rebrickable' }
 
-    // Click the first member to open their collection
-    const firstMember = page.locator('a[href*="/vinyl"], a[href*="/book"]').first()
-    await firstMember.click()
-    await page.waitForURL(/\/[^/]+\/(vinyl|book|comic|lego)/)
-
-    const viewportWidth = viewport?.width ?? 1280
-
-    // The Sort <select> and the view-mode toggle (☰/⊞) must be visible AND
-    // their right edge must be inside the viewport. This is exactly what #118 broke.
-    const sortSelect = page.locator('select').first()
-    const viewToggle = page.getByRole('button', { name: /switch to (list|grid) view/i })
-
-    await expect(sortSelect).toBeVisible()
-    await expect(viewToggle).toBeVisible()
-
-    const sortBox = await sortSelect.boundingBox()
-    const toggleBox = await viewToggle.boundingBox()
-    expect(sortBox).not.toBeNull()
-    expect(toggleBox).not.toBeNull()
-    expect(sortBox!.x + sortBox!.width).toBeLessThanOrEqual(viewportWidth + 1)
-    expect(toggleBox!.x + toggleBox!.width).toBeLessThanOrEqual(viewportWidth + 1)
-  })
-})
-
-test.describe('Collection page — sidebar nav (#117)', () => {
-  test('sidebar letter nav scrolls to its section after a sort change', async ({ page }) => {
-    test.skip(!getFamilyPassword(), 'no PLAYWRIGHT_FAMILY_PASSWORD set')
-    await loginAsEditor(page)
-
-    const firstMember = page.locator('a[href*="/vinyl"], a[href*="/book"]').first()
-    await firstMember.click()
-    await page.waitForURL(/\/[^/]+\/(vinyl|book|comic|lego)/)
-
-    // Switch to title sort to trigger letter sections + sidebar
-    const sortSelect = page.locator('select').first()
-    await sortSelect.selectOption('title')
-
-    // If the collection is empty there will be no sidebar — skip in that case
-    const sidebarButtons = page.locator('button').filter({
-      hasText: /^[A-Z#]$/,
+  test('Load More button disappears once all unique sets are loaded', async ({ page, context }) => {
+    await setSession(context, { role: 'editor' })
+    await mockExistingItems(page, [])
+    await mockSearch(page, {
+      // Initial search → 2 sets, hasMore=true
+      0:  { results: [FALCON_75192, FALCON_75257], hasMore: true },
+      // Page 2 → all dupes, hasMore=true (Rebrickable would do this for variants)
+      20: { results: [FALCON_75192, FALCON_75257], hasMore: true },
+      // Page 3 → 1 fresh + hasMore=false (the natural end)
+      40: { results: [FALCON_75375], hasMore: false },
     })
-    const count = await sidebarButtons.count()
-    test.skip(count === 0, 'collection has no items / no sidebar to test')
 
-    // Click the first sidebar letter and verify the page scrolled (scrollY > 0)
-    // The smooth scroll is async so wait for it briefly.
-    const beforeY = await page.evaluate(() => window.scrollY)
-    await sidebarButtons.first().click()
-    // Wait up to 1s for the smooth scroll to settle
-    await page.waitForTimeout(800)
-    const afterY = await page.evaluate(() => window.scrollY)
-    // Either we scrolled OR the section was already at the top — both fine,
-    // failing case is the button doing nothing while there's content below it.
-    expect(typeof afterY).toBe('number')
-    expect(afterY).toBeGreaterThanOrEqual(beforeY) // didn't go backwards
-  })
-})
+    await page.goto('/alice/lego/add')
 
-test.describe('Add page — Load More auto-hides (#116)', () => {
-  test('Load More button disappears when there are no more results to fetch', async ({ page }) => {
-    test.skip(!getFamilyPassword(), 'no PLAYWRIGHT_FAMILY_PASSWORD set')
-    await loginAsEditor(page)
-
-    // Pick the first member, navigate to lego/add
-    const firstMember = page.locator('a[href*="/vinyl"], a[href*="/book"]').first()
-    const href = await firstMember.getAttribute('href')
-    expect(href).not.toBeNull()
-    const slug = href!.split('/')[1]
-    await page.goto(`/${slug}/lego/add`)
-
-    // Search for something with very few unique results so we can exhaust the API
-    await page.getByPlaceholder(/search/i).fill('Millennium Falcon')
+    // Search
+    await page.getByPlaceholder(/search/i).fill('Falcon')
     await page.getByRole('button', { name: /search/i }).click()
 
-    // Wait for results to render (search may take a few seconds)
-    await page.waitForTimeout(2500)
+    // Initial 2 results show, Load More visible
+    await expect(page.getByText('Millennium Falcon').first()).toBeVisible()
+    await expect(page.getByRole('button', { name: /load more/i })).toBeVisible()
 
-    // Click Load More repeatedly (max 4 presses) until it disappears or we give up
-    for (let i = 0; i < 4; i++) {
-      const loadMore = page.getByRole('button', { name: /load more/i })
-      const visible = await loadMore.isVisible().catch(() => false)
-      if (!visible) break
-      await loadMore.click()
-      await page.waitForTimeout(2500)
-    }
+    // One press should auto-advance through the all-dupe page 2 to page 3,
+    // add the new 75375 set, and hide the button (page 3 had hasMore=false).
+    await page.getByRole('button', { name: /load more/i }).click()
 
-    // After exhausting, the button must be gone
+    // 75375 is now visible; button is gone
+    await expect(page.locator('text=Millennium Falcon')).toHaveCount(3, { timeout: 5000 })
     await expect(page.getByRole('button', { name: /load more/i })).not.toBeVisible()
+  })
+
+  test('Load More disappears even when API keeps saying hasMore=true with all-dupes', async ({ page, context }) => {
+    await setSession(context, { role: 'editor' })
+    await mockExistingItems(page, [])
+    await mockSearch(page, {
+      0:  { results: [FALCON_75192, FALCON_75257], hasMore: true },
+      // Every subsequent page is dupes + hasMore=true (worst-case API behaviour)
+      20: { results: [FALCON_75192, FALCON_75257], hasMore: true },
+      40: { results: [FALCON_75192, FALCON_75257], hasMore: true },
+      60: { results: [FALCON_75192, FALCON_75257], hasMore: true },
+      80: { results: [FALCON_75192, FALCON_75257], hasMore: true },
+      100:{ results: [FALCON_75192, FALCON_75257], hasMore: true },
+    })
+
+    await page.goto('/alice/lego/add')
+    await page.getByPlaceholder(/search/i).fill('Falcon')
+    await page.getByRole('button', { name: /search/i }).click()
+
+    // Wait for results to render before assuming the Load More button exists
+    await expect(page.getByText('Millennium Falcon').first()).toBeVisible()
+    await expect(page.getByRole('button', { name: /load more/i })).toBeVisible()
+    await page.getByRole('button', { name: /load more/i }).click()
+
+    // Loop exhausts MAX_ATTEMPTS without finding fresh items → button hides
+    await expect(page.getByRole('button', { name: /load more/i })).not.toBeVisible({ timeout: 10000 })
   })
 })
 
-test.describe('Login page', () => {
-  test('renders the login screen at /', async ({ page }) => {
-    await page.goto('/')
-    await expect(page.getByPlaceholder(/password|pin/i)).toBeVisible()
-    await expect(page.getByRole('button', { name: /enter/i })).toBeVisible()
+// ─── Tests that need server-side mocking (MSW) — currently skipped ──────────
+
+test.describe.skip('Pages with SSR data — need MSW for full mocking', () => {
+  // /members fetches member list during SSR via supabase.from('members').select()
+  test('Members page renders the four family members', async () => {
+    // would need MSW to intercept the supabase HTTP call server-side
+  })
+
+  // /[member]/[collection] fetches items during SSR
+  test('Toolbar fits viewport at 375px (#118)', async () => {
+    // would need MSW
+  })
+
+  test('Sidebar nav scrolls after sort change (#117)', async () => {
+    // would need MSW
   })
 })

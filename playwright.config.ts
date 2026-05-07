@@ -24,9 +24,14 @@ export default defineConfig({
 
   use: {
     baseURL: 'http://localhost:3000',
-    trace: 'on-first-retry',
+    trace: 'retain-on-failure',
+    screenshot: 'only-on-failure',
     actionTimeout: 5_000,
     navigationTimeout: 10_000,
+    // Block the PWA service worker in tests — it intercepts fetch events and
+    // prevents Playwright's `page.route` from intercepting API calls reliably
+    // (especially in WebKit, where this caused flaky test ordering issues).
+    serviceWorkers: 'block',
   },
 
   projects: [
