@@ -187,9 +187,11 @@ export default function AddItemPage() {
     // interleaved with duplicates; without looping, the user would need multiple
     // button presses to reach the end.
     let currentOffset = offset
-    const MAX_ATTEMPTS = 5
+    const MAX_ATTEMPTS = 10          // hard upper limit of API calls per press
+    const EMPTY_THRESHOLD = 3        // give up after this many consecutive all-dupe pages
     const allFresh: SearchResult[] = []
     let lastApiHasMore = false
+    let consecutiveEmpty = 0
 
     for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
       const nextOffset = currentOffset + 20
@@ -229,7 +231,18 @@ export default function AddItemPage() {
       currentOffset = nextOffset
 
       if (!apiHasMore) break  // API has no more pages — stop early
+
+      if (fresh.length > 0) {
+        consecutiveEmpty = 0          // found something — reset the streak
+      } else {
+        consecutiveEmpty++
+        if (consecutiveEmpty >= EMPTY_THRESHOLD) break  // N pages of pure dupes → give up
+      }
     }
+
+    // Show the button only if the API has more pages AND we didn't stop because
+    // we hit the consecutive-empty threshold (which means there's nothing more unique).
+    const stillHasMore = lastApiHasMore && consecutiveEmpty < EMPTY_THRESHOLD
 
     if (allFresh.length > 0) {
       setOffset(currentOffset)
@@ -237,7 +250,7 @@ export default function AddItemPage() {
         const ids = new Set(prev.map(r => r.external_id))
         return [...prev, ...allFresh.filter(r => !ids.has(r.external_id))]
       })
-      setHasMore(lastApiHasMore)
+      setHasMore(stillHasMore)
     } else {
       // All pages checked were dupes or API ran out of pages
       setHasMore(false)
