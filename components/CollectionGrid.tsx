@@ -394,8 +394,8 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
 
       {/* Owned / Wishlist + Sort */}
       <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
-        <button className={`btn-ghost px-2 sm:px-4 text-xs sm:text-sm ${!isWishlist ? 'active' : ''}`} onClick={() => { setIsWishlist(false); localStorage.setItem(tabStorageKey, 'owned') }}>Owned <span className="opacity-70">({ownedCount})</span></button>
-        <button className={`btn-ghost px-2 sm:px-4 text-xs sm:text-sm ${isWishlist ? 'active' : ''}`} onClick={() => { setIsWishlist(true); localStorage.setItem(tabStorageKey, 'wishlist') }}>Wishlist <span className="opacity-70">({wishlistCount})</span></button>
+        <button className={`btn-ghost px-2 sm:px-4 text-xs sm:text-sm ${!isWishlist ? 'active' : ''}`} onClick={() => { setIsWishlist(false); localStorage.setItem(tabStorageKey, 'owned') }}>Owned <span className="opacity-70 hidden sm:inline">({ownedCount})</span></button>
+        <button className={`btn-ghost px-2 sm:px-4 text-xs sm:text-sm ${isWishlist ? 'active' : ''}`} onClick={() => { setIsWishlist(true); localStorage.setItem(tabStorageKey, 'wishlist') }}>Wishlist <span className="opacity-70 hidden sm:inline">({wishlistCount})</span></button>
         {(isWishlist ? wishlistCount : ownedCount) > 0 && (
           <button
             onClick={() => {
@@ -427,7 +427,11 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
           <select
             value={sort}
             onChange={e => { const v = e.target.value as SortMode; setSort(v); localStorage.setItem(sortStorageKey, v) }}
-            className="input py-1 px-2 text-xs sm:text-sm w-auto"
+            // max-w on mobile: iOS WebKit can size a <select> to fit the LONGEST option
+            // in the dropdown (not just the selected one), so books/comics — which
+            // include "Read / Unread" — were rendering wider than vinyl on iPhone 12
+            // mini, pushing the toolbar past the viewport edge (#119).
+            className="input py-1 px-2 text-xs sm:text-sm w-auto max-w-[7rem] sm:max-w-none"
           >
             <option value="added">Date added</option>
             <option value="creator">{sortCreatorLabel(collection)}</option>
@@ -435,7 +439,7 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
             <option value="year">Year</option>
             <option value="rating">Rating</option>
             {collection === 'vinyl' && <option value="condition">Condition</option>}
-            {(collection === 'book' || collection === 'comic') && <option value="status">Read / Unread</option>}
+            {(collection === 'book' || collection === 'comic') && <option value="status">Status</option>}
           </select>
           <button
             onClick={() => {
