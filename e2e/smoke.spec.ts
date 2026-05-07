@@ -98,20 +98,71 @@ test.describe('Add page — Load More auto-advance (#116)', () => {
   })
 })
 
-// ─── Tests that need server-side mocking (MSW) — currently skipped ──────────
+// ─── SSR pages mocked via MSW (started by instrumentation.ts) ───────────────
 
-test.describe.skip('Pages with SSR data — need MSW for full mocking', () => {
-  // /members fetches member list during SSR via supabase.from('members').select()
-  test('Members page renders the four family members', async () => {
-    // would need MSW to intercept the supabase HTTP call server-side
+test.describe('Members page', () => {
+  test('renders the four family members from MSW fixtures', async ({ page, context }) => {
+    await setSession(context, { role: 'editor' })
+    await page.goto('/members')
+    // Each member name appears in their own card; use .first() since the activity
+    // feed below also references members by name.
+    await expect(page.getByText('Alice').first()).toBeVisible()
+    await expect(page.getByText('Bob').first()).toBeVisible()
+    await expect(page.getByText('Charlie').first()).toBeVisible()
+    await expect(page.getByText('Dana').first()).toBeVisible()
   })
+})
 
-  // /[member]/[collection] fetches items during SSR
-  test('Toolbar fits viewport at 375px (#118)', async () => {
-    // would need MSW
+test.describe('Collection page — toolbar (#118)', () => {
+  test('sort select and view toggle stay inside the viewport', async ({ page, context, viewport }) => {
+    await setSession(context, { role: 'editor' })
+    await page.goto('/alice/vinyl')
+
+    const viewportWidth = viewport?.width ?? 1280
+
+    const sortSelect = page.locator('select').first()
+    const viewToggle = page.getByRole('button', { name: /switch to (list|grid) view/i })
+
+    await expect(sortSelect).toBeVisible()
+    await expect(viewToggle).toBeVisible()
+
+    const sortBox = await sortSelect.boundingBox()
+    const toggleBox = await viewToggle.boundingBox()
+    expect(sortBox).not.toBeNull()
+    expect(toggleBox).not.toBeNull()
+    // Right edge of every control must be inside the viewport
+    expect(sortBox!.x + sortBox!.width).toBeLessThanOrEqual(viewportWidth + 1)
+    expect(toggleBox!.x + toggleBox!.width).toBeLessThanOrEqual(viewportWidth + 1)
   })
+})
 
-  test('Sidebar nav scrolls after sort change (#117)', async () => {
-    // would need MSW
+test.describe('Collection page — sidebar nav (#117)', () => {
+  test('clicking a sidebar letter triggers a smooth scroll', async ({ page, context }) => {
+    await setSession(context, { role: 'editor' })
+    await page.goto('/alice/vinyl')
+
+    // Switch to title sort to render letter sections + the sidebar
+    await page.locator('select').first().selectOption('title')
+
+    // The sidebar appears as a column of single-letter buttons
+    const sidebarButtons = page.locator('button').filter({ hasText: /^[A-Z#]$/ })
+    const count = await sidebarButtons.count()
+    expect(count).toBeGreaterThan(0)
+
+    // Spy on scrollIntoView to make sure the click actually wires through
+    await page.evaluate(() => {
+      const w = window as unknown as { __scrolled: number }
+      w.__scrolled = 0
+      const original = Element.prototype.scrollIntoView
+      Element.prototype.scrollIntoView = function (...args) {
+        w.__scrolled += 1
+        return original.apply(this, args as [ScrollIntoViewOptions?])
+      }
+    })
+
+    await sidebarButtons.first().click()
+
+    const calls = await page.evaluate(() => (window as unknown as { __scrolled: number }).__scrolled)
+    expect(calls).toBeGreaterThan(0)
   })
 })

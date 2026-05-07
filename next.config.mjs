@@ -4,6 +4,11 @@ const { version } = require('./package.json')
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Enables Next 14's instrumentation.ts hook (becomes stable in Next 15).
+  // The hook is a no-op outside Playwright test mode — see ./instrumentation.ts.
+  experimental: {
+    instrumentationHook: true,
+  },
   env: {
     NEXT_PUBLIC_APP_VERSION: version,
   },

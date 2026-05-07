@@ -64,6 +64,8 @@ export default defineConfig({
       SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY ?? 'placeholder-service-role',
       INITIAL_VIEW_PIN: process.env.INITIAL_VIEW_PIN ?? '1234',
       INITIAL_FAMILY_PASSWORD: process.env.INITIAL_FAMILY_PASSWORD ?? 'playwright',
+      // Activates MSW in instrumentation.ts so SSR Supabase calls are mocked.
+      PLAYWRIGHT_TEST: '1',
     },
   },
 })
