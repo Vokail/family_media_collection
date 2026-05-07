@@ -34,7 +34,8 @@ export default async function CollectionPage({
       <div className="flex items-center gap-3 mb-6">
         <Link href="/members" className="btn-ghost text-sm">← Members</Link>
         <h1 className="font-serif text-xl font-bold flex-1">{member.name}</h1>
-        <Link href={`/${slug}/stats?from=${collection}`} className="btn-ghost text-xs">Stats</Link>
+        {/* prefetch={false}: stats SSR runs listAllItems() — heavy query. Only fetch when clicked. */}
+        <Link href={`/${slug}/stats?from=${collection}`} prefetch={false} className="btn-ghost text-xs">Stats</Link>
         {isOwnProfile && (
           <Link href="/profile" className="btn-ghost text-xs" title="My profile">👤</Link>
         )}

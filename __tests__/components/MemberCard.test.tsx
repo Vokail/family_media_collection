@@ -5,7 +5,13 @@ import '@testing-library/jest-dom'
 import React from 'react'
 import { render, screen } from '@testing-library/react'
 
-jest.mock('next/link', () => ({ __esModule: true, default: ({ children, href }: { children: React.ReactNode; href: string }) => <a href={href}>{children}</a> }))
+// Forward `prefetch` as a data attribute so we can assert on it in tests
+jest.mock('next/link', () => ({
+  __esModule: true,
+  default: ({ children, href, prefetch }: { children: React.ReactNode; href: string; prefetch?: boolean }) => (
+    <a href={href} data-prefetch={prefetch === false ? 'false' : 'default'}>{children}</a>
+  ),
+}))
 
 import MemberCard from '@/components/MemberCard'
 
@@ -34,5 +40,12 @@ describe('MemberCard', () => {
     expect(screen.getByText(/📚 0/)).toBeInTheDocument()
     expect(screen.getByText(/🦸 0/)).toBeInTheDocument()
     expect(screen.getByText(/🧱 0/)).toBeInTheDocument()
+  })
+
+  it('disables Next.js prefetch (battery): no background SSR for member cards on /members', () => {
+    const { container } = render(<MemberCard member={MEMBER} />)
+    const link = container.querySelector('a')
+    expect(link).not.toBeNull()
+    expect(link!.getAttribute('data-prefetch')).toBe('false')
   })
 })

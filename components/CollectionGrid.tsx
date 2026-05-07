@@ -355,6 +355,10 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
             <Link
               key={tab.value}
               href={`/${member.slug}/${tab.value}`}
+              // prefetch={false}: tabs would otherwise prefetch all collection pages
+              // for the current member — each one triggers SSR + Supabase queries even
+              // if the user never switches tabs.
+              prefetch={false}
               className="whitespace-nowrap px-4 py-2 text-sm font-semibold transition-colors"
               style={{
                 color: isActive ? 'var(--accent)' : 'var(--text-muted)',
@@ -647,6 +651,9 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
       {isEditor && (
         <Link
           href={`/${member.slug}/${collection}/add`}
+          // prefetch={false}: the add page is a heavy bundle (zxing scanner, image
+          // capture, search libs). Don't pull all that down unless the user clicks.
+          prefetch={false}
           className="fixed bottom-6 right-6 z-30 w-14 h-14 rounded-full flex items-center justify-center text-2xl font-bold text-white shadow-lg hover:opacity-90 transition-opacity"
           style={{ backgroundColor: 'var(--accent)' }}
         >

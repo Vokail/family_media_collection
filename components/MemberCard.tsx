@@ -15,7 +15,10 @@ export default function MemberCard({ member, counts, supabaseUrl }: { member: Me
     : null
 
   return (
-    <Link href={`/${member.slug}/${firstCollection}`}>
+    // prefetch={false}: prevents background SSR + Supabase queries for every member card
+    // on the /members page. Each prefetch would trigger listItems() server-side. The user
+    // only visits one member at a time, so prefetching all 4 is pure waste on mobile/PWA.
+    <Link href={`/${member.slug}/${firstCollection}`} prefetch={false}>
       <div className="card p-6 flex flex-col items-center gap-3 hover:scale-105 transition-transform cursor-pointer">
         {avatarUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
