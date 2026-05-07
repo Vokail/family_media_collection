@@ -121,6 +121,47 @@ describe('searchBooks (server-side, used by /api/search)', () => {
   })
 })
 
+// Regression: making sure the search-side language filter doesn't leak into
+// the barcode/ISBN flow. lookupBookByISBN intentionally does NOT filter by the
+// search-page language picker — it relies on per-source language handling
+// (KB for Dutch, Google Books langRestrict, edition fallback).
+describe('lookupBookByISBN — barcode path is unaffected by search language filter', () => {
+  beforeEach(() => mockFetch.mockClear())
+
+  it('never appends &language= from the search-lang map (English)', async () => {
+    // Make all 4 racers fail so the function exhausts every endpoint we want to inspect
+    mockFetch.mockResolvedValue({ ok: false })
+    await lookupBookByISBN('9780747532699', 'english')
+    const allUrls = mockFetch.mock.calls.map(c => c[0] as string)
+    expect(allUrls.length).toBeGreaterThan(0)
+    for (const url of allUrls) {
+      // None of the OL/Google/KB barcode lookups should carry our search-side filter
+      expect(url).not.toMatch(/[?&]language=(eng|dut|fre|ger)(\b|&)/)
+    }
+  })
+
+  it('never appends &language= for Dutch lookups either', async () => {
+    mockFetch.mockResolvedValue({ ok: false })
+    await lookupBookByISBN('9789055798278', 'dutch')
+    const allUrls = mockFetch.mock.calls.map(c => c[0] as string)
+    for (const url of allUrls) {
+      expect(url).not.toMatch(/[?&]language=(eng|dut|fre|ger)(\b|&)/)
+    }
+  })
+
+  it('hits ISBN-specific endpoints, not the free-text search endpoint', async () => {
+    mockFetch.mockResolvedValue({ ok: false })
+    await lookupBookByISBN('9780747532699', 'english')
+    const allUrls = mockFetch.mock.calls.map(c => c[0] as string)
+    // OL barcode lookups use ?isbn= or /api/books?bibkeys=ISBN: — never ?q=
+    const olCalls = allUrls.filter(u => u.includes('openlibrary.org'))
+    for (const url of olCalls) {
+      // The text-search endpoint signature is `?q=...` — must not be used here
+      expect(url).not.toMatch(/[?&]q=/)
+    }
+  })
+})
+
 describe('lookupBookByISBN', () => {
   it('returns a result for a valid ISBN', async () => {
     // 4 racers fire concurrently: olSearch, olBibKeys, google, kbSru (in order)
