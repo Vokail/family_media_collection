@@ -148,7 +148,8 @@ export default function AddItemPage() {
       // Call OL directly from the browser — OL has CORS (*) so no server proxy needed.
       // This bypasses the Vercel 10s function timeout that caused silent empty results
       // on cold-start requests fired immediately after OCR.
-      data = await searchOpenLibrary(q)
+      // Pass searchLang so OL filters by edition language (e.g. English → 'eng' code).
+      data = await searchOpenLibrary(q, 0, searchLang)
       setHasMore(data.length === 20)
     } else {
       const lang = collection === 'comic' ? searchLang : undefined
@@ -199,7 +200,7 @@ export default function AddItemPage() {
       let apiHasMore: boolean
 
       if (collection === 'book') {
-        more = await searchOpenLibrary(lastQuery, nextOffset)
+        more = await searchOpenLibrary(lastQuery, nextOffset, searchLang)
         apiHasMore = more.length === 20
       } else {
         const lang = collection === 'comic' ? searchLang : undefined

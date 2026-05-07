@@ -29,13 +29,27 @@ function mapDoc(doc: Record<string, unknown>): SearchResult {
 
 
 
+// OpenLibrary search accepts an ISO 639-2 language code via &language=<code>.
+// 'all' (or undefined/null) → no language filter applied.
+const OL_SEARCH_LANG_CODES: Record<string, string> = {
+  english: 'eng',
+  dutch:   'dut',
+  french:  'fre',
+  german:  'ger',
+}
+
+function olSearchUrl(query: string, lang: string | null | undefined, offset: number): string {
+  const langCode = lang && lang !== 'all' ? OL_SEARCH_LANG_CODES[lang] : undefined
+  const langParam = langCode ? `&language=${langCode}` : ''
+  return `https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&fields=key,title,author_name,first_publish_year,cover_i,editions&limit=20&offset=${offset}${langParam}`
+}
+
 // Called directly from the browser (OL supports CORS) to bypass the Vercel
 // 10-second function timeout that can silently drop results on cold starts.
 // Use this in client components instead of going through /api/search.
-export async function searchOpenLibrary(query: string, offset = 0): Promise<SearchResult[]> {
+export async function searchOpenLibrary(query: string, offset = 0, lang?: string | null): Promise<SearchResult[]> {
   try {
-    const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&fields=key,title,author_name,first_publish_year,cover_i,editions&limit=20&offset=${offset}`
-    const res = await fetch(url, { signal: AbortSignal.timeout(15000) })
+    const res = await fetch(olSearchUrl(query, lang, offset), { signal: AbortSignal.timeout(15000) })
     if (!res.ok) return []
     const data = await res.json()
     return (data.docs ?? []).map(mapDoc) as SearchResult[]
@@ -47,8 +61,7 @@ export async function searchOpenLibrary(query: string, offset = 0): Promise<Sear
 // Server-side version (used by /api/search for barcode fallback search).
 export async function searchBooks(query: string, lang?: string, offset = 0): Promise<SearchResult[]> {
   try {
-    const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&fields=key,title,author_name,first_publish_year,cover_i,editions&limit=20&offset=${offset}`
-    const res = await fetch(url, { signal: AbortSignal.timeout(8000) })
+    const res = await fetch(olSearchUrl(query, lang, offset), { signal: AbortSignal.timeout(8000) })
     if (!res.ok) return []
     const data = await res.json()
     return (data.docs ?? []).map(mapDoc) as SearchResult[]

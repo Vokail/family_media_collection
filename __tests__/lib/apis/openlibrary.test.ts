@@ -46,6 +46,32 @@ describe('searchOpenLibrary (client-side, OL only)', () => {
     const results = await searchOpenLibrary('nothing')
     expect(results).toEqual([])
   })
+
+  it('passes language=eng to OL when lang="english" — fixes Harry Potter Dutch results bug', async () => {
+    mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ docs: [] }) })
+    await searchOpenLibrary('Harry Potter', 0, 'english')
+    const url = mockFetch.mock.calls.at(-1)![0] as string
+    expect(url).toMatch(/[?&]language=eng(\b|&)/)
+  })
+
+  it('passes language=dut to OL when lang="dutch"', async () => {
+    mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ docs: [] }) })
+    await searchOpenLibrary('Warrior Cats', 0, 'dutch')
+    const url = mockFetch.mock.calls.at(-1)![0] as string
+    expect(url).toMatch(/[?&]language=dut(\b|&)/)
+  })
+
+  it('omits language filter when lang is undefined or "all"', async () => {
+    mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ docs: [] }) })
+    await searchOpenLibrary('something', 0)
+    const url1 = mockFetch.mock.calls.at(-1)![0] as string
+    expect(url1).not.toContain('language=')
+
+    mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ docs: [] }) })
+    await searchOpenLibrary('something else', 0, 'all')
+    const url2 = mockFetch.mock.calls.at(-1)![0] as string
+    expect(url2).not.toContain('language=')
+  })
 })
 
 describe('searchBooks (server-side, used by /api/search)', () => {
@@ -85,6 +111,13 @@ describe('searchBooks (server-side, used by /api/search)', () => {
     mockFetch.mockResolvedValue({ ok: false })
     const results = await searchBooks('nothing')
     expect(results).toEqual([])
+  })
+
+  it('passes language filter through to OL', async () => {
+    mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ docs: [] }) })
+    await searchBooks('Harry Potter', 'english')
+    const url = mockFetch.mock.calls.at(-1)![0] as string
+    expect(url).toMatch(/[?&]language=eng(\b|&)/)
   })
 })
 
