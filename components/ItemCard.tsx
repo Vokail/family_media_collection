@@ -252,7 +252,10 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
         >
           <div className="relative w-12 h-12 flex-shrink-0 rounded overflow-hidden shadow" style={{ backgroundColor: 'var(--border)' }}>
             {coverSrc ? (
-              <Image src={coverSrc} alt={item.title} width={48} height={48} className="w-full h-full object-cover" />
+              // sizes="48px" tells the browser this is a tiny thumbnail — picks
+              // the smallest srcset variant instead of fetching a full-size cover.
+              // Saves both bandwidth and image-decode CPU/battery on iOS.
+              <Image src={coverSrc} alt={item.title} width={48} height={48} sizes="48px" className="w-full h-full object-cover" />
             ) : (
               <div className="placeholder-tile w-full h-full text-lg" style={{ color: 'var(--text-muted)' }}>{emoji}</div>
             )}
@@ -291,6 +294,10 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
                 alt={item.title}
                 width={200}
                 height={200}
+                // Grid is 2 cols on phones up to 6 on xl. The 200px hint matches
+                // the sm+ tile size; on smaller phones we use 50vw which lands on
+                // the 640px srcset variant — still way smaller than the full cover.
+                sizes="(min-width: 768px) 200px, 50vw"
                 className={`w-full h-full ${item.collection === 'lego' ? 'object-contain p-1' : 'object-cover'}`}
               />
             </div>

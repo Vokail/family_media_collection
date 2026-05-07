@@ -55,7 +55,8 @@ export default function ActivityFeed({ items, supabaseUrl }: Props) {
                 style={{ backgroundColor: 'var(--border)' }}
               >
                 {coverSrc ? (
-                  <Image src={coverSrc} alt={item.title} width={40} height={40} className="w-full h-full object-cover" />
+                  // 40x40 thumbnail — fetch the smallest srcset variant
+                  <Image src={coverSrc} alt={item.title} width={40} height={40} sizes="40px" className="w-full h-full object-cover" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-base">
                     {isLoading ? '…' : (EMOJI[item.collection] ?? '📦')}
