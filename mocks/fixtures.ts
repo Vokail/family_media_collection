@@ -46,4 +46,6 @@ export const FIXTURE_ITEMS: Item[] = [
   baseItem('i-4', { title: 'The Wall',            creator: 'Pink Floyd',     year: 1979, created_at: isoDay(4) }),
   baseItem('i-5', { title: 'A Night At The Opera',creator: 'Queen',          year: 1975, created_at: isoDay(5) }),
   baseItem('i-6', { title: '1984',                creator: 'Van Halen',      year: 1984, created_at: isoDay(6) }),
+  // Book item — used by sort-name.feature to verify the field is absent for non-vinyl
+  baseItem('i-7', { title: 'Dune',               creator: 'Frank Herbert',   year: 1965, created_at: isoDay(7), collection: 'book' }),
 ]
