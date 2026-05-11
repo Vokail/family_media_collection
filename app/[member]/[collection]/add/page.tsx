@@ -9,6 +9,7 @@ import { useToast } from '@/components/Toast'
 import type { SearchResult, CollectionType, Item } from '@/lib/types'
 import { toTitleCase } from '@/lib/utils'
 import { searchOpenLibrary } from '@/lib/apis/openlibrary'
+import { navigateTo } from '@/lib/navigate'
 
 const SEARCH_LANGUAGES = [
   { value: 'dutch', label: 'Nederlands' },
@@ -70,6 +71,25 @@ export default function AddItemPage() {
 
   // Clear redirect timer if component unmounts before it fires
   useEffect(() => () => { if (navTimer.current) clearTimeout(navTimer.current) }, [])
+
+  // #121: cancel the pending auto-navigate timer on ANY user interaction
+  // (typing, tap, click). Without this, if the user starts adding another item
+  // within the 5-second toast window they get yanked back to the collection
+  // mid-action. Pointerdown/keydown only — no mousemove/scroll noise.
+  useEffect(() => {
+    const cancel = () => {
+      if (navTimer.current) {
+        clearTimeout(navTimer.current)
+        navTimer.current = null
+      }
+    }
+    document.addEventListener('pointerdown', cancel)
+    document.addEventListener('keydown', cancel)
+    return () => {
+      document.removeEventListener('pointerdown', cancel)
+      document.removeEventListener('keydown', cancel)
+    }
+  }, [])
 
   // Show back-to-top button after scrolling down 300px
   useEffect(() => {
@@ -352,7 +372,7 @@ export default function AddItemPage() {
 
   function goToCollection() {
     if (navTimer.current) clearTimeout(navTimer.current)
-    window.location.href = `/${member}/${collection}`
+    navigateTo(`/${member}/${collection}`)
   }
 
   async function handleAdd(result: SearchResult, isWishlist: boolean) {
