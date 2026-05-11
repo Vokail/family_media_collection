@@ -45,7 +45,7 @@ export async function PATCH(
     const db = createServerClient()
     const [session, { data: existing }] = await Promise.all([
       getSession(),
-      db.from('items').select('member_id, locked_fields').eq('id', id).single(),
+      db.from('items').select('member_id, locked_fields, cover_path').eq('id', id).single(),
     ])
     if (!session.role || session.role === 'viewer') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
@@ -54,14 +54,25 @@ export async function PATCH(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    // Merge newly locked fields with any already locked, deduped
+    // Merge newly locked fields with any already locked, deduped — written in a
+    // single updateItem call to avoid a partial-update window (#123).
+    const finalPatch: Parameters<typeof updateItem>[1] = patch as Parameters<typeof updateItem>[1]
     if (newlyLocked.length > 0) {
       const current: string[] = existing?.locked_fields ?? []
       const merged = Array.from(new Set([...current, ...newlyLocked]))
-      await db.from('items').update({ locked_fields: merged }).eq('id', id)
+      ;(finalPatch as Record<string, unknown>).locked_fields = merged
     }
 
-    const item = await updateItem(id, patch as Parameters<typeof updateItem>[1])
+    // If the client is clearing the cover, remove the old blob from Storage
+    // before updating the DB to avoid orphaned files (#122).
+    if ('cover_path' in raw && raw.cover_path === null && existing?.cover_path) {
+      const oldKey = existing.cover_path.startsWith('covers/')
+        ? existing.cover_path.slice('covers/'.length)
+        : existing.cover_path
+      await db.storage.from('covers').remove([oldKey])
+    }
+
+    const item = await updateItem(id, finalPatch)
     return NextResponse.json(item)
   } catch {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

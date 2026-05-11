@@ -269,26 +269,21 @@ describe('PATCH /api/items/[id] error handling', () => {
 })
 
 describe('PATCH /api/items/[id] locked_fields', () => {
-  let mockUpdateFn: jest.Mock
-  let mockUpdateEqFn: jest.Mock
-
   beforeEach(() => {
-    mockUpdateEqFn = jest.fn().mockResolvedValue({})
-    mockUpdateFn = jest.fn().mockReturnValue({ eq: mockUpdateEqFn })
     // Return item with no existing locked fields by default
-    mockSingle.mockResolvedValue({ data: { member_id: 'member-uuid', locked_fields: null }, error: null })
-    mockFrom.mockReturnValue({ select: mockSelect, update: mockUpdateFn })
+    mockSingle.mockResolvedValue({ data: { member_id: 'member-uuid', locked_fields: null, cover_path: null }, error: null })
     mockUpdateItem.mockResolvedValue(ITEM)
   })
 
-  it('adds title to locked_fields when title is patched', async () => {
+  it('adds title to locked_fields and passes it via updateItem (#123)', async () => {
     const req = new Request('http://localhost/api/items/item-uuid', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ title: 'New Title' }),
     })
     await PATCH(req, buildParams('item-uuid'))
-    expect(mockUpdateFn).toHaveBeenCalledWith({ locked_fields: ['title'] })
+    const [, patch] = mockUpdateItem.mock.calls[0]
+    expect(patch.locked_fields).toContain('title')
   })
 
   it('adds creator and year to locked_fields when both are patched', async () => {
@@ -298,22 +293,22 @@ describe('PATCH /api/items/[id] locked_fields', () => {
       body: JSON.stringify({ creator: 'New Artist', year: 2000 }),
     })
     await PATCH(req, buildParams('item-uuid'))
-    const { locked_fields } = mockUpdateFn.mock.calls[0][0]
-    expect(locked_fields).toEqual(expect.arrayContaining(['creator', 'year']))
-    expect(locked_fields).toHaveLength(2)
+    const [, patch] = mockUpdateItem.mock.calls[0]
+    expect(patch.locked_fields).toEqual(expect.arrayContaining(['creator', 'year']))
+    expect(patch.locked_fields).toHaveLength(2)
   })
 
   it('merges new locks with existing locked_fields without duplicates', async () => {
-    mockSingle.mockResolvedValue({ data: { member_id: 'member-uuid', locked_fields: ['title'] }, error: null })
+    mockSingle.mockResolvedValue({ data: { member_id: 'member-uuid', locked_fields: ['title'], cover_path: null }, error: null })
     const req = new Request('http://localhost/api/items/item-uuid', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ title: 'Same Title', creator: 'New Artist' }),
     })
     await PATCH(req, buildParams('item-uuid'))
-    const { locked_fields } = mockUpdateFn.mock.calls[0][0]
-    expect(locked_fields).toEqual(expect.arrayContaining(['title', 'creator']))
-    expect(locked_fields).toHaveLength(2) // no duplicate 'title'
+    const [, patch] = mockUpdateItem.mock.calls[0]
+    expect(patch.locked_fields).toEqual(expect.arrayContaining(['title', 'creator']))
+    expect(patch.locked_fields).toHaveLength(2) // no duplicate 'title'
   })
 
   it('does NOT update locked_fields when only non-lockable fields are patched', async () => {
@@ -323,7 +318,8 @@ describe('PATCH /api/items/[id] locked_fields', () => {
       body: JSON.stringify({ notes: 'A note', rating: 4 }),
     })
     await PATCH(req, buildParams('item-uuid'))
-    expect(mockUpdateFn).not.toHaveBeenCalled()
+    const [, patch] = mockUpdateItem.mock.calls[0]
+    expect(patch).not.toHaveProperty('locked_fields')
   })
 
   it('still returns the updated item even when locked_fields update runs', async () => {
@@ -414,5 +410,109 @@ describe('DELETE /api/items/[id] — member ownership check (#111)', () => {
     const res = await DELETE(req, buildParams('item-uuid'))
     expect(res.status).toBe(200)
     expect(mockDeleteItem).toHaveBeenCalled()
+  })
+})
+
+describe('PATCH /api/items/[id] — cover removal storage cleanup (#122)', () => {
+  it('removes the old blob from Storage when cover_path is set to null', async () => {
+    mockUpdateItem.mockResolvedValue({ ...ITEM, cover_path: null })
+    mockSingle.mockResolvedValue({
+      data: { member_id: 'm-1', locked_fields: null, cover_path: 'covers/m-1/old.jpg' },
+      error: null,
+    })
+    const req = new Request('http://localhost/api/items/item-uuid', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cover_path: null }),
+    })
+    await PATCH(req, buildParams('item-uuid'))
+    expect(mockStorageRemove).toHaveBeenCalledWith(['m-1/old.jpg'])
+  })
+
+  it('does NOT call Storage remove when cover_path was already null', async () => {
+    mockUpdateItem.mockResolvedValue(ITEM)
+    mockSingle.mockResolvedValue({
+      data: { member_id: 'm-1', locked_fields: null, cover_path: null },
+      error: null,
+    })
+    const req = new Request('http://localhost/api/items/item-uuid', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cover_path: null }),
+    })
+    await PATCH(req, buildParams('item-uuid'))
+    expect(mockStorageRemove).not.toHaveBeenCalled()
+  })
+
+  it('does NOT call Storage remove when cover_path is not in the patch body', async () => {
+    mockUpdateItem.mockResolvedValue({ ...ITEM, notes: 'hi' })
+    mockSingle.mockResolvedValue({
+      data: { member_id: 'm-1', locked_fields: null, cover_path: 'covers/m-1/old.jpg' },
+      error: null,
+    })
+    const req = new Request('http://localhost/api/items/item-uuid', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ notes: 'hi' }),
+    })
+    await PATCH(req, buildParams('item-uuid'))
+    expect(mockStorageRemove).not.toHaveBeenCalled()
+  })
+})
+
+describe('PATCH /api/items/[id] — locked_fields merged in single updateItem call (#123)', () => {
+  it('passes locked_fields into updateItem patch rather than a separate update call', async () => {
+    mockUpdateItem.mockResolvedValue({ ...ITEM, title: 'New Title' })
+    mockSingle.mockResolvedValue({
+      data: { member_id: 'm-1', locked_fields: ['creator'], cover_path: null },
+      error: null,
+    })
+    const req = new Request('http://localhost/api/items/item-uuid', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: 'New Title' }),
+    })
+    await PATCH(req, buildParams('item-uuid'))
+    const [, patch] = mockUpdateItem.mock.calls[0]
+    // locked_fields should be merged and passed via updateItem
+    expect(patch.locked_fields).toEqual(expect.arrayContaining(['title', 'creator']))
+    // The separate db.from('items').update() should NOT have been called for locked_fields
+    const updateMock = mockFrom.mock.results[0]?.value?.update
+    if (updateMock) expect(updateMock).not.toHaveBeenCalled()
+  })
+})
+
+describe('PATCH /api/items/[id] — member role cross-member protection (#129)', () => {
+  it('returns 403 when member tries to patch another member\'s item', async () => {
+    mockGetSession.mockResolvedValue({ role: 'member', editableMemberId: 'member-uuid' })
+    mockSingle.mockResolvedValue({
+      data: { member_id: 'other-member-uuid', locked_fields: null, cover_path: null },
+      error: null,
+    })
+    const req = new Request('http://localhost/api/items/item-uuid', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ notes: 'hacked' }),
+    })
+    const res = await PATCH(req, buildParams('item-uuid'))
+    expect(res.status).toBe(403)
+    expect(mockUpdateItem).not.toHaveBeenCalled()
+  })
+
+  it('allows a member to patch their own item', async () => {
+    mockGetSession.mockResolvedValue({ role: 'member', editableMemberId: 'member-uuid' })
+    mockUpdateItem.mockResolvedValue({ ...ITEM, notes: 'mine' })
+    mockSingle.mockResolvedValue({
+      data: { member_id: 'member-uuid', locked_fields: null, cover_path: null },
+      error: null,
+    })
+    const req = new Request('http://localhost/api/items/item-uuid', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ notes: 'mine' }),
+    })
+    const res = await PATCH(req, buildParams('item-uuid'))
+    expect(res.status).toBe(200)
+    expect(mockUpdateItem).toHaveBeenCalled()
   })
 })

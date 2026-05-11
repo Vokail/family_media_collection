@@ -7,12 +7,13 @@ import { randomUUID } from 'crypto'
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif']
 const MAX_SIZE = 10 * 1024 * 1024 // 10 MB
 
-export async function POST(request: Request, { params }: { params: { id: string } }) {
+export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
   const session = await getSession()
   if (!session.role || session.role === 'viewer') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const db = createServerClient()
-  const { data: item } = await db.from('items').select('member_id, cover_path').eq('id', params.id).single()
+  const { data: item } = await db.from('items').select('member_id, cover_path').eq('id', id).single()
   if (!item) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   // Members can only upload covers for their own items
@@ -42,7 +43,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
   if (error) return NextResponse.json({ error: 'Upload failed' }, { status: 500 })
 
   const cover_path = `covers/${path}`
-  const { data: updated, error: updateError } = await db.from('items').update({ cover_path }).eq('id', params.id).select().single()
+  const { data: updated, error: updateError } = await db.from('items').update({ cover_path }).eq('id', id).select().single()
   if (updateError) return NextResponse.json({ error: 'DB update failed' }, { status: 500 })
 
   return NextResponse.json(updated)
