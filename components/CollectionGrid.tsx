@@ -27,22 +27,43 @@ const GRID = 'grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-
 const LIST = 'flex flex-col'
 type ViewMode = 'grid' | 'list'
 
-// Use Discogs sort_name when available (e.g. "Sinatra, Frank"), else strip leading articles.
-function indexKey(creator: string, sortName?: string | null): string {
-  const base = sortName ?? creator.replace(/^(the|a|an)\s+/i, '').trim()
+// For books/comics: use last word of creator name as sort base (i.e. last name).
+// "Frank Herbert" → "Herbert", "Ursula K. Le Guin" → "Guin".
+// Single-word names ("Prince") are returned as-is.
+function lastNameBase(creator: string): string {
+  const stripped = creator.replace(/^(the|a|an)\s+/i, '').trim()
+  const words = stripped.split(/\s+/)
+  return words[words.length - 1]
+}
+
+// Use Discogs sort_name when available (e.g. "Sinatra, Frank"), else:
+// - books/comics: sort on last name
+// - others: strip leading articles
+function indexKey(creator: string, sortName: string | null | undefined, collection: CollectionType): string {
+  let base: string
+  if (sortName) {
+    base = sortName
+  } else if (collection === 'book' || collection === 'comic') {
+    base = lastNameBase(creator)
+  } else {
+    base = creator.replace(/^(the|a|an)\s+/i, '').trim()
+  }
   const ch = base[0]?.toUpperCase() ?? '#'
   return /[A-Z]/.test(ch) ? ch : '#'
 }
 
-function sortKey(creator: string, sortName?: string | null): string {
-  return (sortName ?? creator.replace(/^(the|a|an)\s+/i, '').trim()).toLowerCase()
+function sortKey(creator: string, sortName: string | null | undefined, collection: CollectionType): string {
+  if (sortName) return sortName.toLowerCase()
+  if (collection === 'book' || collection === 'comic') return lastNameBase(creator).toLowerCase()
+  return creator.replace(/^(the|a|an)\s+/i, '').trim().toLowerCase()
 }
 
 const CONDITION_ORDER = ['mint', 'near_mint', 'good', 'poor'] as const
 
-function sortItems(items: Item[], mode: SortMode): Item[] {
+function sortItems(items: Item[], mode: SortMode, collection: CollectionType): Item[] {
   const copy = [...items]
-  if (mode === 'creator') return copy.sort((a, b) => sortKey(a.creator, a.sort_name).localeCompare(sortKey(b.creator, b.sort_name)))
+  const sk = (item: Item) => sortKey(item.creator, item.sort_name, collection)
+  if (mode === 'creator') return copy.sort((a, b) => sk(a).localeCompare(sk(b)))
   if (mode === 'title') return copy.sort((a, b) => a.title.toLowerCase().localeCompare(b.title.toLowerCase()))
   if (mode === 'year') return copy.sort((a, b) => (a.year ?? 9999) - (b.year ?? 9999))
   if (mode === 'rating') return copy.sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0))
@@ -50,13 +71,13 @@ function sortItems(items: Item[], mode: SortMode): Item[] {
     const ac = a.status === 'consumed' ? 1 : 0
     const bc = b.status === 'consumed' ? 1 : 0
     if (ac !== bc) return ac - bc // unread first
-    return sortKey(a.creator, a.sort_name).localeCompare(sortKey(b.creator, b.sort_name))
+    return sk(a).localeCompare(sk(b))
   })
   if (mode === 'condition') return copy.sort((a, b) => {
     const ai = a.condition ? CONDITION_ORDER.indexOf(a.condition as typeof CONDITION_ORDER[number]) : CONDITION_ORDER.length
     const bi = b.condition ? CONDITION_ORDER.indexOf(b.condition as typeof CONDITION_ORDER[number]) : CONDITION_ORDER.length
     if (ai !== bi) return ai - bi
-    return sortKey(a.creator, a.sort_name).localeCompare(sortKey(b.creator, b.sort_name))
+    return sk(a).localeCompare(sk(b))
   })
   return copy // 'added' — already newest-first from DB
 }
@@ -221,7 +242,7 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
       (statusFilter === 'consumed' ? i.status === 'consumed' : i.status !== 'consumed')) &&
     (!showLegoFilter || legoFilter === 'all' || i.lego_status === legoFilter)
   )
-  const sorted = sortItems(filtered, sort)
+  const sorted = sortItems(filtered, sort, collection)
   const displayed = sorted.slice(0, visibleCount)
   const hasMore = sorted.length > visibleCount
 
@@ -264,7 +285,7 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
     const map = new Map<string, Item[]>()
     for (const item of displayed) {
       // Lego: group by theme name (without LEGO prefix); others: by first letter
-      const k = byLego ? stripLego(item.creator) : indexKey(item.creator, item.sort_name)
+      const k = byLego ? stripLego(item.creator) : indexKey(item.creator, item.sort_name, collection)
       if (!map.has(k)) map.set(k, [])
       map.get(k)!.push(item)
     }

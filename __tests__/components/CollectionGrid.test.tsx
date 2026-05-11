@@ -401,3 +401,68 @@ describe('CollectionGrid Surprise button', () => {
     expect(openCards[0]).toHaveTextContent('Album r1')
   })
 })
+
+describe('CollectionGrid author last-name sort (#120)', () => {
+  // Books and comics should sort/group by last name; vinyl should not.
+  const bookItems = [
+    makeItem('b1', { collection: 'book', creator: 'Frank Herbert' }),      // → H
+    makeItem('b2', { collection: 'book', creator: 'Ursula K. Le Guin' }), // → G (last word)
+    makeItem('b3', { collection: 'book', creator: 'Stephen King' }),       // → K
+    makeItem('b4', { collection: 'book', creator: 'Asimov' }),             // single word → A
+  ]
+
+  it('groups book authors by last name initial when sorted by creator', () => {
+    render(<CollectionGrid {...defaultProps} collection="book" initialItems={bookItems} />)
+    // Default sort is creator — confirm H, G, K, A section headers appear
+    expect(screen.getAllByText('H').length).toBeGreaterThanOrEqual(1)  // Herbert
+    expect(screen.getAllByText('G').length).toBeGreaterThanOrEqual(1)  // Le Guin
+    expect(screen.getAllByText('K').length).toBeGreaterThanOrEqual(1)  // King
+    expect(screen.getAllByText('A').length).toBeGreaterThanOrEqual(1)  // Asimov
+    // No "F" section (Frank should NOT be the sort key)
+    expect(screen.queryAllByText('F')).toHaveLength(0)
+    // No "U" section (Ursula should NOT be the sort key)
+    expect(screen.queryAllByText('U')).toHaveLength(0)
+  })
+
+  it('sorts book items in last-name alphabetical order', () => {
+    render(<CollectionGrid {...defaultProps} collection="book" initialItems={bookItems} />)
+    const cards = screen.getAllByTestId('item-card')
+    const titles = cards.map(c => c.textContent)
+    // Expected order: Asimov (A), Le Guin (G), Herbert (H), King (K)
+    const asimovIdx = titles.findIndex(t => t?.includes('Asimov') || titles.indexOf(t) === titles.indexOf('Album b4'))
+    const leGuinIdx = titles.findIndex(t => t?.includes('Le Guin') || titles.indexOf(t) === titles.indexOf('Album b2'))
+    const herbertIdx = titles.findIndex(t => t?.includes('Herbert') || titles.indexOf(t) === titles.indexOf('Album b1'))
+    const kingIdx = titles.findIndex(t => t?.includes('King') || titles.indexOf(t) === titles.indexOf('Album b3'))
+    // Compare by card rendering order (item titles are the mock text)
+    const rendered = cards.map(c => c.textContent)
+    expect(rendered.indexOf('Album b4')).toBeLessThan(rendered.indexOf('Album b2')) // A < G
+    expect(rendered.indexOf('Album b2')).toBeLessThan(rendered.indexOf('Album b1')) // G < H
+    expect(rendered.indexOf('Album b1')).toBeLessThan(rendered.indexOf('Album b3')) // H < K
+    void [asimovIdx, leGuinIdx, herbertIdx, kingIdx] // used implicitly via rendered checks
+  })
+
+  it('does NOT use last-name sort for vinyl — groups by full first word', () => {
+    const vinylItems = [
+      makeItem('v1', { collection: 'vinyl', creator: 'Frank Sinatra' }),   // → F
+      makeItem('v2', { collection: 'vinyl', creator: 'David Bowie' }),     // → D
+    ]
+    render(<CollectionGrid {...defaultProps} collection="vinyl" initialItems={vinylItems} />)
+    // Vinyl sorts by first word → F and D sections, not S and B
+    expect(screen.getAllByText('F').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText('D').length).toBeGreaterThanOrEqual(1)
+    expect(screen.queryAllByText('S')).toHaveLength(0) // Sinatra last-name NOT used
+    expect(screen.queryAllByText('B')).toHaveLength(0) // Bowie last-name NOT used
+  })
+
+  it('applies last-name grouping to comics too', () => {
+    const comicItems = [
+      makeItem('c1', { collection: 'comic', creator: 'Alan Moore' }),  // → M
+      makeItem('c2', { collection: 'comic', creator: 'Neil Gaiman' }), // → G
+    ]
+    render(<CollectionGrid {...defaultProps} collection="comic" initialItems={comicItems} />)
+    expect(screen.getAllByText('M').length).toBeGreaterThanOrEqual(1)  // Moore
+    expect(screen.getAllByText('G').length).toBeGreaterThanOrEqual(1)  // Gaiman
+    expect(screen.queryAllByText('A')).toHaveLength(0) // Alan NOT used
+    expect(screen.queryAllByText('N')).toHaveLength(0) // Neil NOT used
+  })
+})
