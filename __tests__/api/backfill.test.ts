@@ -17,9 +17,23 @@ import { createServerClient } from '@/lib/supabase-server'
 const mockGetSession = getSession as jest.Mock
 const mockCreateClient = createServerClient as jest.Mock
 
-/** Build a minimal mock Supabase client that only stubs storage + items.select */
+type BlobEntry = { name: string; id: string | null }
+type FolderMap = Record<string, BlobEntry[]>  // prefix → children
+
+/**
+ * Build a minimal mock Supabase client that stubs storage list/remove + items.select.
+ *
+ * @param blobsRoot  Entries returned for the root ("") list call.
+ *                   Use id=null to simulate a folder; the folder's children are
+ *                   looked up in `folderContents[entry.name]`.
+ * @param folderContents  Map from folder path to child entries (one level deep).
+ *                        For two-level folders set the child's id=null and add a
+ *                        key for the nested path.
+ * @param referencedPaths  cover_path values that should be in the items table.
+ */
 function makeDb({
-  blobsRoot = [] as { name: string; id: string | null }[],
+  blobsRoot = [] as BlobEntry[],
+  folderContents = {} as FolderMap,
   referencedPaths = [] as string[],
   removeError = null as string | null,
 } = {}) {
@@ -29,8 +43,7 @@ function makeDb({
     from: jest.fn(() => ({
       list: jest.fn(async (prefix: string) => {
         if (prefix === '') return { data: blobsRoot }
-        // Return children for any folder-level call
-        return { data: [] }
+        return { data: folderContents[prefix] ?? [] }
       }),
       remove: mockRemove,
     })),
@@ -144,5 +157,41 @@ describe('backfill route — orphaned cover cleanup', () => {
     const body = await res.json()
     expect(body.summary.orphanedCovers.orphans).toBe(0)
     expect(mockRemove).not.toHaveBeenCalled()
+  })
+
+  it('traverses two-level folder structure (root → folder → file)', async () => {
+    // Storage layout:  manual/ (folder)  →  manual/member-3/ (folder)  →  manual/member-3/f.jpg (file)
+    // The cleanup code lists root, sees "manual" with no id (folder), recurses into it,
+    // sees "member-3" with no id (sub-folder), recurses again, finds the actual file.
+    const { mockRemove } = makeDb({
+      blobsRoot: [{ name: 'manual', id: null }],                           // root: one folder
+      folderContents: {
+        'manual': [{ name: 'member-3', id: null }],                        // level 1: sub-folder
+        'manual/member-3': [{ name: 'f.jpg', id: 'blob-nested' }],         // level 2: file
+      },
+      referencedPaths: [],  // not referenced → orphan
+    })
+    const res = await GET(makeGet())
+    const body = await res.json()
+    expect(body.summary.orphanedCovers).toEqual({ scanned: 1, orphans: 1, deleted: 1 })
+    expect(mockRemove).toHaveBeenCalledWith(['manual/member-3/f.jpg'])
+  })
+
+  it('batches deletions when orphan count exceeds 100', async () => {
+    // Generate 150 orphaned blobs at root level
+    const blobsRoot: BlobEntry[] = Array.from({ length: 150 }, (_, i) => ({
+      name: `orphan-${i}.jpg`,
+      id: `blob-${i}`,
+    }))
+    const { mockRemove } = makeDb({ blobsRoot, referencedPaths: [] })
+
+    const res = await GET(makeGet())
+    const body = await res.json()
+    expect(body.summary.orphanedCovers).toEqual({ scanned: 150, orphans: 150, deleted: 150 })
+
+    // Should have been called twice: first batch of 100, second of 50
+    expect(mockRemove).toHaveBeenCalledTimes(2)
+    expect(mockRemove.mock.calls[0][0]).toHaveLength(100)
+    expect(mockRemove.mock.calls[1][0]).toHaveLength(50)
   })
 })
