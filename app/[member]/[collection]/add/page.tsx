@@ -4,11 +4,12 @@ import Link from 'next/link'
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import BarcodeScanner from '@/components/BarcodeScanner'
 import PhotoCapture from '@/components/PhotoCapture'
-import SearchResults from '@/components/SearchResults'
+import SearchPane, { type SearchPaneHandle } from '@/components/SearchPane'
+import ManualEntryForm, { type ManualEntryFormHandle } from '@/components/ManualEntryForm'
+import ScanPicker from '@/components/ScanPicker'
 import { useToast } from '@/components/Toast'
 import type { SearchResult, CollectionType, Item } from '@/lib/types'
 import { toTitleCase } from '@/lib/utils'
-import { searchOpenLibrary } from '@/lib/apis/openlibrary'
 import { navigateTo } from '@/lib/navigate'
 
 const SEARCH_LANGUAGES = [
@@ -27,61 +28,42 @@ export default function AddItemPage() {
   const collection = params.collection as CollectionType
 
   const toast = useToast()
-  const [query, setQuery] = useState('')
-  const [results, setResults] = useState<SearchResult[]>([])
-  const [hasSearched, setHasSearched] = useState(false)
-  const [hasMore, setHasMore] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [loadingMore, setLoadingMore] = useState(false)
-  const [adding, setAdding] = useState<string | null>(null)
-  const [scanning, setScanning] = useState(false)
-  const [barcodeHint, setBarcodeHint] = useState<string | null>(null)
-  const [searchLang, setSearchLang] = useState('dutch')
-  const [offset, setOffset] = useState(0)
-  const [lastQuery, setLastQuery] = useState('')
-  const resultsRef = useRef<SearchResult[]>([])
-  const searchInputRef = useRef<HTMLInputElement>(null)
+  const searchPaneRef = useRef<SearchPaneHandle>(null)
+  const manualFormRef = useRef<ManualEntryFormHandle>(null)
   const barcodeAbort = useRef<AbortController | null>(null)
   const navTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const [showManual, setShowManual] = useState(false)
-  const [manualTitle, setManualTitle] = useState('')
-  const [manualCreator, setManualCreator] = useState('')
-  const [manualYear, setManualYear] = useState('')
-  const [manualIsbn, setManualIsbn] = useState('')
-  const [manualCover, setManualCover] = useState<File | null>(null)
-  const [addingManual, setAddingManual] = useState(false)
-  const [showManualCamera, setShowManualCamera] = useState(false)
-  const [pendingDupe, setPendingDupe] = useState<{ isWishlist: boolean; existing: { id: string; title: string; creator: string; year: number | null } } | null>(null)
-  const manualFileRef = useRef<HTMLInputElement>(null)
+
+  const [adding, setAdding] = useState<string | null>(null)
+  const [scanning, setScanning] = useState(false)
   const [showScanPicker, setShowScanPicker] = useState(false)
   const [showCoverCapture, setShowCoverCapture] = useState(false)
   const [scanCover, setScanCover] = useState<File | null>(null)
   const [identifying, setIdentifying] = useState(false)
-  const [showBackToTop, setShowBackToTop] = useState(false)
+  const [searchLang, setSearchLang] = useState('dutch')
   const [existingItems, setExistingItems] = useState<Item[]>([])
 
-  // Keep a ref in sync with results so loadMore can read the current list
-  // without stale-closure issues (results is not in loadMore's dep array)
-  useEffect(() => { resultsRef.current = results }, [results])
+  // ── Initialisation ───────────────────────────────────────────────────────
 
   useEffect(() => {
     const saved = localStorage.getItem(langStorageKey(collection))
     if (saved) setSearchLang(saved)
   }, [collection])
 
-  // Clear redirect timer if component unmounts before it fires
+  useEffect(() => {
+    fetch(`/api/items?member=${member}&collection=${collection}`)
+      .then(r => r.ok ? r.json() : [])
+      .then(setExistingItems)
+      .catch(() => {})
+  }, [member, collection])
+
+  // Clear redirect timer on unmount
   useEffect(() => () => { if (navTimer.current) clearTimeout(navTimer.current) }, [])
 
-  // #121: cancel the pending auto-navigate timer on ANY user interaction
-  // (typing, tap, click). Without this, if the user starts adding another item
-  // within the 5-second toast window they get yanked back to the collection
-  // mid-action. Pointerdown/keydown only — no mousemove/scroll noise.
+  // #121: cancel the auto-navigate timer on any user interaction so they aren't
+  // yanked back to the collection while in the middle of adding another item.
   useEffect(() => {
     const cancel = () => {
-      if (navTimer.current) {
-        clearTimeout(navTimer.current)
-        navTimer.current = null
-      }
+      if (navTimer.current) { clearTimeout(navTimer.current); navTimer.current = null }
     }
     document.addEventListener('pointerdown', cancel)
     document.addEventListener('keydown', cancel)
@@ -91,19 +73,7 @@ export default function AddItemPage() {
     }
   }, [])
 
-  // Show back-to-top button after scrolling down 300px
-  useEffect(() => {
-    const onScroll = () => setShowBackToTop(window.scrollY > 300)
-    window.addEventListener('scroll', onScroll, { passive: true })
-    return () => window.removeEventListener('scroll', onScroll)
-  }, [])
-
-  useEffect(() => {
-    fetch(`/api/items?member=${member}&collection=${collection}`)
-      .then(r => r.ok ? r.json() : [])
-      .then(setExistingItems)
-      .catch(() => {})
-  }, [member, collection])
+  // ── Dupe detection ────────────────────────────────────────────────────────
 
   const dupeMap = useMemo(() => {
     const byId = new Map<string, 'owned' | 'wishlist'>()
@@ -120,260 +90,25 @@ export default function AddItemPage() {
     if (result.external_id) {
       const s = dupeMap.byId.get(result.external_id)
       if (s) return s
-      // Rebrickable and Discogs assign globally unique IDs — if the ID didn't match
-      // then this is a different item (e.g. a different Lego set that shares a name).
-      // Skip the title+creator fallback to avoid false "in collection" badges.
       if (result.source === 'rebrickable' || result.source === 'discogs') return null
     }
     const key = `${result.title.toLowerCase().trim()}|${result.creator.toLowerCase().trim()}`
     return dupeMap.byTitle.get(key) ?? null
   }
 
-  function handleLangChange(lang: string) {
-    setSearchLang(lang)
-    localStorage.setItem(langStorageKey(collection), lang)
-  }
-
-  const runSearch = useCallback(async (q: string) => {
-    if (!q.trim()) return
-
-    // For books/comics: if the query looks like an ISBN (10 or 13 digits, hyphens ok),
-    // route straight to the barcode/ISBN lookup instead of a full-text search —
-    // text search returns 0 results for ISBNs on OpenLibrary.
-    const isbnClean = q.replace(/[-\s]/g, '')
-    if ((collection === 'book' || collection === 'comic') && /^\d{10}$|^\d{13}$/.test(isbnClean)) {
-      setLoading(true)
-      setResults([])
-      setOffset(0)
-      setHasMore(false)
-      const res = await fetch(`/api/barcode?code=${encodeURIComponent(isbnClean)}&type=${collection}&lang=${searchLang}`)
-      if (res.ok) {
-        setResults([await res.json()])
-        setHasSearched(true)
-      } else {
-        setHasSearched(true)
-        setBarcodeHint('ISBN not found in any database — fill in the details below to add it manually.')
-        setManualIsbn(isbnClean)
-        setShowManual(true)
-      }
-      setLoading(false)
-      return
-    }
-
-    setLoading(true)
-    setOffset(0)
-    setLastQuery(q)
-    let data: SearchResult[]
-    if (collection === 'book') {
-      // Call OL directly from the browser — OL has CORS (*) so no server proxy needed.
-      // This bypasses the Vercel 10s function timeout that caused silent empty results
-      // on cold-start requests fired immediately after OCR.
-      // Pass searchLang so OL filters by edition language (e.g. English → 'eng' code).
-      data = await searchOpenLibrary(q, 0, searchLang)
-      setHasMore(data.length === 20)
-    } else {
-      const lang = collection === 'comic' ? searchLang : undefined
-      const url = `/api/search?q=${encodeURIComponent(q)}&type=${collection}${lang ? `&lang=${lang}` : ''}`
-      const res = await fetch(url)
-      if (res.ok) {
-        const json = await res.json()
-        // Vinyl returns { results, hasMore } so we can use Discogs pagination metadata.
-        // All other types return a plain array.
-        if (Array.isArray(json)) {
-          data = json
-          setHasMore(data.length === 20)
-        } else {
-          data = json.results ?? []
-          setHasMore(json.hasMore ?? false)
-        }
-      } else {
-        data = []
-        setHasMore(false)
-      }
-    }
-    setResults(data)
-    setHasSearched(true)
-    setLoading(false)
-  }, [collection, searchLang])
-
-  const loadMore = useCallback(async () => {
-    setLoadingMore(true)
-    // Fetch up to MAX_ATTEMPTS pages per button press, accumulating all fresh items.
-    // This means one press loads everything until a natural end — the button only
-    // reappears if the last fetched page still has apiHasMore=true, indicating there
-    // are genuinely more pages left to explore.
-    //
-    // Background: Lego sets like "Millennium Falcon" exist across many years
-    // (75192, 75257, 75375 …). Rebrickable may spread unique sets across pages
-    // interleaved with duplicates; without looping, the user would need multiple
-    // button presses to reach the end.
-    let currentOffset = offset
-    const MAX_ATTEMPTS = 10          // hard upper limit of API calls per press
-    const EMPTY_THRESHOLD = 3        // give up after this many consecutive all-dupe pages
-    const allFresh: SearchResult[] = []
-    let lastApiHasMore = false
-    let consecutiveEmpty = 0
-
-    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-      const nextOffset = currentOffset + 20
-      let more: SearchResult[]
-      let apiHasMore: boolean
-
-      if (collection === 'book') {
-        more = await searchOpenLibrary(lastQuery, nextOffset, searchLang)
-        apiHasMore = more.length === 20
-      } else {
-        const lang = collection === 'comic' ? searchLang : undefined
-        const url = `/api/search?q=${encodeURIComponent(lastQuery)}&type=${collection}&offset=${nextOffset}${lang ? `&lang=${lang}` : ''}`
-        const res = await fetch(url)
-        if (res.ok) {
-          const json = await res.json()
-          if (Array.isArray(json)) {
-            more = json
-            apiHasMore = more.length === 20
-          } else {
-            more = json.results ?? []
-            apiHasMore = json.hasMore ?? false
-          }
-        } else {
-          more = []
-          apiHasMore = false
-        }
-      }
-
-      // Dedup against both what's already shown AND what we've accumulated this pass.
-      const existingIds = new Set([
-        ...resultsRef.current.map(r => r.external_id),
-        ...allFresh.map(r => r.external_id),
-      ])
-      const fresh = more.filter(r => !existingIds.has(r.external_id))
-      allFresh.push(...fresh)
-      lastApiHasMore = apiHasMore
-      currentOffset = nextOffset
-
-      if (!apiHasMore) break  // API has no more pages — stop early
-
-      if (fresh.length > 0) {
-        consecutiveEmpty = 0          // found something — reset the streak
-      } else {
-        consecutiveEmpty++
-        if (consecutiveEmpty >= EMPTY_THRESHOLD) break  // N pages of pure dupes → give up
-      }
-    }
-
-    // Show the button only if the API has more pages AND we didn't stop because
-    // we hit the consecutive-empty threshold (which means there's nothing more unique).
-    const stillHasMore = lastApiHasMore && consecutiveEmpty < EMPTY_THRESHOLD
-
-    if (allFresh.length > 0) {
-      setOffset(currentOffset)
-      setResults(prev => {
-        const ids = new Set(prev.map(r => r.external_id))
-        return [...prev, ...allFresh.filter(r => !ids.has(r.external_id))]
-      })
-      setHasMore(stillHasMore)
-    } else {
-      // All pages checked were dupes or API ran out of pages
-      setHasMore(false)
-    }
-
-    setLoadingMore(false)
-  }, [collection, searchLang, lastQuery, offset])
-
-  const handleBarcodeDetected = useCallback(async (code: string) => {
-    barcodeAbort.current?.abort()
-    const controller = new AbortController()
-    barcodeAbort.current = controller
-
-    setScanning(false)
-    setLoading(true)
-    setResults([])
-    setQuery(code)
-    setBarcodeHint(null)
-
-    try {
-      const lang = (collection === 'book' || collection === 'comic') ? searchLang : undefined
-      const res = await fetch(`/api/barcode?code=${encodeURIComponent(code)}&type=${collection}${lang ? `&lang=${lang}` : ''}`, {
-        signal: controller.signal,
-      })
-      if (res.ok) {
-        setResults([await res.json()])
-        setHasSearched(true)
-        setHasMore(false)
-      } else {
-        setHasSearched(true)
-        setBarcodeHint('Barcode not found — fill in the details below to save it for future updates.')
-        if (/^\d{10,13}$/.test(code)) setManualIsbn(code)
-        setShowManual(true)
-      }
-    } catch (e) {
-      if ((e as Error).name !== 'AbortError') {
-        setBarcodeHint('Barcode lookup failed — search by title below.')
-      }
-    } finally {
-      if (!controller.signal.aborted) setLoading(false)
-    }
-  }, [collection, searchLang])
-
-  const handleCoverCapture = useCallback(async (file: File) => {
-    setShowCoverCapture(false)
-    setScanCover(file)
-    setIdentifying(true)
-
-    try {
-      // Send image to server-side OCR route (OpenRouter Llama 3.2 Vision)
-      const form = new FormData()
-      form.append('image', file)
-      const res = await fetch('/api/ocr', { method: 'POST', body: form })
-
-      if (!res.ok) {
-        const ocrMessage =
-          res.status === 429
-            ? 'Cover scan has reached its daily limit — try again tomorrow or fill in the details below.'
-            : res.status === 503
-            ? 'Cover scan is not available right now — fill in the details below.'
-            : 'Cover scan failed — fill in the details below.'
-        toast.show(ocrMessage, 'error')
-        setShowManual(true)
-        setManualCover(file)
-        return
-      }
-
-      const { series: rawSeries, title: rawTitle, creator: rawCreator } = await res.json() as { series: string; title: string; creator: string }
-      const series = toTitleCase((rawSeries ?? '').trim())
-      const title = toTitleCase(rawTitle.trim())
-      const creator = toTitleCase(rawCreator.trim())
-
-      // Pre-fill manual form — include series in title field for clarity
-      const fullTitle = series && title ? `${series}: ${title}` : title || series
-      if (fullTitle) setManualTitle(fullTitle)
-      if (creator) setManualCreator(creator)
-
-      if (title || series) {
-        // Search with series + title — creator is omitted to avoid over-constraining
-        // non-English editions where author names may differ between sources
-        const searchQuery = [series, title].filter(Boolean).join(' ')
-        // Show series + title in the search box so re-searches stay specific
-        setQuery(searchQuery)
-        await runSearch(searchQuery)
-      } else {
-        toast.show('Could not read the cover — fill in the details below.', 'error')
-        setShowManual(true)
-        setManualCover(file)
-      }
-    } catch {
-      toast.show('Cover scan failed — fill in the details below.', 'error')
-      setShowManual(true)
-      setManualCover(file)
-    } finally {
-      setIdentifying(false)
-    }
-  }, [runSearch, toast])
+  // ── Navigation ───────────────────────────────────────────────────────────
 
   function goToCollection() {
     if (navTimer.current) clearTimeout(navTimer.current)
     navigateTo(`/${member}/${collection}`)
   }
+
+  function scheduleNav() {
+    if (navTimer.current) clearTimeout(navTimer.current)
+    navTimer.current = setTimeout(goToCollection, 5000)
+  }
+
+  // ── Search-result add ─────────────────────────────────────────────────────
 
   async function handleAdd(result: SearchResult, isWishlist: boolean) {
     setAdding(result.external_id)
@@ -398,71 +133,122 @@ export default function AddItemPage() {
     })
     setAdding(null)
     if (res.ok) {
-      // Update dupe map so the card shows "In collection" immediately
       const added = await res.json()
       setExistingItems(prev => [...prev, added])
-      // Clear search so the page is ready for the next item
-      setResults([])
-      setQuery('')
-      setOffset(0)
-      setBarcodeHint(null)
+      searchPaneRef.current?.reset()
       setScanCover(null)
       toast.show(
         isWishlist ? 'Added to wishlist' : 'Added to collection',
         'success',
         { label: 'View collection', onClick: goToCollection },
       )
-      // Auto-navigate when the toast disappears; cancel any previous pending timer
-      if (navTimer.current) clearTimeout(navTimer.current)
-      navTimer.current = setTimeout(goToCollection, 5000)
+      scheduleNav()
     } else {
       toast.show('Could not add item', 'error')
     }
   }
 
-  async function handleManualAdd(isWishlist: boolean, force = false) {
-    if (!manualTitle.trim()) return
-    setAddingManual(true)
-    setPendingDupe(null)
-    const body = new FormData()
-    body.append('memberSlug', member)
-    body.append('collection', collection)
-    body.append('title', manualTitle.trim())
-    body.append('creator', manualCreator.trim())
-    body.append('year', manualYear)
-    body.append('is_wishlist', String(isWishlist))
-    if (manualIsbn) body.append('isbn', manualIsbn)
-    if (manualCover) body.append('cover', manualCover)
-    if (force) body.append('force', 'true')
-    const res = await fetch('/api/items/manual', { method: 'POST', body })
-    setAddingManual(false)
-    if (res.status === 409) {
-      const { existing } = await res.json()
-      setPendingDupe({ isWishlist, existing })
-      return
-    }
-    if (res.ok) {
-      const added = await res.json()
-      setExistingItems(prev => [...prev, added])
-      // Reset manual form
-      setManualTitle('')
-      setManualCreator('')
-      setManualYear('')
-      setManualIsbn('')
-      setManualCover(null)
-      toast.show(
-        isWishlist ? 'Added to wishlist' : 'Added to collection',
-        'success',
-        { label: 'View collection', onClick: goToCollection },
+  // ── Barcode scanning ──────────────────────────────────────────────────────
+
+  const handleBarcodeDetected = useCallback(async (code: string) => {
+    barcodeAbort.current?.abort()
+    const controller = new AbortController()
+    barcodeAbort.current = controller
+
+    setScanning(false)
+    // Clear pane and show loading
+    searchPaneRef.current?.inject(code, [], null)
+    searchPaneRef.current?.setExternalLoading(true)
+
+    try {
+      const lang = (collection === 'book' || collection === 'comic') ? searchLang : undefined
+      const res = await fetch(
+        `/api/barcode?code=${encodeURIComponent(code)}&type=${collection}${lang ? `&lang=${lang}` : ''}`,
+        { signal: controller.signal },
       )
-      if (navTimer.current) clearTimeout(navTimer.current)
-      navTimer.current = setTimeout(goToCollection, 5000)
-    } else {
-      toast.show('Could not add item', 'error')
+      if (res.ok) {
+        searchPaneRef.current?.inject(code, [await res.json()], null)
+      } else {
+        searchPaneRef.current?.setExternalLoading(false)
+        searchPaneRef.current?.setHint(
+          'Barcode not found — fill in the details below to save it for future updates.',
+        )
+        if (/^\d{10,13}$/.test(code)) {
+          manualFormRef.current?.prefill({ isbn: code })
+        } else {
+          manualFormRef.current?.open()
+        }
+      }
+    } catch (e) {
+      if ((e as Error).name !== 'AbortError') {
+        searchPaneRef.current?.setExternalLoading(false)
+        searchPaneRef.current?.setHint('Barcode lookup failed — search by title below.')
+      }
     }
+  }, [collection, searchLang])
+
+  // ── Cover OCR ────────────────────────────────────────────────────────────
+
+  const handleCoverCapture = useCallback(async (file: File) => {
+    setShowCoverCapture(false)
+    setScanCover(file)
+    setIdentifying(true)
+
+    try {
+      const form = new FormData()
+      form.append('image', file)
+      const res = await fetch('/api/ocr', { method: 'POST', body: form })
+
+      if (!res.ok) {
+        const ocrMessage =
+          res.status === 429
+            ? 'Cover scan has reached its daily limit — try again tomorrow or fill in the details below.'
+            : res.status === 503
+              ? 'Cover scan is not available right now — fill in the details below.'
+              : 'Cover scan failed — fill in the details below.'
+        toast.show(ocrMessage, 'error')
+        manualFormRef.current?.prefill({ cover: file })
+        return
+      }
+
+      const { series: rawSeries, title: rawTitle, creator: rawCreator } =
+        await res.json() as { series: string; title: string; creator: string }
+      const series = toTitleCase((rawSeries ?? '').trim())
+      const title = toTitleCase(rawTitle.trim())
+      const creator = toTitleCase(rawCreator.trim())
+
+      // Pre-fill manual form with OCR results (cover + text fields)
+      const fullTitle = series && title ? `${series}: ${title}` : title || series
+      manualFormRef.current?.prefill({
+        ...(fullTitle ? { title: fullTitle } : {}),
+        ...(creator ? { creator } : {}),
+      })
+
+      if (title || series) {
+        const searchQuery = [series, title].filter(Boolean).join(' ')
+        await searchPaneRef.current?.runSearch(searchQuery)
+      } else {
+        toast.show('Could not read the cover — fill in the details below.', 'error')
+        manualFormRef.current?.prefill({ cover: file })
+      }
+    } catch {
+      toast.show('Cover scan failed — fill in the details below.', 'error')
+      manualFormRef.current?.prefill({ cover: file })
+    } finally {
+      setIdentifying(false)
+    }
+  }, [toast])
+
+  function handleLangChange(lang: string) {
+    setSearchLang(lang)
+    localStorage.setItem(langStorageKey(collection), lang)
   }
 
-  const collectionLabel = collection === 'vinyl' ? 'Vinyl' : collection === 'book' ? 'Book' : collection === 'lego' ? 'Lego Set' : 'Comic'
+  const collectionLabel =
+    collection === 'vinyl' ? 'Vinyl'
+    : collection === 'book' ? 'Book'
+    : collection === 'lego' ? 'Lego Set'
+    : 'Comic'
 
   return (
     <main className="min-h-screen p-4 max-w-lg md:max-w-2xl mx-auto">
@@ -471,6 +257,7 @@ export default function AddItemPage() {
         <h1 className="font-serif text-xl font-bold">Add {collectionLabel}</h1>
       </div>
 
+      {/* Language selector (books + comics only) */}
       {(collection === 'book' || collection === 'comic') && (
         <div className="flex gap-2 mb-3 flex-wrap">
           {SEARCH_LANGUAGES.map(l => (
@@ -485,173 +272,36 @@ export default function AddItemPage() {
         </div>
       )}
 
-      {barcodeHint && (
-        <p className="text-sm mb-2 text-center" style={{ color: 'var(--text-muted)' }}>{barcodeHint}</p>
-      )}
-      <div className="flex gap-2 mb-4">
-        <div className="relative flex-1">
-          <input
-            ref={searchInputRef}
-            className="input w-full pr-8"
-            placeholder="Search by title or artist…"
-            value={query}
-            onChange={e => { setQuery(e.target.value); setBarcodeHint(null) }}
-            onKeyDown={e => e.key === 'Enter' && runSearch(query)}
-          />
-          {query && (
-            <button
-              onClick={() => { setQuery(''); setResults([]); setOffset(0); setBarcodeHint(null); searchInputRef.current?.focus() }}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-sm leading-none px-1"
-              style={{ color: 'var(--text-muted)' }}
-              title="Clear search"
-            >
-              ✕
-            </button>
-          )}
-        </div>
-        <button onClick={() => setShowScanPicker(true)} className="btn-ghost px-4 text-xl md:hidden" title="Scan">
-          {identifying ? '⏳' : '📷'}
-        </button>
-        <button onClick={() => runSearch(query)} className="btn-primary px-4 flex items-center gap-2" disabled={loading || identifying}>
-          {loading ? (
-            <span className="inline-block w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-          ) : 'Search'}
-        </button>
-      </div>
+      <SearchPane
+        ref={searchPaneRef}
+        collection={collection}
+        searchLang={searchLang}
+        getDupeStatus={getDupeStatus}
+        onAdd={handleAdd}
+        adding={adding}
+        identifying={identifying}
+        onScanRequest={() => setShowScanPicker(true)}
+        onIsbnNotFound={isbn => manualFormRef.current?.prefill({ isbn })}
+      />
 
-      {loading && (
-        <div className="flex justify-center py-10">
-          <span className="inline-block w-8 h-8 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--accent)', borderTopColor: 'transparent' }} />
-        </div>
-      )}
+      <ManualEntryForm
+        ref={manualFormRef}
+        collection={collection}
+        member={member}
+        scanCover={scanCover}
+        goToCollection={goToCollection}
+        onAdded={item => setExistingItems(prev => [...prev, item])}
+        scheduleNav={scheduleNav}
+      />
 
-      {!loading && <SearchResults results={results} hasSearched={hasSearched} onAdd={handleAdd} adding={adding} getDupeStatus={getDupeStatus} />}
-
-      {!loading && hasMore && results.length > 0 && (
-        <div className="flex justify-center mt-4">
-          <button onClick={loadMore} disabled={loadingMore} className="btn-ghost text-sm px-6 flex items-center gap-2">
-            {loadingMore ? (
-              <>
-                <span className="inline-block w-3.5 h-3.5 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--text-muted)', borderTopColor: 'transparent' }} />
-                Loading…
-              </>
-            ) : 'Load more results'}
-          </button>
-        </div>
-      )}
-
-      {showBackToTop && (
-        <button
-          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-          className="fixed bottom-6 right-6 z-30 w-11 h-11 rounded-full flex items-center justify-center text-lg font-bold shadow-lg"
-          style={{ backgroundColor: 'var(--accent)', color: '#fff' }}
-          aria-label="Back to top"
-        >
-          ↑
-        </button>
-      )}
-
-      <div className="mt-6 border-t pt-4" style={{ borderColor: 'var(--border)' }}>
-        <button
-          onClick={() => {
-            const next = !showManual
-            setShowManual(next)
-            if (next && scanCover) setManualCover(scanCover)
-          }}
-          className="btn-ghost text-sm w-full text-center"
-        >
-          {showManual ? 'Hide manual entry' : 'Not found? Add manually'}
-        </button>
-
-        {showManual && (
-          <div className="card p-4 mt-3 flex flex-col gap-3">
-            <div>
-              <label className="label mb-1 block">Title *</label>
-              <input className="input" value={manualTitle} onChange={e => setManualTitle(e.target.value)} placeholder="Title" />
-            </div>
-            <div className="flex items-center justify-center">
-              <button
-                type="button"
-                onClick={() => { const t = manualTitle; setManualTitle(manualCreator); setManualCreator(t) }}
-                className="btn-ghost text-xs px-3 py-1"
-                title="Swap title and author"
-              >
-                ⇅ Swap title &amp; author
-              </button>
-            </div>
-            <div>
-              <label className="label mb-1 block">{collection === 'vinyl' ? 'Artist' : collection === 'lego' ? 'Theme' : 'Author / Publisher'}</label>
-              <input className="input" value={manualCreator} onChange={e => setManualCreator(e.target.value)} placeholder="Creator" />
-            </div>
-            <div>
-              <label className="label mb-1 block">Year</label>
-              <input className="input" type="number" value={manualYear} onChange={e => setManualYear(e.target.value)} placeholder="e.g. 2023" />
-            </div>
-            {(collection === 'book' || collection === 'comic' || manualIsbn) && (
-              <div>
-                <label className="label mb-1 block">ISBN (for future auto-fill)</label>
-                <input className="input font-mono text-sm" value={manualIsbn} onChange={e => setManualIsbn(e.target.value)} placeholder="e.g. 9781234567890" />
-              </div>
-            )}
-            <div>
-              <label className="label mb-1 block">Cover image (optional)</label>
-              <div className="flex items-center gap-2">
-                <button onClick={() => setShowManualCamera(true)} className="btn-ghost text-xs md:hidden">📷</button>
-                <button onClick={() => manualFileRef.current?.click()} className="btn-ghost text-xs">
-                  {manualCover ? manualCover.name : 'Add cover…'}
-                </button>
-                <input
-                  ref={manualFileRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={e => setManualCover(e.target.files?.[0] ?? null)}
-                  style={{ position: 'fixed', top: '-100vh', left: 0, opacity: 0, pointerEvents: 'none' }}
-                />
-                {manualCover && <button onClick={() => setManualCover(null)} className="text-xs" style={{ color: 'var(--text-muted)' }}>✕</button>}
-              </div>
-            </div>
-            {pendingDupe && (
-              <div className="card p-3 flex flex-col gap-2 border-[var(--accent)]" style={{ borderColor: 'var(--accent)' }}>
-                <p className="text-sm font-semibold">Already in collection</p>
-                <p className="subtitle text-sm">
-                  &ldquo;{pendingDupe.existing.title}&rdquo;
-                  {pendingDupe.existing.creator ? ` by ${pendingDupe.existing.creator}` : ''}
-                  {pendingDupe.existing.year ? ` (${pendingDupe.existing.year})` : ''}
-                  {' '}is already in this collection.
-                </p>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => handleManualAdd(pendingDupe.isWishlist, true)}
-                    className="btn-ghost text-sm flex-1"
-                    disabled={addingManual}
-                  >
-                    Add anyway
-                  </button>
-                  <button onClick={() => setPendingDupe(null)} className="btn-ghost text-sm flex-1">
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            )}
-            <div className="flex gap-2 pt-1">
-              <button onClick={() => handleManualAdd(false)} disabled={addingManual || !manualTitle.trim()} className="btn-primary flex-1">
-                {addingManual ? '…' : 'Add to collection'}
-              </button>
-              <button onClick={() => handleManualAdd(true)} disabled={addingManual || !manualTitle.trim()} className="btn-ghost flex-1">
-                Add to wishlist
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {scanning && <BarcodeScanner onDetected={handleBarcodeDetected} onClose={() => setScanning(false)} />}
-      {showManualCamera && (
-        <PhotoCapture
-          onCapture={file => { setManualCover(file); setShowManualCamera(false) }}
-          onClose={() => setShowManualCamera(false)}
+      {/* Overlays */}
+      {scanning && (
+        <BarcodeScanner
+          onDetected={handleBarcodeDetected}
+          onClose={() => setScanning(false)}
         />
       )}
+
       {showCoverCapture && (
         <PhotoCapture
           onCapture={handleCoverCapture}
@@ -659,31 +309,14 @@ export default function AddItemPage() {
         />
       )}
 
-      {/* Scan picker bottom sheet */}
-      {showScanPicker && (
-        <div className="fixed inset-0 bg-black/60 flex items-end z-50" onClick={() => setShowScanPicker(false)}>
-          <div className="w-full rounded-t-2xl p-6 flex flex-col gap-3" style={{ backgroundColor: 'var(--bg-card)' }} onClick={e => e.stopPropagation()}>
-            <p className="font-serif text-base font-semibold text-center mb-1">What do you want to scan?</p>
-            <button
-              className="btn-ghost text-sm py-3 w-full text-center"
-              onClick={() => { setShowScanPicker(false); setScanning(true) }}
-            >
-              📦 Scan barcode
-            </button>
-            {collection !== 'lego' && (
-              <button
-                className="btn-ghost text-sm py-3 w-full text-center"
-                onClick={() => { setShowScanPicker(false); setShowCoverCapture(true) }}
-              >
-                🖼 Scan cover (OCR)
-              </button>
-            )}
-            <button className="btn-ghost text-sm py-2 w-full text-center" style={{ color: 'var(--text-muted)' }} onClick={() => setShowScanPicker(false)}>
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
+      <ScanPicker
+        show={showScanPicker}
+        collection={collection}
+        identifying={identifying}
+        onClose={() => setShowScanPicker(false)}
+        onBarcodeRequest={() => { setShowScanPicker(false); setScanning(true) }}
+        onCoverOCRRequest={() => { setShowScanPicker(false); setShowCoverCapture(true) }}
+      />
     </main>
   )
 }

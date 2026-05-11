@@ -42,6 +42,11 @@ function makeFormRequest(fields: Record<string, string | Blob>) {
   })
 }
 
+// Route uses `await params` (Next.js 15 async params, #124) — always pass a Promise
+function buildParams(id: string) {
+  return { params: Promise.resolve({ id }) }
+}
+
 beforeEach(() => {
   mockGetSession.mockReset()
   mockUpload.mockReset()
@@ -61,14 +66,14 @@ describe('POST /api/items/[id]/cover', () => {
   it('returns 403 for viewer role', async () => {
     mockGetSession.mockResolvedValue({ role: 'viewer' })
     const req = makeFormRequest({})
-    const res = await POST(req, { params: { id: 'item-id' } })
+    const res = await POST(req, buildParams('item-id'))
     expect(res.status).toBe(403)
   })
 
   it('returns 401 when no session', async () => {
     mockGetSession.mockResolvedValue({ role: undefined })
     const req = makeFormRequest({})
-    const res = await POST(req, { params: { id: 'item-id' } })
+    const res = await POST(req, buildParams('item-id'))
     expect(res.status).toBe(403) // !role || role === 'viewer' both return 403
   })
 
@@ -76,7 +81,7 @@ describe('POST /api/items/[id]/cover', () => {
     mockGetSession.mockResolvedValue({ role: 'member', editableMemberId: 'other-member' })
     mockDbSingle.mockResolvedValue({ data: { member_id: 'owner-member', cover_path: null } })
     const req = makeFormRequest({})
-    const res = await POST(req, { params: { id: 'item-id' } })
+    const res = await POST(req, buildParams('item-id'))
     expect(res.status).toBe(403)
   })
 
@@ -88,7 +93,7 @@ describe('POST /api/items/[id]/cover', () => {
     mockDbUpdate.mockResolvedValue({ data: updatedItem, error: null })
     const jpegBlob = new Blob([Buffer.from('jpeg-data')], { type: 'image/jpeg' })
     const req = makeFormRequest({ cover: jpegBlob })
-    const res = await POST(req, { params: { id: 'item-id' } })
+    const res = await POST(req, buildParams('item-id'))
     expect(res.status).toBe(200)
   })
 
@@ -96,7 +101,18 @@ describe('POST /api/items/[id]/cover', () => {
     mockGetSession.mockResolvedValue({ role: 'editor' })
     mockDbSingle.mockResolvedValue({ data: null })
     const req = makeFormRequest({})
-    const res = await POST(req, { params: { id: 'missing-id' } })
+    const res = await POST(req, buildParams('missing-id'))
+    expect(res.status).toBe(404)
+  })
+
+  it('resolves id from a Promise-wrapped params object (#124 — Next.js 15 async params)', async () => {
+    // The route does `const { id } = await params` — verify it handles an actual Promise
+    mockGetSession.mockResolvedValue({ role: 'editor' })
+    mockDbSingle.mockResolvedValue({ data: null }) // triggers 404, just needs to reach the DB call
+    const req = makeFormRequest({})
+    // Pass params as a genuine Promise (not a plain object that happens to be awaitable)
+    const res = await POST(req, { params: Promise.resolve({ id: 'real-promise-id' }) })
+    // 404 proves the route reached the DB lookup using the resolved id — not a crash on await
     expect(res.status).toBe(404)
   })
 
@@ -104,7 +120,7 @@ describe('POST /api/items/[id]/cover', () => {
     mockGetSession.mockResolvedValue({ role: 'editor' })
     mockDbSingle.mockResolvedValue({ data: { member_id: 'm1', cover_path: null } })
     const req = makeFormRequest({})
-    const res = await POST(req, { params: { id: 'item-id' } })
+    const res = await POST(req, buildParams('item-id'))
     expect(res.status).toBe(400)
   })
 
@@ -113,7 +129,7 @@ describe('POST /api/items/[id]/cover', () => {
     mockDbSingle.mockResolvedValue({ data: { member_id: 'm1', cover_path: null } })
     const badFile = new Blob(['gif-data'], { type: 'image/gif' })
     const req = makeFormRequest({ cover: badFile })
-    const res = await POST(req, { params: { id: 'item-id' } })
+    const res = await POST(req, buildParams('item-id'))
     expect(res.status).toBe(400)
     const body = await res.json()
     expect(body.error).toMatch(/unsupported/i)
@@ -128,7 +144,7 @@ describe('POST /api/items/[id]/cover', () => {
 
     const jpegBlob = new Blob([Buffer.from('jpeg-data')], { type: 'image/jpeg' })
     const req = makeFormRequest({ cover: jpegBlob })
-    const res = await POST(req, { params: { id: 'item-id' } })
+    const res = await POST(req, buildParams('item-id'))
     expect(res.status).toBe(200)
     expect(mockUpload).toHaveBeenCalled()
   })
