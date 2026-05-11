@@ -2,11 +2,11 @@ import { NextResponse } from 'next/server'
 import { getMemberBySlug } from '@/lib/db/members'
 import { createItem } from '@/lib/db/items'
 import type { CollectionType } from '@/lib/types'
-import sharp from 'sharp'
 import { randomUUID } from 'crypto'
 import { createServerClient } from '@/lib/supabase-server'
 import { getSession } from '@/lib/session'
 import { VALID_COLLECTIONS, ALLOWED_IMAGE_TYPES, MAX_IMAGE_SIZE } from '@/lib/constants'
+import { uploadImageBuffer } from '@/lib/cover'
 
 export async function POST(request: Request) {
   const session = await getSession()
@@ -69,15 +69,9 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'File too large (max 10 MB)' }, { status: 400 })
       }
       const buffer = Buffer.from(await coverFile.arrayBuffer())
-      const resized = await sharp(buffer)
-        .resize(600, 600, { fit: 'inside', withoutEnlargement: true })
-        .jpeg({ quality: 85 })
-        .toBuffer()
-      const db = createServerClient()
-      const path = `manual/${member.id}/${randomUUID()}.jpg`
-      const { error } = await db.storage.from('covers').upload(path, resized, { contentType: 'image/jpeg' })
-      if (error) return NextResponse.json({ error: 'Cover upload failed' }, { status: 500 })
-      cover_path = `covers/${path}`
+      const storagePath = `manual/${member.id}/${randomUUID()}.jpg`
+      cover_path = await uploadImageBuffer(buffer, storagePath)
+      if (!cover_path) return NextResponse.json({ error: 'Cover upload failed' }, { status: 500 })
     }
 
     const item = await createItem({

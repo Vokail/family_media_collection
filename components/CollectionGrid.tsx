@@ -5,6 +5,7 @@ import ItemCard from './ItemCard'
 import type { Item, CollectionType, Member } from '@/lib/types'
 import { getSurprisePool } from '@/lib/surprisePool'
 import { CONDITION_OPTIONS, CONDITION_ORDER } from '@/lib/conditions'
+import { LEGO_STATUS_OPTIONS, type LegoStatus } from '@/lib/constants'
 
 const PULL_THRESHOLD = 72
 const PAGE_SIZE = 60
@@ -161,6 +162,64 @@ function AlphaSidebar({ items, onScroll }: { items: { display: string; key: stri
   )
 }
 
+/** Normalised descriptor for any sort-grouped section. */
+interface GroupDescriptor {
+  key: string
+  label: string
+  labelColor: string
+  badge?: { abbr: string; color: string }
+  items: Item[]
+}
+
+interface GroupSectionProps extends GroupDescriptor {
+  refKey: string
+  isEditor: boolean
+  onUpdate: (updated: Item) => void
+  onDelete: (id: string) => void
+  supabaseUrl: string
+  layout: 'grid' | 'list'
+  surpriseId: string | null
+  onForceClose: () => void
+  sectionRefs: React.MutableRefObject<Record<string, HTMLDivElement | null>>
+}
+
+/** Renders a single labelled section (heading + item grid/list) for any sort mode. */
+function GroupSection({ refKey, label, labelColor, badge, items, isEditor, onUpdate, onDelete, supabaseUrl, layout, surpriseId, onForceClose, sectionRefs }: GroupSectionProps) {
+  return (
+    <div
+      ref={el => { sectionRefs.current[refKey] = el }}
+      className="mb-6"
+    >
+      <h3
+        className={`font-serif text-lg font-bold mb-2 px-1${badge ? ' flex items-center gap-2' : ''}`}
+        style={!badge ? { color: labelColor } : {}}
+      >
+        {badge ? (
+          <>
+            <span className="text-xs font-bold px-1.5 py-0.5 rounded text-white leading-none" style={{ backgroundColor: badge.color }}>{badge.abbr}</span>
+            <span style={{ color: labelColor }}>{label}</span>
+          </>
+        ) : label}
+      </h3>
+      <div className={layout === 'list' ? LIST : GRID}>
+        {items.map(item => (
+          <ItemCard
+            key={item.id}
+            item={item}
+            isEditor={isEditor}
+            onUpdate={onUpdate}
+            onDelete={onDelete}
+            supabaseUrl={supabaseUrl}
+            layout={layout}
+            forceOpen={surpriseId === item.id}
+            onForceClose={onForceClose}
+          />
+        ))}
+      </div>
+    </div>
+  )
+}
+
 interface Props {
   member: Member
   collection: CollectionType
@@ -190,7 +249,7 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
   )
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<'all' | 'unconsumed' | 'consumed'>('all')
-  const [legoFilter, setLegoFilter] = useState<'all' | 'built' | 'in_box' | 'disassembled'>('all')
+  const [legoFilter, setLegoFilter] = useState<'all' | LegoStatus>('all')
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
   const sentinelRef = useRef<HTMLDivElement | null>(null)
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({})
@@ -331,6 +390,33 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
     { label: 'Unread', items: displayed.filter(i => i.status !== 'consumed') },
     { label: 'Read',   items: displayed.filter(i => i.status === 'consumed') },
   ].filter(g => g.items.length > 0) : []
+
+  // Normalised group descriptors — one entry per visible section header.
+  // Empty when sort === 'added' (flat display).
+  const groups: GroupDescriptor[] = byCreator
+    ? creatorGroups.map(g => ({ key: g.letter, label: g.letter, labelColor: 'var(--accent)', items: g.items }))
+    : byTitle
+    ? titleGroups.map(g => ({ key: g.letter, label: g.letter, labelColor: 'var(--accent)', items: g.items }))
+    : byYear
+    ? yearGroups.map(g => ({ key: g.shortKey, label: g.label, labelColor: 'var(--accent)', items: g.items }))
+    : byRating
+    ? ratingGroups.map(g => ({ key: g.key, label: g.label, labelColor: g.key === '0' ? 'var(--text-muted)' : 'var(--accent)', items: g.items }))
+    : byStatus
+    ? statusGroups.map(g => ({
+        key: g.label,
+        label: g.label === 'Read' ? '✓ Read' : g.label,
+        labelColor: g.label === 'Read' ? 'var(--accent)' : 'var(--text-muted)',
+        items: g.items,
+      }))
+    : byCondition
+    ? conditionGroups.map(g => ({
+        key: g.label,
+        label: g.label,
+        labelColor: g.label === 'Ungraded' ? 'var(--text-muted)' : 'var(--text)',
+        badge: { abbr: g.abbr, color: g.color },
+        items: g.items,
+      }))
+    : []
 
   // Each sidebar entry carries a display label and the ref key used to look up the section.
   // For Lego the ref key is the full theme name; display is first 4 chars.
@@ -507,136 +593,41 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
       {showLegoFilter && (
         <div className="flex items-center gap-1">
           <button className={`btn-ghost px-2 sm:px-3 py-1 text-xs ${legoFilter === 'all' ? 'active' : ''}`} onClick={() => setLegoFilter('all')}>All</button>
-          <button className={`btn-ghost px-2 sm:px-3 py-1 text-xs ${legoFilter === 'in_box' ? 'active' : ''}`} onClick={() => setLegoFilter('in_box')}>📦 In box</button>
-          <button className={`btn-ghost px-2 sm:px-3 py-1 text-xs ${legoFilter === 'built' ? 'active' : ''}`} onClick={() => setLegoFilter('built')}>🔨 Built</button>
-          <button className={`btn-ghost px-2 sm:px-3 py-1 text-xs ${legoFilter === 'disassembled' ? 'active' : ''}`} onClick={() => setLegoFilter('disassembled')}>🔧 Apart</button>
+          {LEGO_STATUS_OPTIONS.map(opt => (
+            <button
+              key={opt.value}
+              className={`btn-ghost px-2 sm:px-3 py-1 text-xs ${legoFilter === opt.value ? 'active' : ''}`}
+              onClick={() => setLegoFilter(opt.value)}
+            >
+              {opt.label}
+            </button>
+          ))}
         </div>
       )}
 
       {/* Grid — flat or grouped */}
       <div className={`relative ${hasSidebar ? 'pr-8' : ''}`}>
-        {byCreator ? (
+        {groups.length > 0 ? (
           <>
-            {creatorGroups.map(g => (
-              <div
-                key={g.letter}
-                ref={el => { sectionRefs.current[g.letter] = el }}
-                className="mb-6"
-              >
-                <h3
-                  className="font-serif text-lg font-bold mb-2 px-1"
-                  style={{ color: 'var(--accent)' }}
-                >
-                  {g.letter}
-                </h3>
-                <div className={viewMode === 'list' ? LIST : GRID}>
-                  {g.items.map(item => (
-                    <ItemCard key={item.id} item={item} isEditor={isEditor} onUpdate={handleUpdate} onDelete={handleDelete} supabaseUrl={supabaseUrl} layout={viewMode} forceOpen={surpriseId === item.id} onForceClose={() => setSurpriseId(null)} />
-                  ))}
-                </div>
-              </div>
+            {groups.map(g => (
+              <GroupSection
+                key={g.key}
+                refKey={g.key}
+                label={g.label}
+                labelColor={g.labelColor}
+                badge={g.badge}
+                items={g.items}
+                isEditor={isEditor}
+                onUpdate={handleUpdate}
+                onDelete={handleDelete}
+                supabaseUrl={supabaseUrl}
+                layout={viewMode}
+                surpriseId={surpriseId}
+                onForceClose={() => setSurpriseId(null)}
+                sectionRefs={sectionRefs}
+              />
             ))}
             <AlphaSidebar items={sidebarItems} onScroll={scrollTo} />
-          </>
-        ) : byTitle ? (
-          <>
-            {titleGroups.map(g => (
-              <div
-                key={g.letter}
-                ref={el => { sectionRefs.current[g.letter] = el }}
-                className="mb-6"
-              >
-                <h3
-                  className="font-serif text-lg font-bold mb-2 px-1"
-                  style={{ color: 'var(--accent)' }}
-                >
-                  {g.letter}
-                </h3>
-                <div className={viewMode === 'list' ? LIST : GRID}>
-                  {g.items.map(item => (
-                    <ItemCard key={item.id} item={item} isEditor={isEditor} onUpdate={handleUpdate} onDelete={handleDelete} supabaseUrl={supabaseUrl} layout={viewMode} forceOpen={surpriseId === item.id} onForceClose={() => setSurpriseId(null)} />
-                  ))}
-                </div>
-              </div>
-            ))}
-            <AlphaSidebar items={sidebarItems} onScroll={scrollTo} />
-          </>
-        ) : byYear ? (
-          <>
-            {yearGroups.map(g => (
-              <div
-                key={g.shortKey}
-                ref={el => { sectionRefs.current[g.shortKey] = el }}
-                className="mb-6"
-              >
-                <h3
-                  className="font-serif text-lg font-bold mb-2 px-1"
-                  style={{ color: 'var(--accent)' }}
-                >
-                  {g.label}
-                </h3>
-                <div className={viewMode === 'list' ? LIST : GRID}>
-                  {g.items.map(item => (
-                    <ItemCard key={item.id} item={item} isEditor={isEditor} onUpdate={handleUpdate} onDelete={handleDelete} supabaseUrl={supabaseUrl} layout={viewMode} forceOpen={surpriseId === item.id} onForceClose={() => setSurpriseId(null)} />
-                  ))}
-                </div>
-              </div>
-            ))}
-            <AlphaSidebar items={sidebarItems} onScroll={scrollTo} />
-          </>
-        ) : byRating ? (
-          <>
-            {ratingGroups.map(g => (
-              <div key={g.key} className="mb-6">
-                <h3
-                  className="font-serif text-lg font-bold mb-2 px-1"
-                  style={{ color: g.key === '0' ? 'var(--text-muted)' : 'var(--accent)' }}
-                >
-                  {g.label}
-                </h3>
-                <div className={viewMode === 'list' ? LIST : GRID}>
-                  {g.items.map(item => (
-                    <ItemCard key={item.id} item={item} isEditor={isEditor} onUpdate={handleUpdate} onDelete={handleDelete} supabaseUrl={supabaseUrl} layout={viewMode} forceOpen={surpriseId === item.id} onForceClose={() => setSurpriseId(null)} />
-                  ))}
-                </div>
-              </div>
-            ))}
-          </>
-        ) : byStatus ? (
-          <>
-            {statusGroups.map(g => (
-              <div key={g.label} className="mb-6">
-                <h3 className="font-serif text-lg font-bold mb-2 px-1" style={{ color: g.label === 'Read' ? 'var(--accent)' : 'var(--text-muted)' }}>
-                  {g.label === 'Read' ? '✓ Read' : g.label}
-                </h3>
-                <div className={viewMode === 'list' ? LIST : GRID}>
-                  {g.items.map(item => (
-                    <ItemCard key={item.id} item={item} isEditor={isEditor} onUpdate={handleUpdate} onDelete={handleDelete} supabaseUrl={supabaseUrl} layout={viewMode} forceOpen={surpriseId === item.id} onForceClose={() => setSurpriseId(null)} />
-                  ))}
-                </div>
-              </div>
-            ))}
-          </>
-        ) : byCondition ? (
-          <>
-            {conditionGroups.map(g => (
-              <div key={g.label} className="mb-6">
-                <h3 className="font-serif text-lg font-bold mb-2 px-1 flex items-center gap-2">
-                  <span
-                    className="text-xs font-bold px-1.5 py-0.5 rounded text-white leading-none"
-                    style={{ backgroundColor: g.color }}
-                  >
-                    {g.abbr}
-                  </span>
-                  <span style={{ color: g.label === 'Ungraded' ? 'var(--text-muted)' : 'var(--text)' }}>{g.label}</span>
-                </h3>
-                <div className={viewMode === 'list' ? LIST : GRID}>
-                  {g.items.map(item => (
-                    <ItemCard key={item.id} item={item} isEditor={isEditor} onUpdate={handleUpdate} onDelete={handleDelete} supabaseUrl={supabaseUrl} layout={viewMode} forceOpen={surpriseId === item.id} onForceClose={() => setSurpriseId(null)} />
-                  ))}
-                </div>
-              </div>
-            ))}
           </>
         ) : (
           <div className={viewMode === 'list' ? LIST : GRID}>

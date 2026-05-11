@@ -1,4 +1,9 @@
 import type { SearchResult } from '../types'
+import { cleanDescription } from '../text-utils'
+import { googleBooksDescription, googleBooksByISBN } from './google-books'
+import { kbSruByISBN } from './kb'
+
+export { cleanDescription }
 
 type OlEditionDoc = { key?: string; title?: string; cover_i?: number }
 
@@ -73,66 +78,6 @@ export async function searchBooks(query: string, lang?: string, offset = 0): Pro
 const OL_LANG_CODES_DESC: Record<string, string> = { dutch: 'dut', french: 'fre', german: 'ger' }
 const GB_LANG_CODES: Record<string, string> = { dutch: 'nl', french: 'fr', german: 'de' }
 
-// Shared description cleaner for OL and Google Books text:
-// - normalises line endings
-// - cuts everything from the first divider line (---) to end of string (OL metadata/contains sections)
-// - strips OL wiki-style links: [[/path|label]] → label, [[path|label]] → label, [[path]] → ''
-// - strips markdown inline links: [text](url) → text
-// - strips markdown reference links: [text][ref] → text, [ref]: url → ''
-// - strips OL/GB bare-URL brackets: [url label] → label, [url] → ''
-// - strips markdown bold/italic: **text** → text, *text* → text
-// - strips HTML tags and decodes common entities
-// - removes "Source: …" metadata lines
-// - collapses excessive whitespace / blank lines
-export function cleanDescription(raw: string): string {
-  return raw
-    // Normalise Windows line endings
-    .replace(/\r\n/g, '\n')
-    // Cut from first divider line to end of string (OL metadata/source/contains sections)
-    .replace(/\n[-─═]{4,}[\s\S]*$/, '')
-    // OL wiki links with label: [[/path|label]] or [[path|label]] → label
-    .replace(/\[\[[^\]|]*\|([^\]]+)\]\]/g, '$1')
-    // OL bare wiki links: [[/path]] or [[word]] → ''
-    .replace(/\[\[[^\]]*\]\]/g, '')
-    // Markdown inline links: [text](url) → text
-    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
-    // Markdown reference links: [text][ref] → text
-    .replace(/\[([^\]]+)\]\[[^\]]*\]/g, '$1')
-    // Markdown reference definitions: [ref]: url (whole line) → ''
-    .replace(/^\[[^\]]+\]:\s*\S+.*$/gm, '')
-    // Hyperlinks with label: [url label text] → label text
-    .replace(/\[https?:\/\/\S+\s+([^\]]+)\]/g, '$1')
-    // Bare URLs in brackets: [https://...] → ''
-    .replace(/\[https?:\/\/[^\]]*\]/g, '')
-    // Markdown bold: **text** → text
-    .replace(/\*\*([^*]+)\*\*/g, '$1')
-    // Markdown italic: *text* → text
-    .replace(/\*([^*]+)\*/g, '$1')
-    // HTML tags
-    .replace(/<[^>]+>/g, ' ')
-    // Common HTML entities
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&nbsp;/g, ' ')
-    // "Source: …" lines (OL metadata)
-    .replace(/^Source:.*$/gim, '')
-    // Collapse 3+ blank lines → 2, then trim
-    .replace(/\n{3,}/g, '\n\n')
-    .trim()
-}
-
-async function googleBooksDescription(query: string, langRestrict?: string): Promise<string | null> {
-  const langParam = langRestrict ? `&langRestrict=${langRestrict}` : ''
-  const res = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=1${langParam}`, { signal: AbortSignal.timeout(7000) })
-  if (!res.ok) return null
-  const data = await res.json()
-  const desc = data.items?.[0]?.volumeInfo?.description as string | undefined
-  if (!desc?.trim()) return null
-  return cleanDescription(desc) || null
-}
 
 export async function fetchBookDescription(
   externalId: string,
@@ -255,43 +200,6 @@ async function olBibKeysByISBN(isbn: string): Promise<SearchResult> {
   }
 }
 
-async function googleBooksByISBN(isbn: string): Promise<SearchResult> {
-  const res = await fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}&maxResults=1`, { signal: AbortSignal.timeout(5000) })
-  if (!res.ok) throw new Error('not found')
-  const data = await res.json()
-  const vol = data.items?.[0]?.volumeInfo
-  if (!vol) throw new Error('not found')
-  return {
-    external_id: `isbn:${isbn}`,
-    isbn,
-    title: vol.title as string,
-    creator: (vol.authors as string[])?.[0] ?? 'Unknown',
-    year: vol.publishedDate ? parseInt(vol.publishedDate) : null,
-    cover_url: vol.imageLinks?.thumbnail?.replace('http:', 'https:') ?? null,
-    source: 'google' as SearchResult['source'],
-  }
-}
-
-async function kbSruByISBN(isbn: string): Promise<SearchResult> {
-  const url = `https://jsru.kb.nl/sru/sru?operation=searchRetrieve&x-collection=GGC&query=isbn+exact+%22${isbn}%22&recordSchema=dc&maximumRecords=1`
-  const res = await fetch(url, { signal: AbortSignal.timeout(9000) })
-  if (!res.ok) throw new Error('not found')
-  const xml = await res.text()
-  const count = xml.match(/<srw:numberOfRecords>(\d+)<\/srw:numberOfRecords>/)?.[1]
-  if (!count || parseInt(count) === 0) throw new Error('not found')
-  const dc = (tag: string) => xml.match(new RegExp(`<dc:${tag}[^>]*>([^<]+)<\\/dc:${tag}>`, 'i'))?.[1]?.trim() ?? null
-  const title = dc('title')
-  if (!title) throw new Error('not found')
-  return {
-    external_id: `isbn:${isbn}`,
-    isbn,
-    title,
-    creator: dc('creator') ?? 'Unknown',
-    year: (() => { const d = dc('date'); return d ? parseInt(d) : null })(),
-    cover_url: null,
-    source: 'kb',
-  }
-}
 
 
 async function fetchCoverForISBN(isbn: string): Promise<string | null> {

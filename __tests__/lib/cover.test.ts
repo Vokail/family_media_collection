@@ -1,8 +1,10 @@
+const mockUpload = jest.fn().mockResolvedValue({ error: null })
+
 jest.mock('@/lib/supabase-server', () => ({
   createServerClient: () => ({
     storage: {
       from: () => ({
-        upload: jest.fn().mockResolvedValue({ error: null }),
+        upload: mockUpload,
       }),
     },
   }),
@@ -19,7 +21,7 @@ jest.mock('sharp', () => {
 
 global.fetch = jest.fn()
 
-import { downloadCover, coverStorageKey } from '@/lib/cover'
+import { downloadCover, uploadImageBuffer, coverStorageKey } from '@/lib/cover'
 
 describe('coverStorageKey (#127)', () => {
   it('strips the leading covers/ prefix', () => {
@@ -32,6 +34,26 @@ describe('coverStorageKey (#127)', () => {
 
   it('handles two-level old-style paths', () => {
     expect(coverStorageKey('covers/manual/member-1/uuid.jpg')).toBe('manual/member-1/uuid.jpg')
+  })
+})
+
+describe('uploadImageBuffer (#141)', () => {
+  beforeEach(() => mockUpload.mockResolvedValue({ error: null }))
+
+  it('returns covers/<storagePath> on success', async () => {
+    const path = await uploadImageBuffer(Buffer.from('imgdata'), 'manual/mem-1/uuid.jpg')
+    expect(path).toBe('covers/manual/mem-1/uuid.jpg')
+    expect(mockUpload).toHaveBeenCalledWith(
+      'manual/mem-1/uuid.jpg',
+      expect.any(Buffer),
+      expect.objectContaining({ contentType: 'image/jpeg' }),
+    )
+  })
+
+  it('returns null when upload errors', async () => {
+    mockUpload.mockResolvedValueOnce({ error: new Error('storage full') })
+    const path = await uploadImageBuffer(Buffer.from('imgdata'), 'manual/mem-1/uuid.jpg')
+    expect(path).toBeNull()
   })
 })
 

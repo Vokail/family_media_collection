@@ -18,3 +18,12 @@ export const ALLOWED_IMAGE_TYPES = [
 
 /** Maximum upload size for cover / profile images (10 MB). */
 export const MAX_IMAGE_SIZE = 10 * 1024 * 1024
+
+/** Build-status options for Lego items. Single source of truth for filter buttons and detail-sheet controls. */
+export const LEGO_STATUS_OPTIONS = [
+  { value: 'in_box',       label: '📦 In box' },
+  { value: 'built',        label: '🔨 Built' },
+  { value: 'disassembled', label: '🔧 Apart' },
+] as const
+
+export type LegoStatus = typeof LEGO_STATUS_OPTIONS[number]['value']

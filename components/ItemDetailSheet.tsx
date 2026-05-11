@@ -1,0 +1,461 @@
+'use client'
+import { useState, useRef } from 'react'
+import type { Item, Track } from '@/lib/types'
+import PhotoCapture from './PhotoCapture'
+import { useToast } from './Toast'
+import { CONDITION_OPTIONS } from '@/lib/conditions'
+import { LEGO_STATUS_OPTIONS } from '@/lib/constants'
+
+// ── Local helper ────────────────────────────────────────────────────────────
+
+function StarRating({ rating, onRate }: { rating: number | null; onRate?: (r: number | null) => void }) {
+  return (
+    <div className="flex gap-1 justify-center">
+      {[1, 2, 3, 4, 5].map(star => (
+        <button
+          key={star}
+          onClick={onRate ? () => onRate(star === rating ? null : star) : undefined}
+          disabled={!onRate}
+          className="text-2xl leading-none disabled:cursor-default"
+          style={{ color: star <= (rating ?? 0) ? 'var(--accent)' : 'var(--border)' }}
+          aria-label={star === rating ? `Remove rating` : `Rate ${star} star${star > 1 ? 's' : ''}`}
+        >★</button>
+      ))}
+    </div>
+  )
+}
+
+// ── Component ────────────────────────────────────────────────────────────────
+
+interface Props {
+  item: Item
+  isEditor: boolean
+  onUpdate: (updated: Item) => void
+  onDelete: (id: string) => void
+  supabaseUrl: string
+  onClose: () => void
+}
+
+export default function ItemDetailSheet({ item, isEditor, onUpdate, onDelete, supabaseUrl, onClose }: Props) {
+  const toast = useToast()
+  const [notes, setNotes] = useState(item.notes ?? '')
+  const [savingNotes, setSavingNotes] = useState(false)
+  const [editingMeta, setEditingMeta] = useState(false)
+  const [editTitle, setEditTitle] = useState(item.title)
+  const [editCreator, setEditCreator] = useState(item.creator)
+  const [editYear, setEditYear] = useState(item.year?.toString() ?? '')
+  const [editSortName, setEditSortName] = useState(item.sort_name ?? '')
+  const [savingMeta, setSavingMeta] = useState(false)
+  const [savingRating, setSavingRating] = useState(false)
+  const [savingLegoStatus, setSavingLegoStatus] = useState(false)
+  const [savingCondition, setSavingCondition] = useState(false)
+  const [removingCover, setRemovingCover] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [uploadingCover, setUploadingCover] = useState(false)
+  const [showCamera, setShowCamera] = useState(false)
+  const [coverZoom, setCoverZoom] = useState(false)
+  const coverInputRef = useRef<HTMLInputElement>(null)
+
+  const coverSrc = item.cover_path
+    ? `${supabaseUrl}/storage/v1/object/public/${item.cover_path}`
+    : null
+  const statusLabel = item.collection === 'vinyl' ? 'Listened' : 'Read'
+  const consumed = item.status === 'consumed'
+
+  function handleClose() {
+    setConfirmDelete(false)
+    onClose()
+  }
+
+  // ── Async actions ──────────────────────────────────────────────────────────
+
+  async function setRating(rating: number | null) {
+    if (savingRating) return
+    setSavingRating(true)
+    const res = await fetch(`/api/items/${item.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rating }),
+    })
+    if (res.ok) onUpdate(await res.json())
+    else toast.show('Could not update rating', 'error')
+    setSavingRating(false)
+  }
+
+  async function toggleStatus() {
+    const newStatus = consumed ? null : 'consumed'
+    onUpdate({ ...item, status: newStatus })
+    const res = await fetch(`/api/items/${item.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: newStatus }),
+    })
+    if (res.ok) {
+      onUpdate(await res.json())
+      toast.show(newStatus ? `Marked as ${statusLabel.toLowerCase()}` : `Marked as un${statusLabel.toLowerCase()}`)
+    } else {
+      onUpdate(item)
+      toast.show('Could not update item', 'error')
+    }
+  }
+
+  async function toggleWishlist() {
+    onUpdate({ ...item, is_wishlist: !item.is_wishlist })
+    const res = await fetch(`/api/items/${item.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ is_wishlist: !item.is_wishlist }),
+    })
+    if (res.ok) {
+      onUpdate(await res.json())
+      toast.show(item.is_wishlist ? 'Moved to collection' : 'Added to wishlist')
+    } else {
+      onUpdate(item)
+      toast.show('Could not update item', 'error')
+    }
+  }
+
+  async function saveNotes() {
+    setSavingNotes(true)
+    const res = await fetch(`/api/items/${item.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ notes }),
+    })
+    if (res.ok) {
+      onUpdate(await res.json())
+      toast.show('Note saved')
+    } else {
+      toast.show('Could not save note', 'error')
+    }
+    setSavingNotes(false)
+  }
+
+  async function saveMeta() {
+    if (!editTitle.trim()) return
+    setSavingMeta(true)
+    const res = await fetch(`/api/items/${item.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title: editTitle.trim(),
+        creator: editCreator.trim(),
+        year: editYear ? parseInt(editYear) : null,
+        ...(item.collection === 'vinyl' ? { sort_name: editSortName.trim() || null } : {}),
+      }),
+    })
+    if (res.ok) {
+      onUpdate(await res.json())
+      setEditingMeta(false)
+      toast.show('Details updated')
+    } else {
+      toast.show('Could not update details', 'error')
+    }
+    setSavingMeta(false)
+  }
+
+  async function handleRemoveCover() {
+    setRemovingCover(true)
+    const res = await fetch(`/api/items/${item.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cover_path: null }),
+    })
+    if (res.ok) onUpdate(await res.json())
+    else toast.show('Could not remove cover', 'error')
+    setRemovingCover(false)
+  }
+
+  async function uploadCoverFile(file: File) {
+    setUploadingCover(true)
+    const form = new FormData()
+    form.append('cover', file)
+    const res = await fetch(`/api/items/${item.id}/cover`, { method: 'POST', body: form })
+    if (res.ok) onUpdate(await res.json())
+    else toast.show('Could not upload cover', 'error')
+    setUploadingCover(false)
+  }
+
+  async function handleCoverUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    await uploadCoverFile(file)
+  }
+
+  async function handleDelete() {
+    const res = await fetch(`/api/items/${item.id}`, { method: 'DELETE' })
+    if (res.ok) {
+      toast.show('Item deleted')
+      onDelete(item.id)
+      handleClose()
+    } else {
+      toast.show('Could not delete item', 'error')
+    }
+  }
+
+  async function setLegoStatus(value: 'built' | 'in_box' | 'disassembled' | null) {
+    if (savingLegoStatus) return
+    setSavingLegoStatus(true)
+    const res = await fetch(`/api/items/${item.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ lego_status: value }),
+    })
+    if (res.ok) onUpdate(await res.json())
+    else toast.show('Could not update status', 'error')
+    setSavingLegoStatus(false)
+  }
+
+  async function setCondition(value: typeof CONDITION_OPTIONS[number]['value'] | null) {
+    if (savingCondition) return
+    setSavingCondition(true)
+    const res = await fetch(`/api/items/${item.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ condition: value }),
+    })
+    if (res.ok) onUpdate(await res.json())
+    else toast.show('Could not update condition', 'error')
+    setSavingCondition(false)
+  }
+
+  // ── Render ─────────────────────────────────────────────────────────────────
+
+  return (
+    <>
+      <div
+        className="fixed inset-0 bg-black/60 flex items-end z-50"
+        onClick={handleClose}
+        role="dialog"
+        aria-modal="true"
+        aria-label={item.title}
+      >
+        <div
+          className="card w-full rounded-b-none flex flex-col max-h-[90vh]"
+          onClick={e => e.stopPropagation()}
+        >
+          <div className="flex justify-end p-3 border-b flex-shrink-0" style={{ borderColor: 'var(--border)' }}>
+            <button onClick={handleClose} className="btn-ghost px-3 py-1 text-sm">✕ Close</button>
+          </div>
+          <div className="p-6 flex flex-col gap-4 overflow-y-auto">
+            {coverSrc && (
+              <button onClick={() => setCoverZoom(true)} className="mx-auto block hover:opacity-90 transition-opacity focus:outline-none" title="View full size">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={coverSrc} alt={item.title} className="rounded-lg shadow object-contain" style={{ maxWidth: '160px', maxHeight: '240px', width: 'auto', height: 'auto', display: 'block', margin: '0 auto' }} />
+              </button>
+            )}
+            {editingMeta ? (
+              <div className="flex flex-col gap-2">
+                <input className="input text-center font-serif font-bold" value={editTitle} onChange={e => setEditTitle(e.target.value)} placeholder="Title" />
+                <input className="input text-center text-sm" value={editCreator} onChange={e => setEditCreator(e.target.value)} placeholder="Artist / Author" />
+                <input className="input text-center text-sm" type="number" value={editYear} onChange={e => setEditYear(e.target.value)} placeholder="Year" />
+                {item.collection === 'vinyl' && (
+                  <input className="input text-center text-sm" value={editSortName} onChange={e => setEditSortName(e.target.value)} placeholder="Sort name (e.g. Sinatra, Frank)" />
+                )}
+                <div className="flex gap-2 justify-center">
+                  <button onClick={saveMeta} disabled={savingMeta || !editTitle.trim()} className="btn-primary text-sm px-4">
+                    {savingMeta ? 'Saving…' : 'Save'}
+                  </button>
+                  <button
+                    onClick={() => { setEditingMeta(false); setEditTitle(item.title); setEditCreator(item.creator); setEditYear(item.year?.toString() ?? ''); setEditSortName(item.sort_name ?? '') }}
+                    className="btn-ghost text-sm px-4"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="relative">
+                <h2 className="font-serif text-xl font-bold text-center">{item.title}</h2>
+                <p className="text-center subtitle">{item.creator}{item.year ? ` · ${item.year}` : ''}</p>
+                {isEditor && (
+                  <button onClick={() => setEditingMeta(true)} className="absolute -right-1 top-0 text-xs px-1.5 py-0.5" style={{ color: 'var(--text-muted)' }} title="Edit title & creator">✏️</button>
+                )}
+              </div>
+            )}
+            {item.collection === 'lego' && item.external_id && (
+              <p className="text-center text-xs font-mono" style={{ color: 'var(--text-muted)' }}>#{item.external_id}</p>
+            )}
+            {item.collection === 'book' && item.isbn && (
+              <p className="text-center text-xs font-mono" style={{ color: 'var(--text-muted)' }}>ISBN {item.isbn}</p>
+            )}
+            {item.collection === 'lego' && item.description && /^\d+$/.test(item.description) ? (
+              <p className="text-sm text-center font-medium" style={{ color: 'var(--text-muted)' }}>
+                🧱 {parseInt(item.description).toLocaleString()} pieces
+              </p>
+            ) : item.description ? (
+              <p className="text-sm leading-relaxed break-words" style={{ color: 'var(--text-muted)', overflowWrap: 'break-word', wordBreak: 'break-word' }}>{item.description}</p>
+            ) : null}
+            {item.collection === 'vinyl' && (
+              <a
+                href={`https://open.spotify.com/search/${encodeURIComponent(`${item.creator} ${item.title}`)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-1.5 btn-ghost text-xs self-center px-3 py-1.5"
+                style={{ color: '#1DB954', borderColor: '#1DB954' }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
+                Open in Spotify
+              </a>
+            )}
+            {item.collection === 'vinyl' && (item.genres || item.styles) && (
+              <div className="flex flex-wrap gap-1.5 justify-center">
+                {item.genres && item.genres.split(', ').map(g => (
+                  <span key={g} className="text-xs px-2.5 py-1 rounded-full font-medium" style={{ backgroundColor: 'color-mix(in srgb, var(--accent) 15%, var(--bg-card))', color: 'var(--accent)' }}>{g}</span>
+                ))}
+                {item.styles && item.styles.split(', ').map(s => (
+                  <span key={s} className="text-xs px-2.5 py-1 rounded-full" style={{ backgroundColor: 'var(--border)', color: 'var(--text)' }}>{s}</span>
+                ))}
+              </div>
+            )}
+            <StarRating rating={item.rating} onRate={isEditor && !savingRating ? setRating : undefined} />
+            {isEditor && !item.is_wishlist && item.collection !== 'lego' && (
+              <button
+                onClick={toggleStatus}
+                className="btn-ghost text-sm self-center"
+                style={consumed ? { borderColor: 'var(--accent)', color: 'var(--accent)' } : {}}
+              >
+                {consumed ? `✓ ${statusLabel}` : `Mark as ${statusLabel.toLowerCase()}`}
+              </button>
+            )}
+            {isEditor && item.collection === 'lego' && !item.is_wishlist && (
+              <div className="flex flex-col gap-2">
+                <p className="label text-center">Build status</p>
+                <div className="flex gap-2 justify-center">
+                  {LEGO_STATUS_OPTIONS.map(opt => (
+                    <button
+                      key={opt.value}
+                      onClick={() => setLegoStatus(item.lego_status === opt.value ? null : opt.value)}
+                      disabled={savingLegoStatus}
+                      className="btn-ghost text-xs px-3 py-1.5 disabled:opacity-50"
+                      style={item.lego_status === opt.value ? { backgroundColor: 'var(--accent)', color: '#fff', borderColor: 'var(--accent)' } : {}}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            {item.collection === 'vinyl' && (
+              <div className="flex flex-col gap-2">
+                <p className="label text-center">Condition</p>
+                <div className="flex gap-2 justify-center flex-wrap">
+                  {CONDITION_OPTIONS.map(opt => (
+                    <button
+                      key={opt.value}
+                      onClick={isEditor ? () => setCondition(item.condition === opt.value ? null : opt.value) : undefined}
+                      disabled={isEditor ? savingCondition : true}
+                      title={opt.name}
+                      className="btn-ghost text-xs px-3 py-1.5 disabled:opacity-50"
+                      style={item.condition === opt.value
+                        ? { backgroundColor: opt.color, color: '#fff', borderColor: opt.color }
+                        : isEditor ? {} : { opacity: item.condition ? (item.condition === opt.value ? 1 : 0.35) : 0.35 }
+                      }
+                    >
+                      {opt.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            {isEditor ? (
+              <>
+                <div>
+                  <label className="label mb-1 block">Notes</label>
+                  <textarea
+                    className="input resize-none h-20"
+                    value={notes}
+                    onChange={e => setNotes(e.target.value)}
+                    placeholder="Add a personal note…"
+                  />
+                  <button onClick={saveNotes} disabled={savingNotes} className="btn-ghost text-xs mt-2">
+                    {savingNotes ? 'Saving…' : 'Save note'}
+                  </button>
+                </div>
+                <div className="flex gap-3 justify-center flex-wrap">
+                  <button onClick={toggleWishlist} className="btn-ghost">
+                    {item.is_wishlist ? 'Mark as Owned' : 'Move to Wishlist'}
+                  </button>
+                  <button onClick={() => setShowCamera(true)} disabled={uploadingCover} className="btn-ghost text-xs md:hidden">
+                    {uploadingCover ? 'Uploading…' : '📷'}
+                  </button>
+                  <button onClick={() => coverInputRef.current?.click()} disabled={uploadingCover} className="btn-ghost text-xs">
+                    {coverSrc ? 'Replace cover' : 'Add cover'}
+                  </button>
+                  <input
+                    ref={coverInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleCoverUpload}
+                    style={{ position: 'fixed', top: '-100vh', left: 0, opacity: 0, pointerEvents: 'none' }}
+                  />
+                  {coverSrc && (
+                    <button onClick={handleRemoveCover} disabled={removingCover} className="btn-ghost text-xs disabled:opacity-50" style={{ color: 'var(--text-muted)' }}>
+                      {removingCover ? 'Removing…' : 'Remove cover'}
+                    </button>
+                  )}
+                  {confirmDelete ? (
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm" style={{ color: 'var(--text-muted)' }}>Are you sure?</span>
+                      <button onClick={handleDelete} className="btn-ghost text-sm text-red-500">Yes, delete</button>
+                      <button onClick={() => setConfirmDelete(false)} className="btn-ghost text-sm">Cancel</button>
+                    </div>
+                  ) : (
+                    <button onClick={() => setConfirmDelete(true)} className="btn-ghost text-red-500">Delete</button>
+                  )}
+                </div>
+              </>
+            ) : (
+              notes && <p className="subtitle text-sm text-center italic">&ldquo;{notes}&rdquo;</p>
+            )}
+            {item.tracklist && item.tracklist.length > 0 && (
+              <div>
+                <p className="label mb-2 block">Tracklist</p>
+                <ol className="flex flex-col gap-1">
+                  {item.tracklist.map((track: Track, i: number) => (
+                    <li key={i} className="flex gap-2 text-sm">
+                      <span className="subtitle w-8 flex-shrink-0">{track.position || i + 1}</span>
+                      <span className="flex-1">{track.title}</span>
+                      {track.duration && <span className="subtitle flex-shrink-0">{track.duration}</span>}
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+      {showCamera && (
+        <PhotoCapture
+          onCapture={file => { setShowCamera(false); uploadCoverFile(file) }}
+          onClose={() => setShowCamera(false)}
+        />
+      )}
+      {coverZoom && coverSrc && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90"
+          onClick={() => setCoverZoom(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Cover image for ${item.title}`}
+        >
+          <button
+            onClick={() => setCoverZoom(false)}
+            className="absolute top-4 right-4 text-white/70 hover:text-white text-3xl leading-none z-10"
+            aria-label="Close"
+          >✕</button>
+          <div className="w-full h-full flex items-center justify-center p-6" onClick={e => e.stopPropagation()}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={coverSrc}
+              alt={item.title}
+              className="rounded-lg shadow-2xl object-contain"
+              style={{ maxWidth: '100%', maxHeight: 'calc(100vh - 3rem)', width: 'auto', height: 'auto' }}
+              onClick={() => setCoverZoom(false)}
+            />
+          </div>
+        </div>
+      )}
+    </>
+  )
+}

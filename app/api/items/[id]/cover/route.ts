@@ -1,10 +1,9 @@
 import { NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase-server'
 import { getSession } from '@/lib/session'
-import sharp from 'sharp'
 import { randomUUID } from 'crypto'
 import { ALLOWED_IMAGE_TYPES, MAX_IMAGE_SIZE } from '@/lib/constants'
-import { coverStorageKey } from '@/lib/cover'
+import { coverStorageKey, uploadImageBuffer } from '@/lib/cover'
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -26,22 +25,15 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if (!ALLOWED_IMAGE_TYPES.includes(file.type as typeof ALLOWED_IMAGE_TYPES[number])) return NextResponse.json({ error: 'Unsupported file type' }, { status: 400 })
   if (file.size > MAX_IMAGE_SIZE) return NextResponse.json({ error: 'File too large (max 10 MB)' }, { status: 400 })
 
-  const buffer = Buffer.from(await file.arrayBuffer())
-  const resized = await sharp(buffer)
-    .resize(600, 600, { fit: 'inside', withoutEnlargement: true })
-    .jpeg({ quality: 85 })
-    .toBuffer()
-
   if (item.cover_path) {
     const oldKey = coverStorageKey(item.cover_path)
     await db.storage.from('covers').remove([oldKey])
   }
 
-  const path = `manual/${item.member_id}/${randomUUID()}.jpg`
-  const { error } = await db.storage.from('covers').upload(path, resized, { contentType: 'image/jpeg' })
-  if (error) return NextResponse.json({ error: 'Upload failed' }, { status: 500 })
-
-  const cover_path = `covers/${path}`
+  const buffer = Buffer.from(await file.arrayBuffer())
+  const storagePath = `manual/${item.member_id}/${randomUUID()}.jpg`
+  const cover_path = await uploadImageBuffer(buffer, storagePath)
+  if (!cover_path) return NextResponse.json({ error: 'Upload failed' }, { status: 500 })
   const { data: updated, error: updateError } = await db.from('items').update({ cover_path }).eq('id', id).select().single()
   if (updateError) return NextResponse.json({ error: 'DB update failed' }, { status: 500 })
 
