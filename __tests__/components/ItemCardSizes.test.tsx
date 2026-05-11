@@ -5,10 +5,12 @@
  * hint so the browser fetches a small srcset variant for tile-sized covers.
  * Without this, a 540px image is loaded for a 48px or 200px tile — wasted
  * bandwidth + extra image-decode work on iOS.
+ *
+ * Also covers: sort_name field in the meta-edit sheet (#120 / #C).
  */
 import '@testing-library/jest-dom'
 import React from 'react'
-import { render } from '@testing-library/react'
+import { render, screen, fireEvent, act } from '@testing-library/react'
 
 // next/image renders a real <img> in jsdom; we assert against its attributes
 jest.mock('next/image', () => ({
@@ -79,5 +81,76 @@ describe('ItemCard cover image sizes hint (battery)', () => {
     const img = container.querySelector('img[alt="Abbey Road"]')
     expect(img).not.toBeNull()
     expect(img!.getAttribute('sizes')).toBe('48px')
+  })
+})
+
+describe('ItemCard sort_name edit field (#120)', () => {
+  beforeEach(() => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ ...baseItem, sort_name: 'Beatles, The' }),
+    })
+  })
+  afterEach(() => { jest.restoreAllMocks() })
+
+  function openEditMode() {
+    // ItemCard renders collapsed by default — open it then enter edit mode
+    render(
+      <ItemCard
+        item={{ ...baseItem, sort_name: null }}
+        isEditor={true}
+        onUpdate={jest.fn()}
+        onDelete={noop}
+        supabaseUrl="https://example.com"
+        initialOpen={true}
+      />
+    )
+    fireEvent.click(screen.getByTitle(/edit/i))
+  }
+
+  it('shows Sort name input for vinyl', () => {
+    openEditMode()
+    expect(screen.getByPlaceholderText(/Sort name/i)).toBeInTheDocument()
+  })
+
+  it('does NOT show Sort name input for books', () => {
+    render(
+      <ItemCard
+        item={{ ...baseItem, collection: 'book', sort_name: null }}
+        isEditor={true}
+        onUpdate={jest.fn()}
+        onDelete={noop}
+        supabaseUrl="https://example.com"
+        initialOpen={true}
+      />
+    )
+    fireEvent.click(screen.getByTitle(/edit/i))
+    expect(screen.queryByPlaceholderText(/Sort name/i)).not.toBeInTheDocument()
+  })
+
+  it('sends sort_name in PATCH body when saved', async () => {
+    openEditMode()
+    fireEvent.change(screen.getByPlaceholderText(/Sort name/i), { target: { value: 'Beatles, The' } })
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /^Save$/i })) })
+    const body = JSON.parse((fetch as jest.Mock).mock.calls[0][1].body)
+    expect(body.sort_name).toBe('Beatles, The')
+  })
+
+  it('sends sort_name: null when field is cleared', async () => {
+    render(
+      <ItemCard
+        item={{ ...baseItem, sort_name: 'Beatles, The' }}
+        isEditor={true}
+        onUpdate={jest.fn()}
+        onDelete={noop}
+        supabaseUrl="https://example.com"
+        initialOpen={true}
+      />
+    )
+    fireEvent.click(screen.getByTitle(/edit/i))
+    fireEvent.change(screen.getByPlaceholderText(/Sort name/i), { target: { value: '' } })
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /^Save$/i })) })
+    const body = JSON.parse((fetch as jest.Mock).mock.calls[0][1].body)
+    expect(body.sort_name).toBeNull()
   })
 })

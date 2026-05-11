@@ -53,6 +53,7 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
   const [editTitle, setEditTitle] = useState(item.title)
   const [editCreator, setEditCreator] = useState(item.creator)
   const [editYear, setEditYear] = useState(item.year?.toString() ?? '')
+  const [editSortName, setEditSortName] = useState(item.sort_name ?? '')
   const [savingMeta, setSavingMeta] = useState(false)
   const [savingRating, setSavingRating] = useState(false)
   const [savingLegoStatus, setSavingLegoStatus] = useState(false)
@@ -143,6 +144,7 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
         title: editTitle.trim(),
         creator: editCreator.trim(),
         year: editYear ? parseInt(editYear) : null,
+        ...(item.collection === 'vinyl' ? { sort_name: editSortName.trim() || null } : {}),
       }),
     })
     if (res.ok) {
@@ -385,11 +387,19 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
                   onChange={e => setEditYear(e.target.value)}
                   placeholder="Year"
                 />
+                {item.collection === 'vinyl' && (
+                  <input
+                    className="input text-center text-sm"
+                    value={editSortName}
+                    onChange={e => setEditSortName(e.target.value)}
+                    placeholder="Sort name (e.g. Sinatra, Frank)"
+                  />
+                )}
                 <div className="flex gap-2 justify-center">
                   <button onClick={saveMeta} disabled={savingMeta || !editTitle.trim()} className="btn-primary text-sm px-4">
                     {savingMeta ? 'Saving…' : 'Save'}
                   </button>
-                  <button onClick={() => { setEditingMeta(false); setEditTitle(item.title); setEditCreator(item.creator); setEditYear(item.year?.toString() ?? '') }} className="btn-ghost text-sm px-4">
+                  <button onClick={() => { setEditingMeta(false); setEditTitle(item.title); setEditCreator(item.creator); setEditYear(item.year?.toString() ?? ''); setEditSortName(item.sort_name ?? '') }} className="btn-ghost text-sm px-4">
                     Cancel
                   </button>
                 </div>

@@ -29,7 +29,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   const body = await request.json()
-  const { memberSlug, collection, title, creator, year, cover_url, is_wishlist, external_id, isbn, lang, genres, styles, num_parts } = body
+  const { memberSlug, collection, title, creator, year, cover_url, is_wishlist, external_id, isbn, lang, genres, styles, num_parts, sort_name: manualSortName } = body
   if (!title?.trim()) return NextResponse.json({ error: 'Title required' }, { status: 400 })
   if (!VALID_COLLECTIONS.includes(collection)) return NextResponse.json({ error: 'Invalid collection' }, { status: 400 })
   try {
@@ -69,7 +69,7 @@ export async function POST(request: Request) {
     is_wishlist: is_wishlist ?? false,
     notes: null,
     tracklist: vinylRelease?.tracklist?.length ? vinylRelease.tracklist : null,
-    sort_name: vinylRelease?.sortName ?? null,
+    sort_name: vinylRelease?.sortName ?? (manualSortName?.trim() || null),
     external_id: external_id ?? null,
     isbn: isbn ?? null,
     description: collection === 'lego' && num_parts
