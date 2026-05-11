@@ -328,6 +328,69 @@ async function backfillLego(db: ReturnType<typeof createServerClient>, force: bo
   return result
 }
 
+// --- Orphaned cover cleanup ---
+// Runs after all backfill steps so any newly-written cover_path values are
+// already committed to the DB before we decide what's "referenced".
+async function cleanupOrphanedCovers(
+  db: ReturnType<typeof createServerClient>,
+): Promise<{ scanned: number; orphans: number; deleted: number }> {
+  // 1. List every blob in the covers bucket (up to 3 folder levels deep)
+  const blobs: string[] = []
+  const { data: topLevel } = await db.storage.from('covers').list('', { limit: 1000 })
+  for (const entry of topLevel ?? []) {
+    if (entry.id) {
+      blobs.push(entry.name)
+    } else {
+      const { data: children } = await db.storage.from('covers').list(entry.name, { limit: 1000 })
+      for (const child of children ?? []) {
+        if (child.id) {
+          blobs.push(`${entry.name}/${child.name}`)
+        } else {
+          const { data: grandchildren } = await db.storage
+            .from('covers')
+            .list(`${entry.name}/${child.name}`, { limit: 1000 })
+          for (const gc of grandchildren ?? []) {
+            if (gc.id) blobs.push(`${entry.name}/${child.name}/${gc.name}`)
+          }
+        }
+      }
+    }
+  }
+
+  // 2. Collect every cover_path referenced by the items table
+  const referenced = new Set<string>()
+  let offset = 0
+  const PAGE = 1000
+  while (true) {
+    const { data, error } = await db
+      .from('items')
+      .select('cover_path')
+      .not('cover_path', 'is', null)
+      .range(offset, offset + PAGE - 1)
+    if (error) break
+    for (const row of data ?? []) {
+      const key = row.cover_path.startsWith('covers/')
+        ? row.cover_path.slice('covers/'.length)
+        : row.cover_path
+      referenced.add(key)
+    }
+    if ((data?.length ?? 0) < PAGE) break
+    offset += PAGE
+  }
+
+  // 3. Delete orphans in batches of 100 (Storage API limit)
+  const orphans = blobs.filter(b => !referenced.has(b))
+  const BATCH = 100
+  let deleted = 0
+  for (let i = 0; i < orphans.length; i += BATCH) {
+    const batch = orphans.slice(i, i + BATCH)
+    const { error } = await db.storage.from('covers').remove(batch)
+    if (!error) deleted += batch.length
+  }
+
+  return { scanned: blobs.length, orphans: orphans.length, deleted }
+}
+
 export async function GET(request: Request) {
   const { getSession } = await import('@/lib/session')
   const session = await getSession()
@@ -336,14 +399,18 @@ export async function GET(request: Request) {
   const params = new URL(request.url).searchParams
   const force = params.get('force') === 'true'
   const types = params.get('types')?.split(',') ?? ['vinyl', 'book', 'comic', 'lego']
+  const skipCleanup = params.get('skipCleanup') === 'true'
 
   const db = createServerClient()
-  const summary: Record<string, { total: number; updated: number }> = {}
+  const summary: Record<string, unknown> = {}
 
   if (types.includes('vinyl')) summary.vinyl = await backfillVinyl(db, force)
   if (types.includes('book')) summary.book = await backfillBooks(db, force)
   if (types.includes('comic')) summary.comic = await backfillComics(db, force)
   if (types.includes('lego')) summary.lego = await backfillLego(db, force)
+
+  // Always clean up orphaned cover blobs after backfill (can be skipped via ?skipCleanup=true)
+  if (!skipCleanup) summary.orphanedCovers = await cleanupOrphanedCovers(db)
 
   return NextResponse.json({ force, types, summary })
 }
