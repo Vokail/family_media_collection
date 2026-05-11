@@ -31,16 +31,27 @@ export async function setSession(
 }
 
 /**
- * Mocks the existing-items fetch the add page makes on mount.
- * Pass an empty array if no items in the collection.
+ * Mocks the existing-items fetch (GET) AND the add-item call (POST) that the
+ * add page makes. GET returns the supplied existing list; POST echoes back the
+ * incoming body with an id, so the page can update its dedup map.
  */
 export async function mockExistingItems(page: Page, items: unknown[] = []) {
   await page.route(/\/api\/items(\?|$)/, async (route: Route) => {
-    if (route.request().method() === 'GET') {
+    const method = route.request().method()
+    if (method === 'GET') {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify(items),
+      })
+    } else if (method === 'POST') {
+      // Echo the posted body with a generated id — enough for the add page to
+      // accept the response and trigger the post-add UI (toast + auto-navigate).
+      const body = route.request().postDataJSON() ?? {}
+      await route.fulfill({
+        status: 201,
+        contentType: 'application/json',
+        body: JSON.stringify({ id: `new-${Date.now()}`, ...body, member_id: 'm-alice' }),
       })
     } else {
       await route.continue()
