@@ -446,6 +446,7 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
         <div className="ml-auto flex items-center gap-2">
           <span className="label hidden sm:inline">Sort</span>
           <select
+            aria-label="Sort"
             value={sort}
             onChange={e => { const v = e.target.value as SortMode; setSort(v); localStorage.setItem(sortStorageKey, v) }}
             // max-w on mobile: iOS WebKit can size a <select> to fit the LONGEST option

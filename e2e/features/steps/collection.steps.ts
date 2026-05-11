@@ -12,11 +12,11 @@ Given("I am on Alice's {word} collection page", async ({ page }, collection: str
 })
 
 When('I sort by title', async ({ page }) => {
-  await page.locator('select').first().selectOption('title')
+  await page.getByRole('combobox', { name: /sort/i }).selectOption('title')
 })
 
 When('I sort by status', async ({ page }) => {
-  await page.locator('select').first().selectOption('status')
+  await page.getByRole('combobox', { name: /sort/i }).selectOption('status')
 })
 
 When('I click the first sidebar letter', async ({ page }) => {
@@ -46,7 +46,7 @@ Then('the page scrolls to a section', async ({ page }) => {
 
 
 Then('the sort dropdown is visible inside the viewport', async ({ page, viewport }) => {
-  const sortSelect = page.locator('select').first()
+  const sortSelect = page.getByRole('combobox', { name: /sort/i })
   await expect(sortSelect).toBeVisible()
   const box = await sortSelect.boundingBox()
   expect(box).not.toBeNull()

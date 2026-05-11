@@ -45,9 +45,10 @@ When('I press the {string} button', async ({ page }, label: string) => {
 // ─── Common assertions ──────────────────────────────────────────────────────
 
 Then('I stay on the login screen', async ({ page }) => {
-  await page.waitForTimeout(1500) // give the rejected request a moment to settle
-  await expect(page).not.toHaveURL(/\/members/)
+  // Wait for the password field to be visible — Playwright retries this until
+  // the UI has settled after the failed login attempt, replacing a fixed sleep.
   await expect(page.getByPlaceholder(/password|pin/i)).toBeVisible()
+  await expect(page).not.toHaveURL(/\/members/)
 })
 
 Then('I see the password field', async ({ page }) => {
