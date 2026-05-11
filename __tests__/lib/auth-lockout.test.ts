@@ -62,6 +62,29 @@ describe('checkLockout', () => {
       jest.spyOn(Date, 'now').mockRestore()
     }
   })
+
+  it('expires a non-lockout entry whose lastFailure is older than LOCKOUT_MS (#137)', () => {
+    const ip = newIp()
+    const t0 = Date.now()
+
+    try {
+      jest.spyOn(Date, 'now').mockReturnValue(t0)
+      // Record 3 failures — well below the lockout threshold
+      for (let i = 0; i < 3; i++) recordFailure(ip)
+      expect(checkLockout(ip)).toEqual({ locked: false, secondsLeft: 0 })
+
+      // Advance past LOCKOUT_MS (15 min) — the entry should be swept
+      jest.spyOn(Date, 'now').mockReturnValue(t0 + 15 * 60 * 1000 + 1)
+      expect(checkLockout(ip)).toEqual({ locked: false, secondsLeft: 0 })
+
+      // Three more failures after sweep should NOT add to the old count
+      // (entry was deleted so count restarts from 0)
+      for (let i = 0; i < 3; i++) recordFailure(ip)
+      expect(checkLockout(ip)).toEqual({ locked: false, secondsLeft: 0 })
+    } finally {
+      jest.spyOn(Date, 'now').mockRestore()
+    }
+  })
 })
 
 describe('clearAttempts', () => {

@@ -368,7 +368,7 @@ export default function AddItemPage() {
     } finally {
       setIdentifying(false)
     }
-  }, [runSearch, searchLang, toast])
+  }, [runSearch, toast])
 
   function goToCollection() {
     if (navTimer.current) clearTimeout(navTimer.current)

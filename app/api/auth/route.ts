@@ -6,7 +6,12 @@ import { checkLockout, recordFailure, clearAttempts } from '@/lib/auth-lockout'
 
 function getIp(): string {
   const hdrs = headers()
-  return hdrs.get('x-forwarded-for')?.split(',')[0].trim() ?? 'unknown'
+  const forwarded = hdrs.get('x-forwarded-for')?.split(',')[0].trim()
+  // In production x-forwarded-for is set by Vercel's edge. In local dev it's
+  // absent, so we fall back to a loopback address rather than 'unknown' —
+  // using 'unknown' would bucket all unproxied requests together and could
+  // cause self-lockout during testing.
+  return forwarded ?? (process.env.NODE_ENV === 'production' ? 'unknown' : '127.0.0.1')
 }
 
 export async function POST(request: Request) {

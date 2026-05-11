@@ -1,5 +1,6 @@
+const mockHeadersMap = new Map([['x-forwarded-for', '1.2.3.4']])
 jest.mock('next/headers', () => ({
-  headers: jest.fn(() => new Map([['x-forwarded-for', '1.2.3.4']])),
+  headers: jest.fn(() => mockHeadersMap),
   cookies: jest.fn(() => ({ get: jest.fn(), set: jest.fn() })),
 }))
 
@@ -91,6 +92,27 @@ describe('POST /api/auth', () => {
     expect(body.role).toBe('viewer')
     expect(mockClearAttempts).toHaveBeenCalled()
     expect(mockCreateSession).toHaveBeenCalledWith('viewer', undefined)
+  })
+})
+
+describe('getIp() fallback (#138)', () => {
+  it('uses x-forwarded-for when present', async () => {
+    mockHeadersMap.set('x-forwarded-for', '5.6.7.8')
+    mockResolveRole.mockResolvedValue(null)
+    await POST(makePostRequest({ password: 'x' }))
+    expect(mockRecordFailure).toHaveBeenCalledWith('5.6.7.8')
+    mockHeadersMap.set('x-forwarded-for', '1.2.3.4') // restore
+  })
+
+  it('falls back to 127.0.0.1 in non-production when x-forwarded-for is absent (#138)', async () => {
+    mockHeadersMap.delete('x-forwarded-for')
+    const origEnv = process.env.NODE_ENV
+    Object.defineProperty(process.env, 'NODE_ENV', { value: 'test', configurable: true })
+    mockResolveRole.mockResolvedValue(null)
+    await POST(makePostRequest({ password: 'x' }))
+    expect(mockRecordFailure).toHaveBeenCalledWith('127.0.0.1')
+    mockHeadersMap.set('x-forwarded-for', '1.2.3.4') // restore
+    Object.defineProperty(process.env, 'NODE_ENV', { value: origEnv, configurable: true })
   })
 })
 
