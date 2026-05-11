@@ -50,7 +50,6 @@ async function findFreeVisionModel(apiKey: string): Promise<string | null> {
 
   if (model) {
     setCachedModel(model)
-    console.log('OCR: selected free vision model:', model)
   }
 
   return model
