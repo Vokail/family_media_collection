@@ -11,6 +11,7 @@ import { useToast } from '@/components/Toast'
 import type { SearchResult, CollectionType, Item } from '@/lib/types'
 import { toTitleCase } from '@/lib/utils'
 import { navigateTo } from '@/lib/navigate'
+import { makeDupeMap, getDupeStatus as _getDupeStatus } from '@/lib/getDupeStatus'
 
 const SEARCH_LANGUAGES = [
   { value: 'dutch', label: 'Nederlands' },
@@ -75,25 +76,10 @@ export default function AddItemPage() {
 
   // ── Dupe detection ────────────────────────────────────────────────────────
 
-  const dupeMap = useMemo(() => {
-    const byId = new Map<string, 'owned' | 'wishlist'>()
-    const byTitle = new Map<string, 'owned' | 'wishlist'>()
-    for (const item of existingItems) {
-      const status = item.is_wishlist ? 'wishlist' : 'owned'
-      if (item.external_id) byId.set(item.external_id, status)
-      byTitle.set(`${item.title.toLowerCase().trim()}|${item.creator.toLowerCase().trim()}`, status)
-    }
-    return { byId, byTitle }
-  }, [existingItems])
+  const dupeMap = useMemo(() => makeDupeMap(existingItems), [existingItems])
 
   function getDupeStatus(result: SearchResult): 'owned' | 'wishlist' | null {
-    if (result.external_id) {
-      const s = dupeMap.byId.get(result.external_id)
-      if (s) return s
-      if (result.source === 'rebrickable' || result.source === 'discogs') return null
-    }
-    const key = `${result.title.toLowerCase().trim()}|${result.creator.toLowerCase().trim()}`
-    return dupeMap.byTitle.get(key) ?? null
+    return _getDupeStatus(result, dupeMap)
   }
 
   // ── Navigation ───────────────────────────────────────────────────────────

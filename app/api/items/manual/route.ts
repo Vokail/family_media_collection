@@ -6,10 +6,7 @@ import sharp from 'sharp'
 import { randomUUID } from 'crypto'
 import { createServerClient } from '@/lib/supabase-server'
 import { getSession } from '@/lib/session'
-
-const VALID_COLLECTIONS: CollectionType[] = ['vinyl', 'book', 'comic', 'lego']
-const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif']
-const MAX_SIZE = 10 * 1024 * 1024 // 10 MB
+import { VALID_COLLECTIONS, ALLOWED_IMAGE_TYPES, MAX_IMAGE_SIZE } from '@/lib/constants'
 
 export async function POST(request: Request) {
   const session = await getSession()
@@ -65,10 +62,10 @@ export async function POST(request: Request) {
 
     let cover_path: string | null = null
     if (coverFile && coverFile.size > 0) {
-      if (!ALLOWED_TYPES.includes(coverFile.type)) {
+      if (!ALLOWED_IMAGE_TYPES.includes(coverFile.type as typeof ALLOWED_IMAGE_TYPES[number])) {
         return NextResponse.json({ error: 'Unsupported file type' }, { status: 400 })
       }
-      if (coverFile.size > MAX_SIZE) {
+      if (coverFile.size > MAX_IMAGE_SIZE) {
         return NextResponse.json({ error: 'File too large (max 10 MB)' }, { status: 400 })
       }
       const buffer = Buffer.from(await coverFile.arrayBuffer())

@@ -5,8 +5,7 @@ import { getSession } from '@/lib/session'
 import CollectionGrid from '@/components/CollectionGrid'
 import Link from 'next/link'
 import type { CollectionType } from '@/lib/types'
-
-const VALID_COLLECTIONS: CollectionType[] = ['vinyl', 'book', 'comic', 'lego']
+import { VALID_COLLECTIONS } from '@/lib/constants'
 
 export default async function CollectionPage({
   params,

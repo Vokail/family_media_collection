@@ -4,10 +4,7 @@ import { updateMemberCollections, updateMemberAvatar } from '@/lib/db/members'
 import { createServerClient } from '@/lib/supabase-server'
 import type { CollectionType } from '@/lib/types'
 import sharp from 'sharp'
-
-const ALL_COLLECTIONS: CollectionType[] = ['vinyl', 'book', 'comic', 'lego']
-const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif']
-const MAX_SIZE = 10 * 1024 * 1024 // 10 MB
+import { VALID_COLLECTIONS, ALLOWED_IMAGE_TYPES, MAX_IMAGE_SIZE } from '@/lib/constants'
 
 export async function PATCH(request: Request) {
   const session = await getSession()
@@ -21,7 +18,7 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: 'At least one collection must be enabled' }, { status: 400 })
   }
 
-  const valid = enabled_collections.every((c: unknown) => ALL_COLLECTIONS.includes(c as CollectionType))
+  const valid = enabled_collections.every((c: unknown) => VALID_COLLECTIONS.includes(c as CollectionType))
   if (!valid) {
     return NextResponse.json({ error: 'Invalid collection type' }, { status: 400 })
   }
@@ -43,10 +40,10 @@ export async function PUT(request: Request) {
   if (!file || file.size === 0) {
     return NextResponse.json({ error: 'No file provided' }, { status: 400 })
   }
-  if (!ALLOWED_TYPES.includes(file.type)) {
+  if (!ALLOWED_IMAGE_TYPES.includes(file.type as typeof ALLOWED_IMAGE_TYPES[number])) {
     return NextResponse.json({ error: 'Unsupported file type' }, { status: 400 })
   }
-  if (file.size > MAX_SIZE) {
+  if (file.size > MAX_IMAGE_SIZE) {
     return NextResponse.json({ error: 'File too large (max 10 MB)' }, { status: 400 })
   }
 

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase-server'
-import { downloadCover } from '@/lib/cover'
+import { downloadCover, coverStorageKey } from '@/lib/cover'
 import { fetchBookDescription } from '@/lib/apis/openlibrary'
 import { fetchComicDescription } from '@/lib/apis/comicvine'
 
@@ -26,7 +26,7 @@ async function replaceCover(
   const newPath = await downloadCover(coverUrl, item.member_id)
   if (!newPath) return null
   if (item.cover_path) {
-    const oldKey = item.cover_path.replace(/^covers\//, '')
+    const oldKey = coverStorageKey(item.cover_path)
     await db.storage.from('covers').remove([oldKey]).catch(() => {/* ignore delete errors */})
   }
   return newPath
@@ -369,10 +369,7 @@ async function cleanupOrphanedCovers(
       .range(offset, offset + PAGE - 1)
     if (error) break
     for (const row of data ?? []) {
-      const key = row.cover_path.startsWith('covers/')
-        ? row.cover_path.slice('covers/'.length)
-        : row.cover_path
-      referenced.add(key)
+      referenced.add(coverStorageKey(row.cover_path))
     }
     if ((data?.length ?? 0) < PAGE) break
     offset += PAGE

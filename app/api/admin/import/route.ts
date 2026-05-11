@@ -3,11 +3,11 @@ import { createServerClient } from '@/lib/supabase-server'
 import { getSession } from '@/lib/session'
 import sharp from 'sharp'
 import { randomUUID } from 'crypto'
+import { VALID_COLLECTIONS } from '@/lib/constants'
 
 export const maxDuration = 60
 
 interface ExportMember { id: string; name: string; slug: string }
-const VALID_COLLECTIONS = ['vinyl', 'book', 'comic', 'lego'] as const
 
 interface ExportItem {
   member_id: string

@@ -3,6 +3,7 @@ import { revalidatePath } from 'next/cache'
 import { updateItem, deleteItem } from '@/lib/db/items'
 import { createServerClient } from '@/lib/supabase-server'
 import { getSession } from '@/lib/session'
+import { coverStorageKey } from '@/lib/cover'
 
 export async function GET(
   _: Request,
@@ -66,9 +67,7 @@ export async function PATCH(
     // If the client is clearing the cover, remove the old blob from Storage
     // before updating the DB to avoid orphaned files (#122).
     if ('cover_path' in raw && raw.cover_path === null && existing?.cover_path) {
-      const oldKey = existing.cover_path.startsWith('covers/')
-        ? existing.cover_path.slice('covers/'.length)
-        : existing.cover_path
+      const oldKey = coverStorageKey(existing.cover_path)
       await db.storage.from('covers').remove([oldKey])
     }
 
@@ -99,7 +98,7 @@ export async function DELETE(
     await deleteItem(id)
     revalidatePath('/', 'layout')
     if (data?.cover_path) {
-      const key = data.cover_path.startsWith('covers/') ? data.cover_path.slice('covers/'.length) : data.cover_path
+      const key = coverStorageKey(data.cover_path)
       await db.storage.from('covers').remove([key])
     }
     return NextResponse.json({ ok: true })

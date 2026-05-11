@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase-server'
 import { getSession } from '@/lib/session'
+import { coverStorageKey } from '@/lib/cover'
 
 export const dynamic = 'force-dynamic'
 // Covers can take time to download — bump the timeout ceiling for Vercel
@@ -29,9 +30,7 @@ export async function GET() {
       batch.map(async (item) => {
         if (!item.cover_path) return item
         try {
-          const storagePath = item.cover_path.startsWith('covers/')
-            ? item.cover_path.slice('covers/'.length)
-            : item.cover_path
+          const storagePath = coverStorageKey(item.cover_path)
           const { data: blob } = await db.storage.from('covers').download(storagePath)
           if (!blob) return item
           const buffer = Buffer.from(await blob.arrayBuffer())

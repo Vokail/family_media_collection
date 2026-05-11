@@ -4,8 +4,7 @@ import { listItems, createItem } from '@/lib/db/items'
 import { getMemberBySlug } from '@/lib/db/members'
 import { getSession } from '@/lib/session'
 import type { CollectionType } from '@/lib/types'
-
-const VALID_COLLECTIONS: CollectionType[] = ['vinyl', 'book', 'comic', 'lego']
+import { VALID_COLLECTIONS } from '@/lib/constants'
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)

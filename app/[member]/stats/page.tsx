@@ -4,6 +4,7 @@ import { getMemberBySlug } from '@/lib/db/members'
 import { listAllItems } from '@/lib/db/items'
 import { getSession } from '@/lib/session'
 import StatsView from '@/components/StatsView'
+import { VALID_COLLECTIONS } from '@/lib/constants'
 
 export default async function StatsPage({
   params,
@@ -16,8 +17,7 @@ export default async function StatsPage({
   const [member, session] = await Promise.all([getMemberBySlug(slug), getSession()])
   if (!member) notFound()
 
-  const validCollections = ['vinyl', 'book', 'comic', 'lego']
-  const backCollection = from && validCollections.includes(from) ? from : 'vinyl'
+  const backCollection = from && (VALID_COLLECTIONS as readonly string[]).includes(from) ? from : 'vinyl'
   const isOwnProfile = session.role === 'member' && session.editableMemberId === member.id
 
   const items = await listAllItems(member.id)

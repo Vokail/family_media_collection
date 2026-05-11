@@ -4,6 +4,7 @@ import { useState, useRef, useCallback, useEffect } from 'react'
 import ItemCard from './ItemCard'
 import type { Item, CollectionType, Member } from '@/lib/types'
 import { getSurprisePool } from '@/lib/surprisePool'
+import { CONDITION_OPTIONS, CONDITION_ORDER } from '@/lib/conditions'
 
 const PULL_THRESHOLD = 72
 const PAGE_SIZE = 60
@@ -58,7 +59,7 @@ function sortKey(creator: string, sortName: string | null | undefined, collectio
   return creator.replace(/^(the|a|an)\s+/i, '').trim().toLowerCase()
 }
 
-const CONDITION_ORDER = ['mint', 'near_mint', 'good', 'poor'] as const
+// CONDITION_ORDER imported from @/lib/conditions
 
 function sortItems(items: Item[], mode: SortMode, collection: CollectionType): Item[] {
   const copy = [...items]
@@ -129,20 +130,35 @@ function buildYearGroups(items: Item[]): YearGroup[] {
 
 interface ConditionGroup { label: string; abbr: string; color: string; items: Item[] }
 
-const CONDITION_GRADES: ConditionGroup[] = [
-  { label: 'Mint',      abbr: 'M',  color: '#16a34a', items: [] },
-  { label: 'Near Mint', abbr: 'NM', color: '#0891b2', items: [] },
-  { label: 'Good',      abbr: 'G',  color: '#d97706', items: [] },
-  { label: 'Poor',      abbr: 'P',  color: '#dc2626', items: [] },
-]
-
 export function buildConditionGroups(items: Item[]): ConditionGroup[] {
-  const groups: ConditionGroup[] = CONDITION_GRADES
-    .map(g => ({ ...g, items: items.filter(i => i.condition === g.label.toLowerCase().replace(/\s+/g, '_')) }))
+  const groups: ConditionGroup[] = CONDITION_OPTIONS
+    .map(opt => ({ label: opt.name, abbr: opt.abbr, color: opt.color, items: items.filter(i => i.condition === opt.value) }))
     .filter(g => g.items.length > 0)
   const ungraded = items.filter(i => !i.condition)
   if (ungraded.length > 0) groups.push({ label: 'Ungraded', abbr: '–', color: 'var(--text-muted)', items: ungraded })
   return groups
+}
+
+/** Sticky A-Z / decade sidebar — renders once, reused for creator/title/year groups. */
+function AlphaSidebar({ items, onScroll }: { items: { display: string; key: string }[]; onScroll: (key: string) => void }) {
+  if (items.length === 0) return null
+  return (
+    <div
+      className="fixed right-1 top-1/2 -translate-y-1/2 flex flex-col z-20 select-none rounded-full py-1 px-0.5"
+      style={{ backgroundColor: 'color-mix(in srgb, var(--bg-card) 85%, transparent)', backdropFilter: 'blur(8px)', boxShadow: '0 1px 6px var(--shadow)' }}
+    >
+      {items.map(({ display, key }) => (
+        <button
+          key={key}
+          onClick={() => onScroll(key)}
+          className="text-xs font-bold leading-tight px-1.5 py-0.5"
+          style={{ color: 'var(--accent)' }}
+        >
+          {display}
+        </button>
+      ))}
+    </div>
+  )
 }
 
 interface Props {
@@ -520,20 +536,7 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
                 </div>
               </div>
             ))}
-            {sidebarItems.length > 0 && (
-              <div className="fixed right-1 top-1/2 -translate-y-1/2 flex flex-col z-20 select-none rounded-full py-1 px-0.5" style={{ backgroundColor: 'color-mix(in srgb, var(--bg-card) 85%, transparent)', backdropFilter: 'blur(8px)', boxShadow: '0 1px 6px var(--shadow)' }}>
-                {sidebarItems.map(({ display, key }) => (
-                  <button
-                    key={key}
-                    onClick={() => scrollTo(key)}
-                    className="text-xs font-bold leading-tight px-1.5 py-0.5"
-                    style={{ color: 'var(--accent)' }}
-                  >
-                    {display}
-                  </button>
-                ))}
-              </div>
-            )}
+            <AlphaSidebar items={sidebarItems} onScroll={scrollTo} />
           </>
         ) : byTitle ? (
           <>
@@ -556,20 +559,7 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
                 </div>
               </div>
             ))}
-            {sidebarItems.length > 0 && (
-              <div className="fixed right-1 top-1/2 -translate-y-1/2 flex flex-col z-20 select-none rounded-full py-1 px-0.5" style={{ backgroundColor: 'color-mix(in srgb, var(--bg-card) 85%, transparent)', backdropFilter: 'blur(8px)', boxShadow: '0 1px 6px var(--shadow)' }}>
-                {sidebarItems.map(({ display, key }) => (
-                  <button
-                    key={key}
-                    onClick={() => scrollTo(key)}
-                    className="text-xs font-bold leading-tight px-1.5 py-0.5"
-                    style={{ color: 'var(--accent)' }}
-                  >
-                    {display}
-                  </button>
-                ))}
-              </div>
-            )}
+            <AlphaSidebar items={sidebarItems} onScroll={scrollTo} />
           </>
         ) : byYear ? (
           <>
@@ -592,20 +582,7 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
                 </div>
               </div>
             ))}
-            {sidebarItems.length > 0 && (
-              <div className="fixed right-1 top-1/2 -translate-y-1/2 flex flex-col z-20 select-none rounded-full py-1 px-0.5" style={{ backgroundColor: 'color-mix(in srgb, var(--bg-card) 85%, transparent)', backdropFilter: 'blur(8px)', boxShadow: '0 1px 6px var(--shadow)' }}>
-                {sidebarItems.map(({ display, key }) => (
-                  <button
-                    key={key}
-                    onClick={() => scrollTo(key)}
-                    className="text-xs font-bold leading-tight px-1.5 py-0.5"
-                    style={{ color: 'var(--accent)' }}
-                  >
-                    {display}
-                  </button>
-                ))}
-              </div>
-            )}
+            <AlphaSidebar items={sidebarItems} onScroll={scrollTo} />
           </>
         ) : byRating ? (
           <>

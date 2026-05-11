@@ -19,7 +19,21 @@ jest.mock('sharp', () => {
 
 global.fetch = jest.fn()
 
-import { downloadCover } from '@/lib/cover'
+import { downloadCover, coverStorageKey } from '@/lib/cover'
+
+describe('coverStorageKey (#127)', () => {
+  it('strips the leading covers/ prefix', () => {
+    expect(coverStorageKey('covers/member-1/uuid.jpg')).toBe('member-1/uuid.jpg')
+  })
+
+  it('returns the path unchanged when no covers/ prefix', () => {
+    expect(coverStorageKey('member-1/uuid.jpg')).toBe('member-1/uuid.jpg')
+  })
+
+  it('handles two-level old-style paths', () => {
+    expect(coverStorageKey('covers/manual/member-1/uuid.jpg')).toBe('manual/member-1/uuid.jpg')
+  })
+})
 
 describe('downloadCover', () => {
   it('returns a storage path after downloading and uploading', async () => {

@@ -5,6 +5,7 @@ import type { Item, Track } from '@/lib/types'
 import PhotoCapture from './PhotoCapture'
 import { useToast } from './Toast'
 import { isNew } from '@/lib/utils'
+import { CONDITION_OPTIONS } from '@/lib/conditions'
 
 interface Props {
   item: Item
@@ -222,13 +223,7 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
     : item.lego_status === 'disassembled' ? '🔧 Apart'
     : null
 
-  const CONDITION_OPTIONS = [
-    { value: 'mint',      label: 'M',  title: 'Mint',      color: '#16a34a' },
-    { value: 'near_mint', label: 'NM', title: 'Near Mint', color: '#0891b2' },
-    { value: 'good',      label: 'G',  title: 'Good',      color: '#d97706' },
-    { value: 'poor',      label: 'P',  title: 'Poor',      color: '#dc2626' },
-  ] as const
-
+  // CONDITION_OPTIONS imported from @/lib/conditions
   const conditionOption = CONDITION_OPTIONS.find(o => o.value === item.condition) ?? null
 
   async function setCondition(value: typeof CONDITION_OPTIONS[number]['value'] | null) {
@@ -283,7 +278,7 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
               <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full" style={{ backgroundColor: 'var(--border)', color: 'var(--text-muted)' }}>{legoStatusLabel}</span>
             )}
             {item.collection === 'vinyl' && conditionOption && (
-              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full text-white" style={{ backgroundColor: conditionOption.color }}>{conditionOption.label}</span>
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full text-white" style={{ backgroundColor: conditionOption.color }}>{conditionOption.abbr}</span>
             )}
           </div>
         </button>
@@ -344,7 +339,7 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
           {item.collection === 'vinyl' && conditionOption && (
             <div className="absolute top-1 left-1 px-1.5 py-0.5 rounded text-white text-[9px] font-bold leading-none shadow"
               style={{ backgroundColor: conditionOption.color }}>
-              {conditionOption.label}
+              {conditionOption.abbr}
             </div>
           )}
         </button>
@@ -490,14 +485,14 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
                       key={opt.value}
                       onClick={isEditor ? () => setCondition(item.condition === opt.value ? null : opt.value) : undefined}
                       disabled={isEditor ? savingCondition : true}
-                      title={opt.title}
+                      title={opt.name}
                       className="btn-ghost text-xs px-3 py-1.5 disabled:opacity-50"
                       style={item.condition === opt.value
                         ? { backgroundColor: opt.color, color: '#fff', borderColor: opt.color }
                         : isEditor ? {} : { opacity: item.condition ? (item.condition === opt.value ? 1 : 0.35) : 0.35 }
                       }
                     >
-                      {opt.title}
+                      {opt.name}
                     </button>
                   ))}
                 </div>

@@ -1,8 +1,8 @@
 /**
- * Unit tests for the getDupeStatus logic used in AddItemPage.
+ * Unit tests for getDupeStatus / makeDupeMap (lib/getDupeStatus.ts, #125).
  *
  * getDupeStatus checks whether a search result is already in the user's
- * collection. It uses two lookup maps:
+ * collection. It uses two lookup maps built by makeDupeMap:
  *   byId    — matches by external_id (most precise)
  *   byTitle — matches by title+creator (fallback for sources without reliable IDs)
  *
@@ -13,33 +13,8 @@
  * "in collection".
  */
 
+import { makeDupeMap, getDupeStatus } from '@/lib/getDupeStatus'
 import type { SearchResult } from '@/lib/types'
-
-// Inline the exact getDupeStatus logic so we can unit-test it in isolation.
-// Keep in sync with app/[member]/[collection]/add/page.tsx.
-function makeDupeMap(existingItems: { external_id: string | null; title: string; creator: string; is_wishlist: boolean }[]) {
-  const byId = new Map<string, 'owned' | 'wishlist'>()
-  const byTitle = new Map<string, 'owned' | 'wishlist'>()
-  for (const item of existingItems) {
-    const status = item.is_wishlist ? 'wishlist' : 'owned'
-    if (item.external_id) byId.set(item.external_id, status)
-    byTitle.set(`${item.title.toLowerCase().trim()}|${item.creator.toLowerCase().trim()}`, status)
-  }
-  return { byId, byTitle }
-}
-
-function getDupeStatus(
-  result: Pick<SearchResult, 'external_id' | 'title' | 'creator' | 'source'>,
-  dupeMap: ReturnType<typeof makeDupeMap>,
-): 'owned' | 'wishlist' | null {
-  if (result.external_id) {
-    const s = dupeMap.byId.get(result.external_id)
-    if (s) return s
-    if (result.source === 'rebrickable' || result.source === 'discogs') return null
-  }
-  const key = `${result.title.toLowerCase().trim()}|${result.creator.toLowerCase().trim()}`
-  return dupeMap.byTitle.get(key) ?? null
-}
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -87,8 +62,6 @@ describe('getDupeStatus — exact external_id match', () => {
 
 describe('getDupeStatus — Rebrickable: skip title fallback for different set numbers (#116)', () => {
   it('returns null for a different Lego set that shares a name (75375-1 vs 75192-1)', () => {
-    // User owns 75192-1 "Millennium Falcon". Searching shows 75375-1 — also named
-    // "Millennium Falcon". Should NOT show as "in collection".
     const dm = makeDupeMap([ownedSet('75192-1', 'Millennium Falcon')])
     expect(getDupeStatus(legoResult('75375-1', 'Millennium Falcon'), dm)).toBeNull()
   })
@@ -102,7 +75,6 @@ describe('getDupeStatus — Rebrickable: skip title fallback for different set n
 describe('getDupeStatus — Discogs: skip title fallback for different release IDs', () => {
   it('returns null for a different vinyl release with the same album name', () => {
     const dm = makeDupeMap([ownedSet('1001', 'Abbey Road')])
-    // Different release ID but same title
     expect(getDupeStatus(vinylResult('9999', 'Abbey Road'), dm)).toBeNull()
   })
 
@@ -114,7 +86,6 @@ describe('getDupeStatus — Discogs: skip title fallback for different release I
 
 describe('getDupeStatus — OpenLibrary: title fallback still applies', () => {
   it('returns owned via title match when book was added without external_id', () => {
-    // Manually added book has no external_id in the collection
     const dm = makeDupeMap([{ external_id: null, title: 'Dune', creator: 'Frank Herbert', is_wishlist: false }])
     expect(getDupeStatus(bookResult('/works/OL1234W', 'Dune'), dm)).toBe('owned')
   })
