@@ -1,6 +1,6 @@
 {
   "name": "family-media-collection",
-  "version": "1.2.124",
+  "version": "1.2.125",
   "private": true,
   "scripts": {
     "dev": "next dev",
