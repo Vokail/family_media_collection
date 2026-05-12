@@ -36,7 +36,7 @@ export default function MemberCard({ member, counts, supabaseUrl }: { member: Me
           </div>
         )}
         <span className="font-serif font-semibold text-lg">{member.name}</span>
-        <div className="flex gap-2 text-xs" style={{ color: 'var(--text-muted)' }}>
+        <div className="flex gap-2 justify-center text-xs" style={{ color: 'var(--text-muted)' }}>
           {countEntries.map(([col, n]) => (
             <span key={col}>{COLLECTION_EMOJI[col]} {n}</span>
           ))}

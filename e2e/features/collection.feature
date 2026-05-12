@@ -32,3 +32,25 @@ Feature: Collection page UI regressions
     When I sort by title
     And I click the first sidebar letter
     Then the page scrolls to a section
+
+  # ── Long-name header alignment (#147) ───────────────────────────────────────
+  #
+  # With a long member name the page header is a flex row:
+  #   [← Members]  [name — flex-1]  [Stats]  [👤?]
+  #
+  # Without min-w-0 on the h1, its intrinsic text width overrides flex-shrink
+  # and can push the back button off-screen or force the row to wrap.
+  # Fix: add min-w-0 and truncate to the h1.
+
+  Scenario: Back button and Stats link stay visible with a long member name (#147)
+    Given I am authenticated as an editor
+    And I am on the collection page for a member with a very long name
+    Then the "← Members" back button is visible in the header
+    And the "Stats" link is visible in the header
+    And neither is pushed off-screen by the member name
+
+  Scenario: An overlong member name is truncated with an ellipsis (#147)
+    Given I am authenticated as an editor
+    And I am on the collection page for a member with a very long name
+    Then the member name in the h1 is truncated with an ellipsis if it exceeds the available width
+    And the header remains a single line
