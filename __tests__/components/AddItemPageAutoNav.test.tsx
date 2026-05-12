@@ -69,6 +69,14 @@ afterEach(() => {
   capturedOnAdd = null
 })
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function setVisibilityState(state: 'visible' | 'hidden') {
+  Object.defineProperty(document, 'visibilityState', { value: state, configurable: true })
+}
+
+// ── Suite: interaction cancellation (#121) ────────────────────────────────────
+
 describe('AddItemPage — auto-navigate cancellation (#121)', () => {
   it('does NOT navigate when the user presses a key after adding', async () => {
     await act(async () => { render(<AddItemPage />) })
@@ -110,6 +118,63 @@ describe('AddItemPage — auto-navigate cancellation (#121)', () => {
     expect(navCall).toBeDefined()
 
     await act(async () => { jest.advanceTimersByTime(5000) })
+
+    expect(navigateMock).toHaveBeenCalledTimes(1)
+    expect(navigateMock).toHaveBeenCalledWith('/alice/book')
+  })
+})
+
+// ── Suite: device-lock / PWA visibility (#145) ────────────────────────────────
+//
+// On a shared tablet in PWA standalone mode, the JS timer is suspended when
+// the device is locked. It fires the instant the screen is unlocked — before
+// the next user can touch anything to cancel it.
+//
+// Expected fix: listen to `visibilitychange` and cancel the timer when the
+// page becomes hidden.
+
+describe('AddItemPage — auto-navigate device-lock (#145)', () => {
+  afterEach(() => {
+    // Restore visibilityState to its jsdom default
+    setVisibilityState('visible')
+  })
+
+  it('cancels the timer when the page becomes hidden (device locked) — EXPECTED TO FAIL before fix', async () => {
+    await act(async () => { render(<AddItemPage />) })
+    await act(async () => { await capturedOnAdd!(NEW_ITEM, false) })
+
+    // Simulate device screen lock
+    setVisibilityState('hidden')
+    await act(async () => { document.dispatchEvent(new Event('visibilitychange')) })
+
+    // Advance past the 5 s window — timer should have been cancelled on hide
+    await act(async () => { jest.advanceTimersByTime(10_000) })
+
+    expect(navigateMock).not.toHaveBeenCalled()
+  })
+
+  it('does NOT fire when the page returns from background without a user interaction — EXPECTED TO FAIL before fix', async () => {
+    await act(async () => { render(<AddItemPage />) })
+    await act(async () => { await capturedOnAdd!(NEW_ITEM, false) })
+
+    // Lock then immediately unlock (no pointerdown / keydown between)
+    setVisibilityState('hidden')
+    await act(async () => { document.dispatchEvent(new Event('visibilitychange')) })
+    setVisibilityState('visible')
+    await act(async () => { document.dispatchEvent(new Event('visibilitychange')) })
+
+    await act(async () => { jest.advanceTimersByTime(10_000) })
+
+    // This currently FAILS — the timer fires and navigateTo is called
+    expect(navigateMock).not.toHaveBeenCalled()
+  })
+
+  it('still fires normally when the page stays visible throughout (regression guard)', async () => {
+    await act(async () => { render(<AddItemPage />) })
+    await act(async () => { await capturedOnAdd!(NEW_ITEM, false) })
+
+    // No visibility change — page stays visible, user does nothing
+    await act(async () => { jest.advanceTimersByTime(5_000) })
 
     expect(navigateMock).toHaveBeenCalledTimes(1)
     expect(navigateMock).toHaveBeenCalledWith('/alice/book')

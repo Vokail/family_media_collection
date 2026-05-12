@@ -74,6 +74,20 @@ export default function AddItemPage() {
     }
   }, [])
 
+  // #145: cancel the timer when the page goes to background (device locked /
+  // PWA suspended). On a shared tablet the timer would otherwise fire the
+  // moment the next user unlocks the screen — before they can interact.
+  useEffect(() => {
+    const cancelOnHide = () => {
+      if (document.visibilityState === 'hidden' && navTimer.current) {
+        clearTimeout(navTimer.current)
+        navTimer.current = null
+      }
+    }
+    document.addEventListener('visibilitychange', cancelOnHide)
+    return () => document.removeEventListener('visibilitychange', cancelOnHide)
+  }, [])
+
   // ── Dupe detection ────────────────────────────────────────────────────────
 
   const dupeMap = useMemo(() => makeDupeMap(existingItems), [existingItems])
