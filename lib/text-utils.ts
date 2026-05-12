@@ -19,7 +19,8 @@ export function cleanDescription(raw: string): string {
     // Normalise Windows line endings
     .replace(/\r\n/g, '\n')
     // Cut from first divider line to end of string (OL metadata/source/contains sections)
-    .replace(/\n[-─═]{4,}[\s\S]*$/, '')
+    // Matches standard Markdown --- (3+) as well as longer ─── and ═══ variants
+    .replace(/\n[-─═]{3,}[\s\S]*$/, '')
     // OL wiki links with label: [[/path|label]] or [[path|label]] → label
     .replace(/\[\[[^\]|]*\|([^\]]+)\]\]/g, '$1')
     // OL bare wiki links: [[/path]] or [[word]] → ''

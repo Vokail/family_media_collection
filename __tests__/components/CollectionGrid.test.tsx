@@ -466,3 +466,127 @@ describe('CollectionGrid author last-name sort (#120)', () => {
     expect(screen.queryAllByText('N')).toHaveLength(0) // Neil NOT used
   })
 })
+
+// ─── GroupSection: rating sort (#140) ────────────────────────────────────────
+
+describe('CollectionGrid rating sort grouping (#140)', () => {
+  it('renders ★ section headers when sort changes to rating', () => {
+    const items = [
+      makeItem('r1', { rating: 5 }),
+      makeItem('r2', { rating: 3 }),
+      makeItem('r3', { rating: null }),
+    ]
+    render(<CollectionGrid {...defaultProps} initialItems={items} />)
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'rating' } })
+    const headings = screen.getAllByRole('heading').map(h => h.textContent ?? '')
+    expect(headings.some(t => t.includes('★★★★★'))).toBe(true)
+    expect(headings.some(t => t.includes('★★★'))).toBe(true)
+    expect(headings.some(t => t.includes('Unrated'))).toBe(true)
+  })
+
+  it('omits Unrated section when every item has a rating', () => {
+    const items = [makeItem('r1', { rating: 5 }), makeItem('r2', { rating: 4 })]
+    render(<CollectionGrid {...defaultProps} initialItems={items} />)
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'rating' } })
+    expect(screen.queryByText('Unrated')).not.toBeInTheDocument()
+  })
+
+  it('shows only Unrated when no item has a rating', () => {
+    const items = [makeItem('r1', { rating: null }), makeItem('r2', { rating: null })]
+    render(<CollectionGrid {...defaultProps} initialItems={items} />)
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'rating' } })
+    expect(screen.getByText('Unrated')).toBeInTheDocument()
+    const headings = screen.getAllByRole('heading').map(h => h.textContent ?? '')
+    expect(headings.every(t => !t.includes('★'))).toBe(true)
+  })
+})
+
+// ─── GroupSection: condition sort (#140) ─────────────────────────────────────
+
+describe('CollectionGrid condition sort grouping (#140)', () => {
+  it('groups vinyl items into grade sections when sort is condition', () => {
+    const items = [
+      makeItem('c1', { condition: 'mint' }),
+      makeItem('c2', { condition: 'near_mint' }),
+      makeItem('c3', { condition: null }),
+    ]
+    render(<CollectionGrid {...defaultProps} initialItems={items} />)
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'condition' } })
+    const headings = screen.getAllByRole('heading').map(h => h.textContent ?? '')
+    expect(headings.some(t => t.includes('Mint'))).toBe(true)
+    expect(headings.some(t => t.includes('Near Mint'))).toBe(true)
+    expect(headings.some(t => t.includes('Ungraded'))).toBe(true)
+  })
+
+  it('renders the badge abbreviation span alongside the label for each grade', () => {
+    const items = [makeItem('c1', { condition: 'near_mint' })]
+    render(<CollectionGrid {...defaultProps} initialItems={items} />)
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'condition' } })
+    expect(screen.getByText('NM')).toBeInTheDocument()
+    expect(screen.getByText('Near Mint')).toBeInTheDocument()
+  })
+
+  it('omits Ungraded section when all items have a condition', () => {
+    const items = [makeItem('c1', { condition: 'mint' }), makeItem('c2', { condition: 'good' })]
+    render(<CollectionGrid {...defaultProps} initialItems={items} />)
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'condition' } })
+    expect(screen.queryByText('Ungraded')).not.toBeInTheDocument()
+  })
+
+  it('renders grade sections in best-to-worst order (M before NM before G before P)', () => {
+    const items = [
+      makeItem('c1', { condition: 'poor' }),
+      makeItem('c2', { condition: 'good' }),
+      makeItem('c3', { condition: 'near_mint' }),
+      makeItem('c4', { condition: 'mint' }),
+    ]
+    render(<CollectionGrid {...defaultProps} initialItems={items} />)
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'condition' } })
+    const headings = screen.getAllByRole('heading').map(h => h.textContent ?? '')
+    const mintIdx = headings.findIndex(t => t.includes('Mint') && !t.includes('Near'))
+    const nmIdx = headings.findIndex(t => t.includes('Near Mint'))
+    const goodIdx = headings.findIndex(t => t.includes('Good'))
+    const poorIdx = headings.findIndex(t => t.includes('Poor'))
+    expect(mintIdx).toBeLessThan(nmIdx)
+    expect(nmIdx).toBeLessThan(goodIdx)
+    expect(goodIdx).toBeLessThan(poorIdx)
+  })
+})
+
+// ─── GroupSection: status sort (#140) ────────────────────────────────────────
+
+describe('CollectionGrid status sort grouping (#140)', () => {
+  const bookProps = { ...defaultProps, collection: 'book' as const }
+
+  it('groups book items into Unread / ✓ Read sections', () => {
+    const items = [
+      makeItem('s1', { collection: 'book', status: null }),
+      makeItem('s2', { collection: 'book', status: 'consumed' }),
+    ]
+    render(<CollectionGrid {...bookProps} initialItems={items} />)
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'status' } })
+    const headings = screen.getAllByRole('heading').map(h => h.textContent ?? '')
+    expect(headings.some(t => t.includes('Unread'))).toBe(true)
+    expect(headings.some(t => t.includes('Read'))).toBe(true)
+  })
+
+  it('shows only Unread when no items are consumed', () => {
+    const items = [makeItem('s1', { collection: 'book', status: null })]
+    render(<CollectionGrid {...bookProps} initialItems={items} />)
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'status' } })
+    // Scope to heading role so filter-bar buttons don't cause multiple-match errors
+    const headings = screen.getAllByRole('heading').map(h => h.textContent ?? '')
+    expect(headings.some(t => t === 'Unread')).toBe(true)
+    expect(headings.filter(t => t === '✓ Read').length).toBe(0)
+  })
+
+  it('shows only ✓ Read when all items are consumed', () => {
+    const items = [makeItem('s1', { collection: 'book', status: 'consumed' })]
+    render(<CollectionGrid {...bookProps} initialItems={items} />)
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'status' } })
+    // Scope to heading role so filter-bar buttons don't cause multiple-match errors
+    const headings = screen.getAllByRole('heading').map(h => h.textContent ?? '')
+    expect(headings.some(t => t === '✓ Read')).toBe(true)
+    expect(headings.filter(t => t === 'Unread').length).toBe(0)
+  })
+})
