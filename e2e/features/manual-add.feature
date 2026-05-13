@@ -5,7 +5,7 @@ Feature: Manual add form (#132)
 
   Background:
     Given I am authenticated as an editor
-    And I am on Alice's book collection page
+    And I am on Alice's book add page
 
   Scenario: Manual form is hidden by default
     Then I do not see the manual entry form

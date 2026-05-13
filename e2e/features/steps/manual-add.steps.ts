@@ -8,9 +8,8 @@ import { mockExistingItems } from '../../helpers'
 
 const { Given, When, Then } = createBdd()
 
-// "I am on Alice's {word} collection page" is in collection.steps.ts — reused here.
-// We still need to navigate to the add sub-page.
-Given('I am on Alice\'s book collection page', async ({ page }) => {
+// Navigate to the book add page and set up API mocks for the manual-add scenarios.
+Given('I am on Alice\'s book add page', async ({ page }) => {
   await mockExistingItems(page)
   await page.route(/\/api\/items\/manual/, async route => {
     const body = route.request().postDataJSON?.() ?? {}

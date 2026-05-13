@@ -48,7 +48,7 @@ Then('I am redirected to the collection page within {int} seconds', async ({ pag
 
 // ── Device-lock / PWA background scenarios (#145) ────────────────────────────
 
-Given('the device is locked (page visibility becomes "hidden")', async ({ page }) => {
+Given(/the device is locked \(page visibility becomes "hidden"\)/, async ({ page }) => {
   await page.evaluate(() =>
     Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true }),
   )
@@ -68,7 +68,7 @@ Then('I am NOT redirected even after {int} seconds in the background', async ({ 
 })
 
 Given(
-  'the device is unlocked (page visibility becomes "visible") without any touch or key interaction',
+  /the device is unlocked \(page visibility becomes "visible"\) without any touch or key interaction/,
   async ({ page }) => {
     await page.evaluate(() =>
       Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true }),
