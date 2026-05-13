@@ -79,3 +79,77 @@ export async function mockSearch(
     })
   })
 }
+
+/**
+ * Create a test item in the real DB and return its id + a cleanup fn.
+ * Any extra fields (notes, condition, lego_status) are applied via a
+ * follow-up PATCH so they survive even if POST doesn't accept them.
+ */
+export async function createTestItem(
+  page: Page,
+  data: {
+    memberSlug: string
+    collection: string
+    title: string
+    creator?: string
+    year?: number | null
+    is_wishlist?: boolean
+    notes?: string | null
+    condition?: string | null
+    lego_status?: string | null
+  },
+): Promise<{ id: string; cleanup: () => Promise<void> }> {
+  const res = await page.request.post('/api/items', {
+    data: {
+      memberSlug: data.memberSlug,
+      collection: data.collection,
+      title: data.title,
+      creator: data.creator ?? '',
+      year: data.year ?? null,
+      cover_url: null,
+      is_wishlist: data.is_wishlist ?? false,
+    },
+  })
+  if (!res.ok()) throw new Error(`createTestItem failed: ${await res.text()}`)
+  const item = await res.json() as { id: string }
+
+  // Apply fields that aren't settable on creation
+  const patch: Record<string, unknown> = {}
+  if (data.notes !== undefined)       patch.notes = data.notes
+  if (data.condition !== undefined)   patch.condition = data.condition
+  if (data.lego_status !== undefined) patch.lego_status = data.lego_status
+  if (Object.keys(patch).length) {
+    await page.request.patch(`/api/items/${item.id}`, { data: patch })
+  }
+
+  return {
+    id: item.id,
+    cleanup: async () => { await page.request.delete(`/api/items/${item.id}`) },
+  }
+}
+
+/**
+ * Mock PATCH + DELETE for a specific item id, echoing back an updated item shape.
+ * Unrelated methods are forwarded to the real network.
+ */
+export async function mockItemMutations(
+  page: Page,
+  itemId: string,
+  updatedItem: Record<string, unknown>,
+) {
+  await page.route(new RegExp(`/api/items/${itemId}$`), async (route: Route) => {
+    const method = route.request().method()
+    if (method === 'PATCH') {
+      const patch = route.request().postDataJSON() ?? {}
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ ...updatedItem, ...patch }),
+      })
+    } else if (method === 'DELETE') {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: '{"ok":true}' })
+    } else {
+      await route.continue()
+    }
+  })
+}

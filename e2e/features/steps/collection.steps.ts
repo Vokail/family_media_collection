@@ -73,3 +73,81 @@ Then('the view-mode toggle is visible inside the viewport', async ({ page, viewp
   const toggleCentre = toggleBox!.y + toggleBox!.height / 2
   expect(Math.abs(toggleCentre - ownedCentre)).toBeLessThan(8)
 })
+
+// ── #147 — Long-name header alignment ────────────────────────────────────────
+//
+// The collection page header is a single flex row:
+//   [← Members]  [member name — flex-1 min-w-0 truncate]  [Stats]
+//
+// Without min-w-0 on the h1 the intrinsic text width overrides flex-shrink and
+// can push the back button off-screen or wrap the row. We simulate a very long
+// name via page.evaluate() so we don't need a real DB entry.
+
+Given('I am on the collection page for a member with a very long name', async ({ page }) => {
+  // Navigate to Alice's vinyl page (a real, seeded route) then overwrite the
+  // h1 text with a very long name so CSS truncation behaviour is exercisable
+  // without needing a separate DB record.
+  await page.goto('/alice/vinyl')
+  await page.evaluate(() => {
+    const h1 = document.querySelector('h1')
+    if (h1) h1.textContent = 'Bartholomew Fitzgerald-Cunningham The Third'
+  })
+})
+
+Then('the "← Members" back button is visible in the header', async ({ page }) => {
+  await expect(page.getByRole('link', { name: /← Members/i })).toBeVisible()
+})
+
+Then('the "Stats" link is visible in the header', async ({ page }) => {
+  await expect(page.getByRole('link', { name: /Stats/i })).toBeVisible()
+})
+
+Then('neither is pushed off-screen by the member name', async ({ page }) => {
+  const viewportWidth = page.viewportSize()?.width ?? 1280
+
+  const backLink = page.getByRole('link', { name: /← Members/i })
+  const statsLink = page.getByRole('link', { name: /Stats/i })
+
+  const backBox  = await backLink.boundingBox()
+  const statsBox = await statsLink.boundingBox()
+
+  expect(backBox).not.toBeNull()
+  expect(statsBox).not.toBeNull()
+
+  // Both links must start at or after x=0 (not scrolled off the left edge)
+  expect(backBox!.x).toBeGreaterThanOrEqual(0)
+  expect(statsBox!.x).toBeGreaterThanOrEqual(0)
+
+  // Both links must end before or at the right edge of the viewport
+  expect(backBox!.x  + backBox!.width).toBeLessThanOrEqual(viewportWidth + 1)
+  expect(statsBox!.x + statsBox!.width).toBeLessThanOrEqual(viewportWidth + 1)
+})
+
+Then(
+  'the member name in the h1 is truncated with an ellipsis if it exceeds the available width',
+  async ({ page }) => {
+    const h1 = page.locator('h1')
+    await expect(h1).toBeVisible()
+
+    // Primary check: the h1 must carry Tailwind's `truncate` class, which sets
+    // overflow:hidden, text-overflow:ellipsis and white-space:nowrap together.
+    await expect(h1).toHaveClass(/truncate/)
+
+    // Secondary check: computed style confirms the CSS is actually applied.
+    const textOverflow = await h1.evaluate((el) =>
+      window.getComputedStyle(el).textOverflow,
+    )
+    expect(textOverflow).toBe('ellipsis')
+  },
+)
+
+Then('the header remains a single line', async ({ page }) => {
+  const h1 = page.locator('h1')
+  await expect(h1).toBeVisible()
+
+  // A single-line h1 at default font size is typically 24–40 px tall. We use
+  // 50 px as a generous threshold: anything taller means the text has wrapped.
+  const box = await h1.boundingBox()
+  expect(box).not.toBeNull()
+  expect(box!.height).toBeLessThan(50)
+})
