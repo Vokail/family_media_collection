@@ -16,7 +16,6 @@
  * We parse `eq.<value>` only — that covers everything our app uses for SSR.
  */
 import { http, HttpResponse } from 'msw'
-import { FIXTURE_MEMBERS } from './fixtures'
 import { testState } from './test-state'
 
 const SUPABASE_BASE = 'https://placeholder.supabase.co'
@@ -50,7 +49,7 @@ export const handlers = [
   http.get(`${SUPABASE_BASE}/rest/v1/members`, ({ request }) => {
     const url = new URL(request.url)
     const filters = parseEqFilters(url)
-    let rows = FIXTURE_MEMBERS as unknown as Record<string, unknown>[]
+    let rows = testState.members as unknown as Record<string, unknown>[]
     for (const [k, v] of Object.entries(filters)) {
       rows = rows.filter(r => String(r[k]) === v)
     }
@@ -72,7 +71,7 @@ export const handlers = [
     if (select.includes('members(')) {
       rows = rows.map(r => ({
         ...r,
-        members: FIXTURE_MEMBERS.find(m => m.id === r.member_id) ?? FIXTURE_MEMBERS[0],
+        members: testState.members.find(m => m.id === r.member_id) ?? testState.members[0],
       }))
     }
     return respondPostgrest([...rows], request)

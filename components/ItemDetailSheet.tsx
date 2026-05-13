@@ -201,8 +201,12 @@ export default function ItemDetailSheet({ item, isEditor, onUpdate, onDelete, su
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ lego_status: value }),
     })
-    if (res.ok) onUpdate(await res.json())
-    else toast.show('Could not update status', 'error')
+    if (res.ok) {
+      onUpdate(await res.json())
+      toast.show('Build status updated')
+    } else {
+      toast.show('Could not update status', 'error')
+    }
     setSavingLegoStatus(false)
   }
 
@@ -214,8 +218,12 @@ export default function ItemDetailSheet({ item, isEditor, onUpdate, onDelete, su
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ condition: value }),
     })
-    if (res.ok) onUpdate(await res.json())
-    else toast.show('Could not update condition', 'error')
+    if (res.ok) {
+      onUpdate(await res.json())
+      toast.show('Condition updated')
+    } else {
+      toast.show('Could not update condition', 'error')
+    }
     setSavingCondition(false)
   }
 

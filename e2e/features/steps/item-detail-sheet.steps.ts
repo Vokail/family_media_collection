@@ -15,9 +15,10 @@ const { Given, When, Then, Before } = createBdd()
 // ─── Before hook ─────────────────────────────────────────────────────────────
 
 Before(async ({ page, context }) => {
-  // Reset MSW state and set default editor session before every scenario
-  await setFixtureState(page, { action: 'reset' })
+  // Set session first so the /api/__test/fixtures call is authenticated,
+  // then reset MSW state to a clean baseline before every scenario.
   await setSession(context, { role: 'editor' })
+  await setFixtureState(page, { action: 'reset' })
 })
 
 // ─── Authentication ──────────────────────────────────────────────────────────
@@ -26,12 +27,16 @@ Given('I am logged in', async ({ context }) => {
   await setSession(context, { role: 'editor' })
 })
 
-Given('I am logged in as a viewer', async ({ context }) => {
+Given('I am logged in as a viewer', async ({ context, page }) => {
   await setSession(context, { role: 'viewer' })
+  // Reload so SSR re-renders with the new session role.
+  if (page.url() !== 'about:blank') await page.reload()
 })
 
-Given('I am logged in as an editor', async ({ context }) => {
+Given('I am logged in as an editor', async ({ context, page }) => {
   await setSession(context, { role: 'editor' })
+  // Reload so SSR re-renders with the new session role.
+  if (page.url() !== 'about:blank') await page.reload()
 })
 
 // ─── Navigation ──────────────────────────────────────────────────────────────
@@ -157,11 +162,13 @@ Then('a detail sheet slides up from the bottom of the screen', async ({ page }) 
 })
 
 Then('the sheet displays the title {string}', async ({ page }, title: string) => {
-  await expect(page.getByText(title)).toBeVisible()
+  // Scope to the heading inside the dialog to avoid matching the card button text.
+  await expect(page.getByRole('heading', { name: title, level: 2 })).toBeVisible()
 })
 
 Then('the sheet displays the creator {string}', async ({ page }, creator: string) => {
-  await expect(page.getByText(creator)).toBeVisible()
+  // Scope to the dialog element so we don't match text elsewhere on the page.
+  await expect(page.locator('[role="dialog"]').getByText(creator).first()).toBeVisible()
 })
 
 Then('the sheet shows the year {string}', async ({ page }, year: string) => {
@@ -229,7 +236,9 @@ Then('the note {string} is saved', async ({ page }, note: string) => {
 })
 
 Then('a success toast appears', async ({ page }) => {
-  await expect(page.getByRole('status')).toBeVisible()
+  // The Toast component renders a fixed-position div with animate-fade-in class.
+  // It does NOT use role="status" — match by the animation class instead.
+  await expect(page.locator('.animate-fade-in').first()).toBeVisible()
 })
 
 // ─── Wishlist toggle ──────────────────────────────────────────────────────────
@@ -241,7 +250,8 @@ Then('{string} no longer appears in the Owned tab', async ({ page }, title: stri
 })
 
 Then('{string} now appears in the Wishlist tab', async ({ page }, title: string) => {
-  await page.getByRole('tab', { name: /wishlist/i }).click()
+  // The Owned/Wishlist toggle is a <button>, not a tab role.
+  await page.getByRole('button', { name: /^Wishlist/i }).click()
   await expect(
     page.getByRole('button', { name: new RegExp(`Open details for ${title}`, 'i') }),
   ).toBeVisible()

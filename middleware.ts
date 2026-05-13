@@ -3,7 +3,7 @@ import type { NextRequest } from 'next/server'
 import { getIronSession } from 'iron-session'
 import type { SessionData } from './lib/types'
 
-const PUBLIC_PATHS = ['/', '/api/auth', '/api/ping']
+const PUBLIC_PATHS = ['/', '/api/auth', '/api/ping', '/api/playwright-fixtures']
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl

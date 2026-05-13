@@ -138,11 +138,11 @@ export async function createTestItem(
 export async function setFixtureState(
   page: Page,
   body: {
-    action: 'reset' | 'patchItem' | 'setCollection' | 'addItem'
+    action: 'reset' | 'patchItem' | 'setCollection' | 'addItem' | 'patchMember'
     [key: string]: unknown
   },
 ) {
-  const res = await page.request.post('/api/__test/fixtures', { data: body })
+  const res = await page.request.post('/api/playwright-fixtures', { data: body })
   if (!res.ok()) throw new Error(`setFixtureState failed: ${await res.text()}`)
 }
 

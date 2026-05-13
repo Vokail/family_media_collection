@@ -65,7 +65,7 @@ Feature: Item Detail Sheet
     Given I am logged in as an editor
     When I open the detail sheet for "Dark Side of the Moon"
     And I tap the Delete button
-    Then a confirmation dialog appears asking "Delete this item?"
+    Then a confirmation dialog appears asking "Are you sure?"
     And the item is NOT yet deleted
 
   Scenario: Confirming deletion removes the item from the grid

@@ -4,8 +4,15 @@
  */
 import { expect } from '@playwright/test'
 import { createBdd } from 'playwright-bdd'
+import { setFixtureState } from '../../helpers'
 
-const { Given, When, Then } = createBdd()
+const { Given, When, Then, Before } = createBdd()
+
+// ─── Before hook ─────────────────────────────────────────────────────────────
+
+Before(async ({ page }) => {
+  await setFixtureState(page, { action: 'reset' })
+})
 
 Then('I see the member {string}', async ({ page }, name: string) => {
   // Each member name appears in their card AND in the recent activity feed —
@@ -15,32 +22,44 @@ Then('I see the member {string}', async ({ page }, name: string) => {
 
 // ── #146 — Single-collection layout ──────────────────────────────────────────
 //
-// These "setup" steps are intentionally no-ops: the DB must be seeded with the
-// correct state before the test suite runs (e.g. Alice has vinyl-only, Bob has
-// all four). The steps exist to make the Gherkin self-documenting; assertions
-// in the Then/And steps will fail fast if the seed data does not match.
+// Patch the MSW member fixture so Alice has the correct enabled_collections.
+// setFixtureState calls /api/playwright-fixtures which updates testState.members
+// that the MSW members handler now reads from.
 
-Given('Alice has only her vinyl collection enabled', async () => {
-  // DB must be seeded so Alice has only the vinyl collection active.
-  // No browser action required here — the subsequent navigation step loads
-  // the page and the assertion steps will verify the state.
+Given('Alice has only her vinyl collection enabled', async ({ page }) => {
+  await setFixtureState(page, {
+    action: 'patchMember',
+    id: 'm-alice',
+    patch: { enabled_collections: ['vinyl'] },
+  })
 })
 
-Given('Alice has only her vinyl and book collections enabled', async () => {
-  // DB must be seeded so Alice has vinyl + book only.
+Given('Alice has only her vinyl and book collections enabled', async ({ page }) => {
+  await setFixtureState(page, {
+    action: 'patchMember',
+    id: 'm-alice',
+    patch: { enabled_collections: ['vinyl', 'book'] },
+  })
 })
 
-Given('Alice has all four collections enabled', async () => {
-  // DB must be seeded so Alice has all four collections active.
+Given('Alice has all four collections enabled', async ({ page }) => {
+  await setFixtureState(page, {
+    action: 'patchMember',
+    id: 'm-alice',
+    patch: { enabled_collections: ['vinyl', 'book', 'comic', 'lego'] },
+  })
 })
 
 Then("Alice's card shows only the vinyl collection badge", async ({ page }) => {
-  // Vinyl badge must be present
-  await expect(page.getByText('🎵').first()).toBeVisible()
-  // Other collection emojis must NOT appear anywhere on the page
-  await expect(page.getByText('📚').first()).not.toBeVisible()
-  await expect(page.getByText('🦸').first()).not.toBeVisible()
-  await expect(page.getByText('🧱').first()).not.toBeVisible()
+  // Scope to Alice's card: the Link wrapping the card div that contains "Alice"
+  const aliceCard = page.locator('a').filter({ has: page.getByText('Alice', { exact: true }) }).first()
+  await expect(aliceCard).toBeVisible()
+  // Vinyl badge must be present on Alice's card
+  await expect(aliceCard.getByText('🎵')).toBeVisible()
+  // Other collection emojis must NOT appear on Alice's card
+  await expect(aliceCard.getByText('📚')).not.toBeVisible()
+  await expect(aliceCard.getByText('🦸')).not.toBeVisible()
+  await expect(aliceCard.getByText('🧱')).not.toBeVisible()
 })
 
 Then('the badge row is horizontally centred within the card', async ({ page }) => {
@@ -51,26 +70,35 @@ Then('the badge row is horizontally centred within the card', async ({ page }) =
 })
 
 Then("Alice's card shows the vinyl and book badges", async ({ page }) => {
-  await expect(page.getByText('🎵').first()).toBeVisible()
-  await expect(page.getByText('📚').first()).toBeVisible()
+  const aliceCard = page.locator('a').filter({ has: page.getByText('Alice', { exact: true }) }).first()
+  await expect(aliceCard).toBeVisible()
+  await expect(aliceCard.getByText('🎵')).toBeVisible()
+  await expect(aliceCard.getByText('📚')).toBeVisible()
 })
 
 Then("no comic or lego badge is visible on Alice's card", async ({ page }) => {
-  await expect(page.getByText('🦸').first()).not.toBeVisible()
-  await expect(page.getByText('🧱').first()).not.toBeVisible()
+  const aliceCard = page.locator('a').filter({ has: page.getByText('Alice', { exact: true }) }).first()
+  await expect(aliceCard.getByText('🦸')).not.toBeVisible()
+  await expect(aliceCard.getByText('🧱')).not.toBeVisible()
 })
 
 Then("Alice's card shows vinyl, book, comic, and lego badges", async ({ page }) => {
-  await expect(page.getByText('🎵').first()).toBeVisible()
-  await expect(page.getByText('📚').first()).toBeVisible()
-  await expect(page.getByText('🦸').first()).toBeVisible()
-  await expect(page.getByText('🧱').first()).toBeVisible()
+  const aliceCard = page.locator('a').filter({ has: page.getByText('Alice', { exact: true }) }).first()
+  await expect(aliceCard).toBeVisible()
+  await expect(aliceCard.getByText('🎵')).toBeVisible()
+  await expect(aliceCard.getByText('📚')).toBeVisible()
+  await expect(aliceCard.getByText('🦸')).toBeVisible()
+  await expect(aliceCard.getByText('🧱')).toBeVisible()
 })
 
 // ── #148 — Equal-height cards ─────────────────────────────────────────────────
 
-Given('Bob has all four collections enabled', async () => {
-  // DB must be seeded so Bob has all four collections active.
+Given('Bob has all four collections enabled', async ({ page }) => {
+  await setFixtureState(page, {
+    action: 'patchMember',
+    id: 'm-bob',
+    patch: { enabled_collections: ['vinyl', 'book', 'comic', 'lego'] },
+  })
 })
 
 When('I visit the members page on a 375px viewport', async ({ page }) => {

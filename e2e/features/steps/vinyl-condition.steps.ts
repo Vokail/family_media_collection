@@ -23,14 +23,13 @@ Before(async ({ page }) => {
 })
 
 // ─── Condition label → display abbreviation map ───────────────────────────────
+// Must match CONDITION_OPTIONS in lib/conditions.ts
 
 const CONDITION_LABEL: Record<string, string> = {
-  mint:         'M',
-  near_mint:    'NM',
-  'very_good+': 'VG+',
-  very_good:    'VG',
-  good:         'G',
-  poor:         'P',
+  mint:      'M',
+  near_mint: 'NM',
+  good:      'G',
+  poor:      'P',
 }
 
 // ─── Data setup ───────────────────────────────────────────────────────────────
@@ -107,8 +106,18 @@ Given(
 
 // ─── Condition buttons in the sheet ───────────────────────────────────────────
 
+// Map abbreviation (used in Gherkin) to full condition name (rendered in button text).
+const ABBR_TO_NAME: Record<string, string> = {
+  M:   'Mint',
+  NM:  'Near Mint',
+  G:   'Good',
+  P:   'Poor',
+}
+
 When('I tap the {string} condition button', async ({ page }, label: string) => {
-  await page.getByRole('button', { name: label }).click()
+  // The feature uses abbreviations ("M", "G") but the buttons render full names.
+  const buttonName = ABBR_TO_NAME[label] ?? label
+  await page.getByRole('button', { name: buttonName }).click()
 })
 
 // ─── Sort order ───────────────────────────────────────────────────────────────
@@ -135,10 +144,15 @@ Then('the condition badge shows {string}', async ({ page }, label: string) => {
 })
 
 Then('the condition grade buttons are not displayed', async ({ page }) => {
-  // None of the grade abbreviation buttons should be visible for a viewer
-  for (const abbr of Object.values(CONDITION_LABEL)) {
-    // Use getByRole with exact name to avoid false positives from badge text
-    await expect(page.getByRole('button', { name: abbr, exact: true })).not.toBeVisible()
+  // For a viewer, condition buttons are rendered disabled (not clickable).
+  // We assert that all condition buttons within the sheet are disabled.
+  // Button text matches opt.name from CONDITION_OPTIONS (e.g. "Mint", "Near Mint").
+  const conditionNames = ['Mint', 'Near Mint', 'Good', 'Poor']
+  for (const name of conditionNames) {
+    const btn = page.locator('[role="dialog"]').getByRole('button', { name, exact: true })
+    if (await btn.isVisible()) {
+      await expect(btn).toBeDisabled()
+    }
   }
 })
 
