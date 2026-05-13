@@ -15,9 +15,15 @@ const { Given, When, Then, Before } = createBdd()
 // ─── Before hook ─────────────────────────────────────────────────────────────
 
 Before(async ({ page, context }) => {
-  // Set session first so the /api/__test/fixtures call is authenticated,
-  // then reset MSW state to a clean baseline before every scenario.
+  // Set session first so the /api/playwright-fixtures call is authenticated.
   await setSession(context, { role: 'editor' })
+  // Navigate to root so we can clear localStorage for localhost:3000.
+  // about:blank has its own origin so page.evaluate there can't touch our
+  // app's storage — we need a same-origin page to wipe tab/sort/view prefs
+  // that otherwise leak across scenarios (e.g. test 7 leaves Wishlist active).
+  await page.goto('/')
+  await page.evaluate(() => localStorage.clear())
+  // Reset MSW state to a clean baseline before every scenario.
   await setFixtureState(page, { action: 'reset' })
 })
 
@@ -273,6 +279,9 @@ Then('the item is NOT yet deleted', async ({ page }) => {
 })
 
 When('I confirm the delete action', async ({ page }) => {
+  // The sheet must be open but Delete not yet clicked (this step covers the
+  // full flow: open confirmation dialog then confirm it).
+  await page.getByRole('button', { name: /^delete$/i }).click()
   await page.getByRole('button', { name: /yes, delete/i }).click()
 })
 

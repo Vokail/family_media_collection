@@ -344,6 +344,11 @@ export default function ItemDetailSheet({ item, isEditor, onUpdate, onDelete, su
                 </div>
               </div>
             )}
+            {!isEditor && item.collection === 'lego' && !item.is_wishlist && item.lego_status && (
+              <p className="text-center text-sm font-medium" style={{ color: 'var(--text-muted)' }}>
+                {LEGO_STATUS_OPTIONS.find(o => o.value === item.lego_status)?.label ?? item.lego_status}
+              </p>
+            )}
             {item.collection === 'vinyl' && (
               <div className="flex flex-col gap-2">
                 <p className="label text-center">Condition</p>

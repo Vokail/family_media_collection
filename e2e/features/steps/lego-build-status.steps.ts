@@ -114,7 +114,7 @@ Given(
 // ─── Status buttons ───────────────────────────────────────────────────────────
 
 When('I tap the {string} status button', async ({ page }, label: string) => {
-  await page.getByRole('button', { name: label }).click()
+  await page.locator('[role="dialog"]').getByRole('button', { name: label }).click()
 })
 
 // ─── Assertions ───────────────────────────────────────────────────────────────
@@ -130,14 +130,17 @@ Then(
 )
 
 Then('the build status badge shows {string}', async ({ page }, label: string) => {
-  // Badge inside the open sheet
-  await expect(page.getByText(label)).toBeVisible()
+  // Badge inside the open sheet — scope to dialog to avoid matching filter-bar buttons
+  await expect(page.locator('[role="dialog"]').getByText(label).first()).toBeVisible()
 })
 
 Then('the status buttons are not displayed', async ({ page }) => {
-  await expect(page.getByRole('button', { name: /🔨 Built/i })).not.toBeVisible()
-  await expect(page.getByRole('button', { name: /📦 In box/i })).not.toBeVisible()
-  await expect(page.getByRole('button', { name: /🔧 Apart/i })).not.toBeVisible()
+  // Scope to the open sheet — filter-bar buttons outside the dialog should not
+  // influence this assertion (they ARE visible on the page but belong to the grid).
+  const dialog = page.locator('[role="dialog"]')
+  await expect(dialog.getByRole('button', { name: /🔨 Built/i })).not.toBeVisible()
+  await expect(dialog.getByRole('button', { name: /📦 In box/i })).not.toBeVisible()
+  await expect(dialog.getByRole('button', { name: /🔧 Apart/i })).not.toBeVisible()
 })
 
 // ─── Filter bar ───────────────────────────────────────────────────────────────

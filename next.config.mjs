@@ -19,6 +19,12 @@ const nextConfig = {
         hostname: 'hkbqrbgqytvgpftydapc.supabase.co',
       },
       {
+        // Allow the placeholder Supabase hostname used by Playwright tests
+        // so next/image does not reject cover URLs during e2e runs.
+        protocol: 'https',
+        hostname: 'placeholder.supabase.co',
+      },
+      {
         protocol: 'https',
         hostname: 'covers.openlibrary.org',
       },

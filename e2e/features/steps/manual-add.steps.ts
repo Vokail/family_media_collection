@@ -12,31 +12,35 @@ const { Given, When, Then } = createBdd()
 Given('I am on Alice\'s book add page', async ({ page }) => {
   await mockExistingItems(page)
   await page.route(/\/api\/items\/manual/, async route => {
-    const body = route.request().postDataJSON?.() ?? {}
+    // ManualEntryForm POSTs as FormData (not JSON), so postDataJSON() would throw.
+    // Return a fixed success payload — the tests only care that the toast appears.
     await route.fulfill({
       status: 201,
       contentType: 'application/json',
-      body: JSON.stringify({ id: 'new-manual', title: body.title ?? '', creator: body.creator ?? '', is_wishlist: body.is_wishlist === 'true' }),
+      body: JSON.stringify({ id: 'new-manual', title: 'Test', creator: 'Test', collection: 'book', member_id: 'm-alice', is_wishlist: false, notes: null, year: null, cover_path: null }),
     })
   })
   await page.goto('/alice/book/add')
 })
 
 Then('I do not see the manual entry form', async ({ page }) => {
-  // The title input only renders when the form is expanded
-  await expect(page.getByPlaceholder('Title')).not.toBeVisible()
+  // The title input only renders when the form is expanded.
+  // Use exact:true so "Search by title or artist…" placeholder doesn't match.
+  await expect(page.getByPlaceholder('Title', { exact: true })).not.toBeVisible()
 })
 
 When('I click {string}', async ({ page }, label: string) => {
-  await page.getByRole('button', { name: new RegExp(label, 'i') }).click()
+  // Use plain string, not regex — special chars like "?" in "Not found? Add manually"
+  // would be misinterpreted as regex quantifiers if wrapped in new RegExp(label).
+  await page.getByRole('button', { name: label }).click()
 })
 
 Then('I see the manual entry form', async ({ page }) => {
-  await expect(page.getByPlaceholder('Title')).toBeVisible()
+  await expect(page.getByPlaceholder('Title', { exact: true })).toBeVisible()
 })
 
 When('I fill in the manual title {string}', async ({ page }, title: string) => {
-  await page.getByPlaceholder('Title').fill(title)
+  await page.getByPlaceholder('Title', { exact: true }).fill(title)
 })
 
 When('I fill in the manual creator {string}', async ({ page }, creator: string) => {
