@@ -129,6 +129,24 @@ export async function createTestItem(
 }
 
 /**
+ * Calls the test-fixture API endpoint to modify MSW state.
+ * Only works when PLAYWRIGHT_TEST=1 (dev server started by Playwright).
+ *
+ * Always call this BEFORE navigating to the page that will read the state,
+ * because state is read server-side during SSR.
+ */
+export async function setFixtureState(
+  page: Page,
+  body: {
+    action: 'reset' | 'patchItem' | 'setCollection' | 'addItem'
+    [key: string]: unknown
+  },
+) {
+  const res = await page.request.post('/api/__test/fixtures', { data: body })
+  if (!res.ok()) throw new Error(`setFixtureState failed: ${await res.text()}`)
+}
+
+/**
  * Mock PATCH + DELETE for a specific item id, echoing back an updated item shape.
  * Unrelated methods are forwarded to the real network.
  */

@@ -4,62 +4,42 @@
  * Auth steps ("I am logged in", "I am logged in as an editor", etc.) are
  * defined in item-detail-sheet.steps.ts and are shared automatically by
  * playwright-bdd's merged step registry — they are NOT re-declared here.
+ *
+ * "I am viewing a member's vinyl collection" is defined in item-detail-sheet.steps.ts.
+ * "When I open the detail sheet for {string}" is defined in item-detail-sheet.steps.ts.
+ * "And a success toast appears" is defined in item-detail-sheet.steps.ts.
  */
 import { expect } from '@playwright/test'
 import { createBdd, DataTable } from 'playwright-bdd'
-import { createTestItem, mockItemMutations } from '../../helpers'
+import { setFixtureState } from '../../helpers'
+import { FIXTURE_ITEMS } from '../../../mocks/fixtures'
 
-const { Given, When, Then, After } = createBdd()
+const { Given, When, Then, Before } = createBdd()
 
-// ─── Cleanup registry ────────────────────────────────────────────────────────
+// ─── Before hook ─────────────────────────────────────────────────────────────
 
-const cleanupFns: Array<() => Promise<void>> = []
-
-After(async () => {
-  for (const fn of cleanupFns.splice(0)) {
-    try { await fn() } catch { /* best-effort */ }
-  }
+Before(async ({ page }) => {
+  await setFixtureState(page, { action: 'reset' })
 })
 
 // ─── Condition label → display abbreviation map ───────────────────────────────
 
 const CONDITION_LABEL: Record<string, string> = {
-  mint:       'M',
-  near_mint:  'NM',
+  mint:         'M',
+  near_mint:    'NM',
   'very_good+': 'VG+',
-  very_good:  'VG',
-  good:       'G',
-  poor:       'P',
+  very_good:    'VG',
+  good:         'G',
+  poor:         'P',
 }
-
-// ─── Navigation ──────────────────────────────────────────────────────────────
-
-// "I am viewing a member's vinyl collection" is also declared in
-// item-detail-sheet.steps.ts.  playwright-bdd only allows one definition per
-// phrase.  The vinyl-condition feature shares the Background
-//   "Given I am logged in"
-//   "And I am viewing a member's vinyl collection"
-// Both of those phrases are covered by item-detail-sheet.steps.ts — we do NOT
-// re-declare them here.
 
 // ─── Data setup ───────────────────────────────────────────────────────────────
 
 Given('the record {string} has no condition set', async ({ page }, title: string) => {
-  const { id, cleanup } = await createTestItem(page, {
-    memberSlug: 'alice',
-    collection: 'vinyl',
-    title,
-    condition: null,
-  })
-  cleanupFns.push(cleanup)
-  await mockItemMutations(page, id, {
-    id,
-    title,
-    collection: 'vinyl',
-    condition: null,
-    member_slug: 'alice',
-  })
-  await page.reload()
+  const item = FIXTURE_ITEMS.find(i => i.title === title && i.collection === 'vinyl')
+  if (!item) throw new Error(`No vinyl fixture item with title "${title}"`)
+  await setFixtureState(page, { action: 'patchItem', id: item.id, patch: { condition: null } })
+  await page.goto('/alice/vinyl')
   await expect(
     page.getByRole('button', { name: new RegExp(`Open details for ${title}`, 'i') }),
   ).toBeVisible()
@@ -68,21 +48,10 @@ Given('the record {string} has no condition set', async ({ page }, title: string
 Given(
   'the record {string} has condition {string}',
   async ({ page }, title: string, condition: string) => {
-    const { id, cleanup } = await createTestItem(page, {
-      memberSlug: 'alice',
-      collection: 'vinyl',
-      title,
-      condition,
-    })
-    cleanupFns.push(cleanup)
-    await mockItemMutations(page, id, {
-      id,
-      title,
-      collection: 'vinyl',
-      condition,
-      member_slug: 'alice',
-    })
-    await page.reload()
+    const item = FIXTURE_ITEMS.find(i => i.title === title && i.collection === 'vinyl')
+    if (!item) throw new Error(`No vinyl fixture item with title "${title}"`)
+    await setFixtureState(page, { action: 'patchItem', id: item.id, patch: { condition } })
+    await page.goto('/alice/vinyl')
     await expect(
       page.getByRole('button', { name: new RegExp(`Open details for ${title}`, 'i') }),
     ).toBeVisible()
@@ -93,17 +62,41 @@ Given(
   'the collection contains:',
   async ({ page }, table: DataTable) => {
     const rows = table.hashes() as Array<{ Record: string; Condition: string }>
-    for (const row of rows) {
+    // Replace all vinyl items for alice with the table rows
+    const newItems = rows.map((row, idx) => {
       const condition = row.Condition === '(none)' ? null : row.Condition
-      const { cleanup } = await createTestItem(page, {
-        memberSlug: 'alice',
+      return {
+        id: `i-vinyl-table-${idx}`,
+        member_id: 'm-alice',
         collection: 'vinyl',
         title: row.Record,
+        creator: 'Artist',
+        year: 2020,
+        cover_path: null,
+        is_wishlist: false,
+        notes: null,
+        external_id: null,
+        isbn: null,
+        sort_name: null,
+        rating: null,
+        description: null,
+        tracklist: null,
+        status: null,
+        genres: null,
+        styles: null,
         condition,
-      })
-      cleanupFns.push(cleanup)
-    }
-    await page.reload()
+        lego_status: null,
+        locked_fields: null,
+        created_at: new Date().toISOString(),
+      }
+    })
+    await setFixtureState(page, {
+      action: 'setCollection',
+      member_id: 'm-alice',
+      collection: 'vinyl',
+      items: newItems,
+    })
+    await page.goto('/alice/vinyl')
     // Wait for the first item to appear
     const firstTitle = rows[0].Record
     await expect(

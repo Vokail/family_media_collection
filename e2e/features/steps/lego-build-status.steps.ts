@@ -3,22 +3,21 @@
  *
  * "Given I am logged in as an editor" and "Given I am logged in as a viewer"
  * are defined in item-detail-sheet.steps.ts to avoid duplicate-step errors.
+ * "When I open the detail sheet for {string}" is also defined there.
+ * "And a success toast appears" is also defined there.
  * All steps here are unique to the Lego build-status feature.
  */
 import { expect } from '@playwright/test'
 import { createBdd, DataTable } from 'playwright-bdd'
-import { createTestItem, mockItemMutations } from '../../helpers'
+import { setFixtureState } from '../../helpers'
+import { FIXTURE_ITEMS } from '../../../mocks/fixtures'
 
-const { Given, When, Then, After } = createBdd()
+const { Given, When, Then, Before } = createBdd()
 
-// ─── Cleanup registry ────────────────────────────────────────────────────────
+// ─── Before hook ─────────────────────────────────────────────────────────────
 
-const cleanupFns: Array<() => Promise<void>> = []
-
-After(async () => {
-  for (const fn of cleanupFns.splice(0)) {
-    try { await fn() } catch { /* best-effort */ }
-  }
+Before(async ({ page }) => {
+  await setFixtureState(page, { action: 'reset' })
 })
 
 // ─── Lego status label → DB value map ────────────────────────────────────────
@@ -42,22 +41,10 @@ Given('I am viewing a member\'s Lego collection', async ({ page }) => {
 // ─── Data setup ───────────────────────────────────────────────────────────────
 
 Given('the Lego set {string} has no build status', async ({ page }, title: string) => {
-  const { id, cleanup } = await createTestItem(page, {
-    memberSlug: 'alice',
-    collection: 'lego',
-    title,
-    lego_status: null,
-  })
-  cleanupFns.push(cleanup)
-  // Pre-wire a mutation mock so status updates are reflected without a DB write
-  await mockItemMutations(page, id, {
-    id,
-    title,
-    collection: 'lego',
-    lego_status: null,
-    member_slug: 'alice',
-  })
-  await page.reload()
+  const item = FIXTURE_ITEMS.find(i => i.title === title && i.collection === 'lego')
+  if (!item) throw new Error(`No lego fixture item with title "${title}"`)
+  await setFixtureState(page, { action: 'patchItem', id: item.id, patch: { lego_status: null } })
+  await page.goto('/alice/lego')
   await expect(
     page.getByRole('button', { name: new RegExp(`Open details for ${title}`, 'i') }),
   ).toBeVisible()
@@ -66,22 +53,11 @@ Given('the Lego set {string} has no build status', async ({ page }, title: strin
 Given(
   'the Lego set {string} has build status {string}',
   async ({ page }, title: string, status: string) => {
+    const item = FIXTURE_ITEMS.find(i => i.title === title && i.collection === 'lego')
+    if (!item) throw new Error(`No lego fixture item with title "${title}"`)
     const dbStatus = STATUS_TO_DB[status] ?? status
-    const { id, cleanup } = await createTestItem(page, {
-      memberSlug: 'alice',
-      collection: 'lego',
-      title,
-      lego_status: dbStatus,
-    })
-    cleanupFns.push(cleanup)
-    await mockItemMutations(page, id, {
-      id,
-      title,
-      collection: 'lego',
-      lego_status: dbStatus,
-      member_slug: 'alice',
-    })
-    await page.reload()
+    await setFixtureState(page, { action: 'patchItem', id: item.id, patch: { lego_status: dbStatus } })
+    await page.goto('/alice/lego')
     await expect(
       page.getByRole('button', { name: new RegExp(`Open details for ${title}`, 'i') }),
     ).toBeVisible()
@@ -92,17 +68,41 @@ Given(
   'the Lego collection contains:',
   async ({ page }, table: DataTable) => {
     const rows = table.hashes() as Array<{ Set: string; Status: string }>
-    for (const row of rows) {
+    // Replace all lego items for alice with the table rows
+    const newItems = rows.map((row, idx) => {
       const dbStatus = STATUS_TO_DB[row.Status] ?? row.Status
-      const { cleanup } = await createTestItem(page, {
-        memberSlug: 'alice',
+      return {
+        id: `i-lego-table-${idx}`,
+        member_id: 'm-alice',
         collection: 'lego',
         title: row.Set,
+        creator: 'Lego',
+        year: 2020,
+        cover_path: null,
+        is_wishlist: false,
+        notes: null,
+        external_id: null,
+        isbn: null,
+        sort_name: null,
+        rating: null,
+        description: null,
+        tracklist: null,
+        status: null,
+        genres: null,
+        styles: null,
+        condition: null,
         lego_status: dbStatus,
-      })
-      cleanupFns.push(cleanup)
-    }
-    await page.reload()
+        locked_fields: null,
+        created_at: new Date().toISOString(),
+      }
+    })
+    await setFixtureState(page, {
+      action: 'setCollection',
+      member_id: 'm-alice',
+      collection: 'lego',
+      items: newItems,
+    })
+    await page.goto('/alice/lego')
     // Wait until at least the first item is visible before continuing
     const firstTitle = rows[0].Set
     await expect(
@@ -110,21 +110,6 @@ Given(
     ).toBeVisible()
   },
 )
-
-// ─── Opening the sheet (shared helper, keeps lego steps self-contained) ───────
-
-async function openSheet(page: import('@playwright/test').Page, title: string) {
-  const card = page.getByRole('button', { name: new RegExp(`Open details for ${title}`, 'i') })
-  await expect(card).toBeVisible()
-  await card.click()
-  await expect(page.getByRole('button', { name: /✕ Close/i })).toBeVisible()
-}
-
-// Reuse the same phrase defined in item-detail-sheet.steps.ts — playwright-bdd
-// resolves a step phrase to whichever file defines it; we MUST NOT re-declare it
-// here.  The step is therefore covered by item-detail-sheet.steps.ts.
-// However, the lego feature needs this step too.  playwright-bdd merges step
-// registries across all files so the shared definition is picked up automatically.
 
 // ─── Status buttons ───────────────────────────────────────────────────────────
 
@@ -138,7 +123,6 @@ Then(
   'the build status badge on the item card updates to {string}',
   async ({ page }, label: string) => {
     // After closing the sheet the badge on the card should reflect the new status
-    // Close the sheet first (if still open)
     const closeBtn = page.getByRole('button', { name: /✕ Close/i })
     if (await closeBtn.isVisible()) await closeBtn.click()
     await expect(page.getByText(label).first()).toBeVisible()

@@ -1,24 +1,23 @@
 /**
  * Step definitions for item-detail-sheet.feature.
  *
- * Test data is created in the real dev Supabase DB via POST /api/items and
- * cleaned up in an After hook. The cleanupFns array is populated by each
- * "Given the collection contains …" step and drained after every scenario.
+ * Uses the MSW-based test architecture: fixture state is set via
+ * /api/__test/fixtures (setFixtureState) before each navigation.
+ * No real database writes happen.
  */
 import { expect } from '@playwright/test'
 import { createBdd } from 'playwright-bdd'
-import { setSession, createTestItem, mockItemMutations } from '../../helpers'
+import { setSession, setFixtureState } from '../../helpers'
+import { FIXTURE_ITEMS } from '../../../mocks/fixtures'
 
-const { Given, When, Then, After } = createBdd()
+const { Given, When, Then, Before } = createBdd()
 
-// ─── Cleanup registry ────────────────────────────────────────────────────────
+// ─── Before hook ─────────────────────────────────────────────────────────────
 
-const cleanupFns: Array<() => Promise<void>> = []
-
-After(async () => {
-  for (const fn of cleanupFns.splice(0)) {
-    try { await fn() } catch { /* best-effort */ }
-  }
+Before(async ({ page, context }) => {
+  // Reset MSW state and set default editor session before every scenario
+  await setFixtureState(page, { action: 'reset' })
+  await setSession(context, { role: 'editor' })
 })
 
 // ─── Authentication ──────────────────────────────────────────────────────────
@@ -52,15 +51,11 @@ Given('I am viewing a member\'s vinyl collection', async ({ page }) => {
 
 Given(
   'the collection contains the vinyl record {string} by {string}',
-  async ({ page }, title: string, creator: string) => {
-    const { cleanup } = await createTestItem(page, {
-      memberSlug: 'alice',
-      collection: 'vinyl',
-      title,
-      creator,
-    })
-    cleanupFns.push(cleanup)
-    await page.reload()
+  async ({ page }, title: string, _creator: string) => {
+    // The item must already exist in FIXTURE_ITEMS (e.g. 'Dark Side of the Moon').
+    // State was reset in the Before hook, so it will be present.
+    // Navigate to the collection page.
+    await page.goto('/alice/vinyl')
     await expect(
       page.getByRole('button', { name: new RegExp(`Open details for ${title}`, 'i') }),
     ).toBeVisible()
@@ -70,14 +65,10 @@ Given(
 Given(
   'the item {string} has the note {string}',
   async ({ page }, title: string, note: string) => {
-    const { cleanup } = await createTestItem(page, {
-      memberSlug: 'alice',
-      collection: 'vinyl',
-      title,
-      notes: note,
-    })
-    cleanupFns.push(cleanup)
-    await page.reload()
+    const item = FIXTURE_ITEMS.find(i => i.title === title)
+    if (!item) throw new Error(`No fixture item with title "${title}"`)
+    await setFixtureState(page, { action: 'patchItem', id: item.id, patch: { notes: note } })
+    await page.goto('/alice/vinyl')
     await expect(
       page.getByRole('button', { name: new RegExp(`Open details for ${title}`, 'i') }),
     ).toBeVisible()
@@ -85,36 +76,20 @@ Given(
 )
 
 Given('the item {string} has no note', async ({ page }, title: string) => {
-  const { cleanup } = await createTestItem(page, {
-    memberSlug: 'alice',
-    collection: 'vinyl',
-    title,
-    notes: null,
-  })
-  cleanupFns.push(cleanup)
-  await page.reload()
+  const item = FIXTURE_ITEMS.find(i => i.title === title)
+  if (!item) throw new Error(`No fixture item with title "${title}"`)
+  await setFixtureState(page, { action: 'patchItem', id: item.id, patch: { notes: null } })
+  await page.goto('/alice/vinyl')
   await expect(
     page.getByRole('button', { name: new RegExp(`Open details for ${title}`, 'i') }),
   ).toBeVisible()
 })
 
 Given('{string} is in the Owned tab', async ({ page }, title: string) => {
-  const { id, cleanup } = await createTestItem(page, {
-    memberSlug: 'alice',
-    collection: 'vinyl',
-    title,
-    is_wishlist: false,
-  })
-  cleanupFns.push(cleanup)
-  // Set up mutation mock so the PATCH succeeds without writing to the DB again
-  await mockItemMutations(page, id, {
-    id,
-    title,
-    collection: 'vinyl',
-    is_wishlist: true,
-    member_slug: 'alice',
-  })
-  await page.reload()
+  const item = FIXTURE_ITEMS.find(i => i.title === title)
+  if (!item) throw new Error(`No fixture item with title "${title}"`)
+  await setFixtureState(page, { action: 'patchItem', id: item.id, patch: { is_wishlist: false } })
+  await page.goto('/alice/vinyl')
   await expect(
     page.getByRole('button', { name: new RegExp(`Open details for ${title}`, 'i') }),
   ).toBeVisible()
@@ -123,13 +98,13 @@ Given('{string} is in the Owned tab', async ({ page }, title: string) => {
 Given(
   'the item {string} has year {string} and a cover image',
   async ({ page }, title: string, year: string) => {
-    const { cleanup } = await createTestItem(page, {
-      memberSlug: 'alice',
-      collection: 'vinyl',
-      title,
-      year: parseInt(year, 10),
+    const item = FIXTURE_ITEMS.find(i => i.title === title)
+    if (!item) throw new Error(`No fixture item with title "${title}"`)
+    await setFixtureState(page, {
+      action: 'patchItem',
+      id: item.id,
+      patch: { year: parseInt(year, 10), cover_path: 'covers/test.jpg' },
     })
-    cleanupFns.push(cleanup)
     // Intercept the cover image URL so it resolves without a real asset
     await page.route(/cover/, async (route) => {
       await route.fulfill({
@@ -141,7 +116,7 @@ Given(
         ),
       })
     })
-    await page.reload()
+    await page.goto('/alice/vinyl')
     await expect(
       page.getByRole('button', { name: new RegExp(`Open details for ${title}`, 'i') }),
     ).toBeVisible()
@@ -166,18 +141,11 @@ When('I open the detail sheet for {string}', async ({ page }, title: string) => 
 })
 
 Given('the detail sheet for {string} is open', async ({ page }, title: string) => {
-  // The Background navigates to the collection page.  Ensure the item exists
-  // (created in a preceding step) and open its sheet.
+  // Background already navigated to the collection page.
+  // If the item card is not yet visible, navigate first.
   const card = page.getByRole('button', { name: new RegExp(`Open details for ${title}`, 'i') })
   if (!(await card.isVisible())) {
-    // Create it on-the-fly if not already present from a previous Given step
-    const { cleanup } = await createTestItem(page, {
-      memberSlug: 'alice',
-      collection: 'vinyl',
-      title,
-    })
-    cleanupFns.push(cleanup)
-    await page.reload()
+    await page.goto('/alice/vinyl')
   }
   await openSheet(page, title)
 })
@@ -189,8 +157,6 @@ Then('a detail sheet slides up from the bottom of the screen', async ({ page }) 
 })
 
 Then('the sheet displays the title {string}', async ({ page }, title: string) => {
-  // The sheet is the element that contains the close button — check for the
-  // title text somewhere within the same section of the DOM.
   await expect(page.getByText(title)).toBeVisible()
 })
 
@@ -203,7 +169,6 @@ Then('the sheet shows the year {string}', async ({ page }, year: string) => {
 })
 
 Then('the cover image is displayed at the top of the sheet', async ({ page }) => {
-  // The sheet must contain at least one img element
   await expect(page.locator('dialog img, [role="dialog"] img').first()).toBeVisible()
 })
 
@@ -270,14 +235,12 @@ Then('a success toast appears', async ({ page }) => {
 // ─── Wishlist toggle ──────────────────────────────────────────────────────────
 
 Then('{string} no longer appears in the Owned tab', async ({ page }, title: string) => {
-  // After moving to wishlist the item should have left the owned (default) tab
   await expect(
     page.getByRole('button', { name: new RegExp(`Open details for ${title}`, 'i') }),
   ).not.toBeVisible()
 })
 
 Then('{string} now appears in the Wishlist tab', async ({ page }, title: string) => {
-  // Click the Wishlist tab then verify the card is there
   await page.getByRole('tab', { name: /wishlist/i }).click()
   await expect(
     page.getByRole('button', { name: new RegExp(`Open details for ${title}`, 'i') }),

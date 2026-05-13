@@ -16,7 +16,8 @@
  * We parse `eq.<value>` only — that covers everything our app uses for SSR.
  */
 import { http, HttpResponse } from 'msw'
-import { FIXTURE_MEMBERS, FIXTURE_ITEMS } from './fixtures'
+import { FIXTURE_MEMBERS } from './fixtures'
+import { testState } from './test-state'
 
 const SUPABASE_BASE = 'https://placeholder.supabase.co'
 
@@ -60,7 +61,7 @@ export const handlers = [
   http.get(`${SUPABASE_BASE}/rest/v1/items`, ({ request }) => {
     const url = new URL(request.url)
     const filters = parseEqFilters(url)
-    let rows = FIXTURE_ITEMS as unknown as Record<string, unknown>[]
+    let rows = testState.items as unknown as Record<string, unknown>[]
     for (const [k, v] of Object.entries(filters)) {
       // Convert "true"/"false" strings to booleans for is_wishlist
       const parsed = v === 'true' ? true : v === 'false' ? false : v
@@ -77,15 +78,50 @@ export const handlers = [
     return respondPostgrest([...rows], request)
   }),
 
+  http.post(`${SUPABASE_BASE}/rest/v1/items`, async ({ request }) => {
+    const body = await request.json() as Record<string, unknown>
+    const newItem = { id: `new-${Date.now()}`, ...body }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    testState.items.push(newItem as any)
+    return respondPostgrest([newItem as Record<string, unknown>], request)
+  }),
+
+  http.patch(`${SUPABASE_BASE}/rest/v1/items`, async ({ request }) => {
+    const url = new URL(request.url)
+    // PostgREST filter: ?id=eq.<id>
+    const idFilter = url.searchParams.get('id')
+    const id = idFilter?.startsWith('eq.') ? idFilter.slice(3) : null
+    const patch = await request.json() as Record<string, unknown>
+    let updated: Record<string, unknown> | null = null
+    if (id) {
+      const idx = testState.items.findIndex(i => i.id === id)
+      if (idx >= 0) {
+        testState.items[idx] = { ...testState.items[idx], ...patch }
+        updated = testState.items[idx] as unknown as Record<string, unknown>
+      }
+    }
+    return respondPostgrest(updated ? [updated] : [], request)
+  }),
+
+  http.delete(`${SUPABASE_BASE}/rest/v1/items`, ({ request }) => {
+    const url = new URL(request.url)
+    const idFilter = url.searchParams.get('id')
+    const id = idFilter?.startsWith('eq.') ? idFilter.slice(3) : null
+    if (id) {
+      testState.items = testState.items.filter(i => i.id !== id)
+    }
+    return HttpResponse.json({})
+  }),
+
   // ─── settings (used by the auth-throttling lockout check) ───────────────────
   http.get(`${SUPABASE_BASE}/rest/v1/settings`, ({ request }) => respondPostgrest([], request)),
 
   // ─── RPCs ───────────────────────────────────────────────────────────────────
   http.post(`${SUPABASE_BASE}/rest/v1/rpc/get_member_item_counts`, () => {
-    // Build counts from FIXTURE_ITEMS
+    // Build counts from testState.items (live, mutable snapshot)
     const counts: { member_id: string; collection: string; count: number }[] = []
     const seen = new Map<string, number>()
-    for (const item of FIXTURE_ITEMS) {
+    for (const item of testState.items) {
       const key = `${item.member_id}|${item.collection}`
       seen.set(key, (seen.get(key) ?? 0) + 1)
     }

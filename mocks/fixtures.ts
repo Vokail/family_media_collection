@@ -48,4 +48,13 @@ export const FIXTURE_ITEMS: Item[] = [
   baseItem('i-6', { title: '1984',                creator: 'Van Halen',      year: 1984, created_at: isoDay(6) }),
   // Book item — used by sort-name.feature to verify the field is absent for non-vinyl
   baseItem('i-7', { title: 'Dune',               creator: 'Frank Herbert',   year: 1965, created_at: isoDay(7), collection: 'book' }),
+
+  // Vinyl items used by item-detail-sheet.feature and vinyl-condition.feature
+  baseItem('i-dsotm', { title: 'Dark Side of the Moon', creator: 'Pink Floyd',  year: 1973, created_at: isoDay(8),  notes: 'A classic — plays beautifully', condition: null,        is_wishlist: false }),
+  baseItem('i-kob',   { title: 'Kind of Blue',          creator: 'Miles Davis', year: 1959, created_at: isoDay(9),  notes: null,                             condition: 'near_mint', is_wishlist: false }),
+
+  // Lego items used by lego-build-status.feature
+  baseItem('i-falcon',    { title: 'Millennium Falcon', creator: 'Star Wars',    year: 2017, created_at: isoDay(10), collection: 'lego', lego_status: null }),
+  baseItem('i-deathstar', { title: 'Death Star',        creator: 'Star Wars',    year: 2016, created_at: isoDay(11), collection: 'lego', lego_status: null }),
+  baseItem('i-eiffel',    { title: 'Eiffel Tower',      creator: 'Architecture', year: 2022, created_at: isoDay(12), collection: 'lego', lego_status: 'disassembled' }),
 ]
