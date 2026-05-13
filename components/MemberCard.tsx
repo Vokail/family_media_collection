@@ -36,12 +36,15 @@ export default function MemberCard({ member, counts, supabaseUrl }: { member: Me
           </div>
         )}
         <span className="font-serif font-semibold text-lg">{member.name}</span>
-        {/* min-h-10 + content-center: equal badge-row height regardless of wrap (#148)
-            flex-wrap: badges wrap to 2 rows rather than squishing on narrow cards
-            whitespace-nowrap on spans: keeps "🎵 5" on one line instead of splitting */}
-        <div className="flex flex-wrap gap-2 justify-center content-center min-h-10 text-xs" style={{ color: 'var(--text-muted)' }}>
+        {/* Each badge is a stacked column: icon on top, count below (#148).
+            All badges are the same height regardless of count, so 1-badge and
+            4-badge cards are always equal in size. */}
+        <div className="flex flex-wrap gap-3 justify-center text-xs" style={{ color: 'var(--text-muted)' }}>
           {countEntries.map(([col, n]) => (
-            <span key={col} className="whitespace-nowrap">{COLLECTION_EMOJI[col]} {n}</span>
+            <span key={col} className="flex flex-col items-center gap-0.5">
+              <span>{COLLECTION_EMOJI[col]}</span>
+              <span>{n}</span>
+            </span>
           ))}
         </div>
       </div>

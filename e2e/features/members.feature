@@ -52,11 +52,11 @@ Feature: Members page
     When I visit the members page on a 375px viewport
     Then Alice's card and Bob's card are the same height
 
-  Scenario: Collection count badge stays on one line even on a narrow screen (#148)
+  Scenario: Each collection badge shows the icon above the count (#148)
     Given I am authenticated as an editor
     And Bob has all four collections enabled
-    When I visit the members page on a 375px viewport
-    Then each collection badge (icon + count) is displayed on a single line
+    When I visit the members page
+    Then each collection badge shows the icon on top and the count directly below it
 
   Scenario: Cards with 4 collections look consistent with cards with 1 collection (#148)
     Given I am authenticated as an editor
