@@ -116,8 +116,10 @@ const ABBR_TO_NAME: Record<string, string> = {
 
 When('I tap the {string} condition button', async ({ page }, label: string) => {
   // The feature uses abbreviations ("M", "G") but the buttons render full names.
+  // Scope to dialog so filter-bar / card buttons outside the sheet don't match.
+  // exact:true prevents "Mint" from substring-matching "Near Mint".
   const buttonName = ABBR_TO_NAME[label] ?? label
-  await page.getByRole('button', { name: buttonName }).click()
+  await page.locator('[role="dialog"]').getByRole('button', { name: buttonName, exact: true }).click()
 })
 
 // ─── Sort order ───────────────────────────────────────────────────────────────
@@ -139,8 +141,16 @@ Then(
 )
 
 Then('the condition badge shows {string}', async ({ page }, label: string) => {
-  // The badge is rendered inside the open sheet
-  await expect(page.getByText(label)).toBeVisible()
+  // The feature passes abbreviations ("NM") but the dialog renders full names as
+  // disabled condition buttons (highlighted for the current grade).
+  // Using getByText('NM') causes a strict-mode violation because the parent
+  // condition section div has text content "...conditio[n][M]int..." which
+  // contains "nM" as a substring.  Map to the full name and locate the button
+  // inside the open sheet instead.
+  const fullName = ABBR_TO_NAME[label] ?? label
+  await expect(
+    page.locator('[role="dialog"]').getByRole('button', { name: fullName, exact: true }),
+  ).toBeVisible()
 })
 
 Then('the condition grade buttons are not displayed', async ({ page }) => {
@@ -161,7 +171,12 @@ Then(
   async ({ page }, table: DataTable) => {
     const rows = table.hashes() as Array<{ Heading: string }>
     for (const row of rows) {
-      await expect(page.getByText(row.Heading, { exact: false })).toBeVisible()
+      // Each section heading is an h3 rendered as two sibling <span>s (badge abbr +
+      // label text) inside a flex container.  The DOM textContent is "MMint" (no
+      // space) so getByText('M Mint') finds 0 elements.  The ARIA accessible name
+      // IS "M Mint" (Playwright computes it with a space via the flex layout), so
+      // getByRole('heading', { name, level }) works correctly.
+      await expect(page.getByRole('heading', { name: row.Heading, level: 3 })).toBeVisible()
     }
   },
 )
