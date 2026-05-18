@@ -54,7 +54,6 @@ export default defineConfig({
     env: {
       SESSION_SECRET: process.env.SESSION_SECRET ?? 'playwright-smoke-test-secret-at-least-32chars-long',
       NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'https://placeholder.supabase.co',
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? 'placeholder-anon-key',
       SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY ?? 'placeholder-service-role',
       INITIAL_VIEW_PIN: process.env.INITIAL_VIEW_PIN ?? '1234',
       INITIAL_FAMILY_PASSWORD: process.env.INITIAL_FAMILY_PASSWORD ?? 'playwright',

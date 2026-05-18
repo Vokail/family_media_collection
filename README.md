@@ -45,7 +45,6 @@ Hosted on [Vercel](https://vercel.com) (free Hobby plan) with [Supabase](https:/
 | Variable | Description |
 |---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon public key |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key (server only) |
 | `SESSION_SECRET` | Random 32+ char string for cookie encryption |
 | `INITIAL_VIEW_PIN` | PIN for read-only access (seeded on first login) |
