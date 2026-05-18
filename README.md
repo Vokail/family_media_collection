@@ -1,6 +1,6 @@
 # Our Collection
 
-A private family web app for tracking vinyl records, books, and comics — with cover art, barcode scanning, wishlists, and two-tier access.
+A private family web app for tracking vinyl records, books, comics, and Lego — with cover art, barcode scanning, wishlists, and three-tier access.
 
 ## Features
 
@@ -11,11 +11,14 @@ A private family web app for tracking vinyl records, books, and comics — with 
 - **Cover scan OCR** — photograph a book, record, or comic cover to auto-identify title and creator using OpenRouter (Llama 3.2 Vision); falls back to manual form if the key is not configured
 - **Descriptions** — books and comics get descriptions auto-fetched on add; language-aware for Dutch/French/German books (Google Books preferred, OpenLibrary fallback)
 - **Vinyl tracklist** — automatically fetched from Discogs when adding a record; search cards show format (LP/7"), label, country, catalogue number to distinguish editions; tap "Details & tracklist" on any search result for a full preview before adding
+- **Vinyl condition grading** — grade records as Mint / Near Mint / Good / Poor; badge shown on item cards; sort collection by condition with grouped sections; editors grade, viewers see read-only
+- **Lego build status** — mark Lego sets as Built / In box / Apart; badge shown on cards; editors set status, viewers see read-only
 - **Wishlist** — toggle items between owned and wishlist; counts shown on each tab; family-wide wishlist view at `/wishlist`
 - **Sorting** — by artist/author (with A–Z index sidebar), title, year (with decade grouping), or date added
 - **Language filter** — controls which description language is fetched (Dutch default); does not restrict search results
 - **Three-tier access** — view PIN for read-only browsing, per-member PIN for editing your own collection only, family password for full admin access; members can change their own PIN from `/profile`
 - **Per-member collection visibility** — each member can hide collections they don't use (e.g. disable Lego); toggled from their profile page via the 👤 icon in the collection header; data is never deleted, just hidden
+- **Member avatars** — upload a profile photo from the member's profile page; shown on the members home screen
 - **Read/Listened status** — mark items as read or listened; filter your collection by All / Unread / Read (or Unlistened / Listened for vinyl)
 - **Ratings** — 1–5 star rating per item shown as an overlay on cover art
 - **Activity feed** — recent additions across all members shown on the members home screen
@@ -75,6 +78,8 @@ Run all migrations in sequence:
 | `009_lego_build_status.sql` | Adds `lego_status` column to items (`built` / `in_box` / `disassembled`) |
 | `010_locked_fields.sql` | Adds `locked_fields` text array to items — tracks manually-edited fields so backfill won't overwrite them |
 | `011_item_counts_fn.sql` | Adds `get_member_item_counts()` DB function — returns owned-item counts grouped by member + collection (replaces full table scan) |
+| `012_vinyl_condition.sql` | Adds `condition` column to items — vinyl grade (`mint` / `near_mint` / `good` / `poor`) |
+| `013_member_avatar.sql` | Adds `avatar_path` column to members for profile photos |
 
 Then add your family members (edit names/slugs to match your family):
 
@@ -101,18 +106,28 @@ Run only the migrations you haven't applied yet, in order:
 009_lego_build_status.sql                 — adds lego_status column (built / in_box / disassembled)
 010_locked_fields.sql                     — adds locked_fields text array to protect manually-edited fields from backfill
 011_item_counts_fn.sql                    — adds get_member_item_counts() DB function for efficient member stats counts
+012_vinyl_condition.sql                   — adds condition column (mint / near_mint / good / poor)
+013_member_avatar.sql                     — adds avatar_path column to members
 ```
 
 ## Local Development
 
+Create a `.env.local` file with the variables listed in the Environment Variables section above, then:
+
 ```bash
 npm install
-cp .env.local.example .env.local  # fill in your credentials
 npm run dev
 ```
 
 ## Tests
 
 ```bash
+# Unit tests (Jest)
 npm test
+
+# End-to-end tests (Playwright + BDD)
+npm run test:e2e
+
+# E2E with Playwright UI (visual test runner)
+npm run test:e2e:ui
 ```
