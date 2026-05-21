@@ -55,7 +55,6 @@ export default function ActivityFeed({ items, supabaseUrl }: Props) {
                 style={{ backgroundColor: 'var(--border)' }}
               >
                 {coverSrc ? (
-                  {/* Cover already optimised by sharp on upload — unoptimized avoids burning Vercel transformation quota */}
                   <Image src={coverSrc} alt={item.title} width={40} height={40} unoptimized className="w-full h-full object-cover" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-base">
