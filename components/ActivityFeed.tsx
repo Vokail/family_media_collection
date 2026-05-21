@@ -55,8 +55,8 @@ export default function ActivityFeed({ items, supabaseUrl }: Props) {
                 style={{ backgroundColor: 'var(--border)' }}
               >
                 {coverSrc ? (
-                  // 40x40 thumbnail — fetch the smallest srcset variant
-                  <Image src={coverSrc} alt={item.title} width={40} height={40} sizes="40px" className="w-full h-full object-cover" />
+                  {/* Cover already optimised by sharp on upload — unoptimized avoids burning Vercel transformation quota */}
+                  <Image src={coverSrc} alt={item.title} width={40} height={40} unoptimized className="w-full h-full object-cover" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-base">
                     {isLoading ? '…' : (EMOJI[item.collection] ?? '📦')}

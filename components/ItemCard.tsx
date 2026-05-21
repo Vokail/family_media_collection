@@ -94,10 +94,10 @@ export default function ItemCard({ item, isEditor, onUpdate, onDelete, supabaseU
                 alt={item.title}
                 width={200}
                 height={200}
-                // Grid is 2 cols on phones up to 6 on xl. The 200px hint matches
-                // the sm+ tile size; on smaller phones we use 50vw which lands on
-                // the 640px srcset variant — still way smaller than the full cover.
-                sizes="(min-width: 768px) 200px, 50vw"
+                // Covers are already processed by sharp on upload (max 600×600,
+                // JPEG 85%) so Vercel Image Optimization would just re-compress
+                // them and burn the free-tier transformation quota for nothing.
+                unoptimized
                 className={`w-full h-full ${item.collection === 'lego' ? 'object-contain p-1' : 'object-cover'}`}
               />
             </div>
