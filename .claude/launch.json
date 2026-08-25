@@ -7,6 +7,16 @@
       "runtimeArgs": ["run", "dev"],
       "port": 3000,
       "autoPort": false
+    },
+    {
+      "name": "our-collection-mocked",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": [
+        "-c",
+        "PLAYWRIGHT_TEST=1 SESSION_SECRET=playwright-smoke-test-secret-at-least-32chars-long NEXT_PUBLIC_SUPABASE_URL=https://placeholder.supabase.co SUPABASE_SERVICE_ROLE_KEY=placeholder-service-role INITIAL_VIEW_PIN=1234 INITIAL_FAMILY_PASSWORD=playwright npm run dev"
+      ],
+      "port": 3000,
+      "autoPort": false
     }
   ]
 }
