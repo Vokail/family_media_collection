@@ -19,7 +19,9 @@ export default function LegoDetailModal({ result, onClose }: Props) {
         <div className="flex justify-end p-3 border-b flex-shrink-0" style={{ borderColor: 'var(--border)' }}>
           <button onClick={onClose} className="btn-ghost px-3 py-1 text-sm">✕ Close</button>
         </div>
-        <div className="p-5 flex flex-col gap-4 overflow-y-auto items-center">
+        {/* overscroll-y-contain: see #149 — without it, reaching the end of this
+            list scrolls the collection behind the sheet. */}
+        <div className="p-5 flex flex-col gap-4 overflow-y-auto overscroll-y-contain items-center">
           {result.cover_url ? (
             <Image src={result.cover_url} alt={result.title} width={280} height={280} className="w-64 h-64 rounded-xl object-contain shadow-md" unoptimized />
           ) : (

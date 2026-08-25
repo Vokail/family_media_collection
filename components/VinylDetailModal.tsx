@@ -39,7 +39,9 @@ export default function VinylDetailModal({ result, onClose }: Props) {
         <div className="flex justify-end p-3 border-b flex-shrink-0" style={{ borderColor: 'var(--border)' }}>
           <button onClick={onClose} className="btn-ghost px-3 py-1 text-sm">✕ Close</button>
         </div>
-        <div className="p-5 flex flex-col gap-4 overflow-y-auto">
+        {/* overscroll-y-contain: see #149 — without it, reaching the end of this
+            list scrolls the collection behind the sheet. */}
+        <div className="p-5 flex flex-col gap-4 overflow-y-auto overscroll-y-contain">
           <div className="flex gap-4">
             {result.cover_url ? (
               <Image src={result.cover_url} alt={result.title} width={100} height={100} className="w-24 h-24 rounded-lg object-cover flex-shrink-0 shadow" unoptimized />

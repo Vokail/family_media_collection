@@ -245,7 +245,9 @@ export default function ItemDetailSheet({ item, isEditor, onUpdate, onDelete, su
           <div className="flex justify-end p-3 border-b flex-shrink-0" style={{ borderColor: 'var(--border)' }}>
             <button onClick={handleClose} className="btn-ghost px-3 py-1 text-sm">✕ Close</button>
           </div>
-          <div className="p-6 flex flex-col gap-4 overflow-y-auto">
+          {/* overscroll-y-contain stops the scroll chaining to the page behind once
+              this list hits its end (#149). */}
+          <div className="p-6 flex flex-col gap-4 overflow-y-auto overscroll-y-contain">
             {coverSrc && (
               <button onClick={() => setCoverZoom(true)} className="mx-auto block hover:opacity-90 transition-opacity focus:outline-none" title="View full size">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
