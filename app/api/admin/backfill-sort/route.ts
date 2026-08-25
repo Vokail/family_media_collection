@@ -3,6 +3,7 @@ import { createServerClient } from '@/lib/supabase-server'
 import { downloadCover, coverStorageKey } from '@/lib/cover'
 import { fetchBookDescription } from '@/lib/apis/openlibrary'
 import { fetchComicDescription } from '@/lib/apis/comicvine'
+import { cleanArtistName } from '@/lib/apis/discogs'
 
 // Backfill iterates over every item, calling external APIs with rate-limit delays.
 // 300s ceiling prevents Vercel from cutting it off on large collections.
@@ -122,7 +123,11 @@ async function backfillVinyl(db: ReturnType<typeof createServerClient>, force: b
         duration: (t.duration as string) || null,
       }))
       const patch: Record<string, unknown> = {
-        sort_name: (release.artists_sort as string) || (release.artists as { name: string }[])?.[0]?.name || null,
+        // Strip Discogs' "(2)" disambiguators and trailing "*" name-variation
+        // markers — database notation, not part of the artist's name.
+        sort_name: cleanArtistName(
+          (release.artists_sort as string) || (release.artists as { name: string }[])?.[0]?.name,
+        ),
         tracklist: tracklist.length ? tracklist : null,
         external_id: item.external_id ?? id,
         genres: (release.genres as string[])?.join(', ') || null,

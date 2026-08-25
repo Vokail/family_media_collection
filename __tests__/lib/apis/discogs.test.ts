@@ -1,4 +1,4 @@
-import { searchVinyl, lookupVinylByBarcode, fetchVinylRelease } from '@/lib/apis/discogs'
+import { searchVinyl, lookupVinylByBarcode, fetchVinylRelease, cleanArtistName } from '@/lib/apis/discogs'
 
 global.fetch = jest.fn()
 const mockFetch = fetch as jest.Mock
@@ -255,6 +255,19 @@ describe('searchVinyl', () => {
     expect(rateLimited).toBe(false)
   })
 
+  it('cleans Discogs markers off the artist in search results', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        pagination: { pages: 1 },
+        results: [{ id: 448759, master_id: 83128, title: 'Chicago (2) - Chicago', year: '1970' }],
+      })
+    })
+    const { results } = await searchVinyl('chicago')
+    expect(results[0].creator).toBe('Chicago')
+    expect(results[0].title).toBe('Chicago')
+  })
+
   it('returns empty results and hasMore=false on fetch failure', async () => {
     mockFetch.mockResolvedValueOnce({ ok: false })
     const { results, hasMore } = await searchVinyl('x')
@@ -380,5 +393,32 @@ describe('fetchVinylRelease', () => {
     expect(sortName).toBeNull()
     expect(genres).toBeNull()
     expect(styles).toBeNull()
+  })
+})
+
+describe('cleanArtistName', () => {
+  it('strips the numeric disambiguator Discogs adds to same-named artists', () => {
+    // Stored and displayed verbatim on the item card as "Chicago (2)".
+    expect(cleanArtistName('Chicago (2)')).toBe('Chicago')
+    expect(cleanArtistName('Sacred (2)')).toBe('Sacred')
+    expect(cleanArtistName('Nirvana (15)')).toBe('Nirvana')
+  })
+
+  it('strips the trailing asterisk marking a release-specific spelling', () => {
+    // The sleeve reads "Simon And Garfunkel"; the canonical artist is
+    // "Simon & Garfunkel", and Discogs flags the difference with a *.
+    expect(cleanArtistName('Simon And Garfunkel*')).toBe('Simon And Garfunkel')
+    expect(cleanArtistName('The Mothers Of Invention*')).toBe('The Mothers Of Invention')
+  })
+
+  it('leaves names that legitimately end in parentheses alone', () => {
+    expect(cleanArtistName('Heroes (Live)')).toBe('Heroes (Live)')
+    expect(cleanArtistName('Everything But The Girl')).toBe('Everything But The Girl')
+  })
+
+  it('returns null for empty or missing input', () => {
+    expect(cleanArtistName(null)).toBeNull()
+    expect(cleanArtistName(undefined)).toBeNull()
+    expect(cleanArtistName('   ')).toBeNull()
   })
 })

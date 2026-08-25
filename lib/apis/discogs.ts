@@ -6,9 +6,32 @@ const headers = () => ({
   'User-Agent': 'FamilyMediaCollection/1.0',
 })
 
+/**
+ * Strip Discogs' bookkeeping markers from an artist name.
+ *
+ * Discogs disambiguates same-named artists with a numeric suffix — "Chicago (2)"
+ * — and marks a release-specific spelling with a trailing asterisk, so a sleeve
+ * reading "Simon And Garfunkel" appears as "Simon And Garfunkel*" against the
+ * canonical "Simon & Garfunkel". Both are database notation, not part of the
+ * name, and were being stored and shown on the item cards verbatim.
+ *
+ * Only a trailing " (digits)" is removed, so names that genuinely end in
+ * parentheses — "Heroes (Live)" — are left alone.
+ */
+export function cleanArtistName(raw: string | null | undefined): string | null {
+  if (!raw) return null
+  const cleaned = raw.replace(/\s*\(\d+\)\s*$/, '').replace(/\*+$/, '').trim()
+  return cleaned || null
+}
+
 function parseDiscogsTitle(raw: string): { title: string; creator: string } {
   const parts = raw.split(' - ')
-  if (parts.length >= 2) return { creator: parts[0].trim(), title: parts.slice(1).join(' - ').trim() }
+  if (parts.length >= 2) {
+    return {
+      creator: cleanArtistName(parts[0]) ?? 'Unknown',
+      title: parts.slice(1).join(' - ').trim(),
+    }
+  }
   return { creator: 'Unknown', title: raw }
 }
 
@@ -169,9 +192,9 @@ export async function fetchVinylRelease(releaseId: string): Promise<{
     title: (t.title as string) || '',
     duration: (t.duration as string) || null,
   }))
-  const sortName = (data.artists_sort as string)
-    || (data.artists as { name: string }[])?.[0]?.name
-    || null
+  const sortName = cleanArtistName(
+    (data.artists_sort as string) || (data.artists as { name: string }[])?.[0]?.name,
+  )
   return {
     tracklist,
     sortName,
