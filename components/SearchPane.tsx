@@ -17,6 +17,7 @@ import {
 import SearchResults from '@/components/SearchResults'
 import { searchOpenLibrary } from '@/lib/apis/openlibrary'
 import type { CollectionType, SearchResult } from '@/lib/types'
+import { addSearchPlaceholder } from '@/lib/search-labels'
 
 export interface SearchPaneHandle {
   /**
@@ -313,7 +314,7 @@ const SearchPane = forwardRef<SearchPaneHandle, SearchPaneProps>(
             <input
               ref={searchInputRef}
               className="input w-full pr-8"
-              placeholder={collection === 'vinyl' ? 'Album title…' : 'Search by title or artist…'}
+              placeholder={addSearchPlaceholder(collection)}
               value={query}
               onChange={e => { setQuery(e.target.value); setBarcodeHint(null) }}
               onKeyDown={e => e.key === 'Enter' && runSearch(query)}

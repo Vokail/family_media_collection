@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { useState, useRef, useCallback, useEffect } from 'react'
 import ItemCard from './ItemCard'
 import type { Item, CollectionType, Member } from '@/lib/types'
+import { collectionSearchPlaceholder } from '@/lib/search-labels'
 import { getSurprisePool } from '@/lib/surprisePool'
 import { CONDITION_OPTIONS, CONDITION_ORDER } from '@/lib/conditions'
 import { LEGO_STATUS_OPTIONS, type LegoStatus } from '@/lib/constants'
@@ -499,7 +500,7 @@ export default function CollectionGrid({ member, collection, initialItems, isEdi
       <div className="relative">
         <input
           className="input text-sm py-1.5 w-full pr-8"
-          placeholder="Search title or artist…"
+          placeholder={collectionSearchPlaceholder(collection)}
           value={search}
           onChange={e => setSearch(e.target.value)}
         />

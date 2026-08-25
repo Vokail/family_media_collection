@@ -74,7 +74,10 @@ async function searchAndSeedResults(initialResults: ReturnType<typeof makeLegoRe
   await act(async () => { render(<AddItemPage />) })
 
   await act(async () => {
-    fireEvent.change(screen.getByPlaceholderText(/Search by title/i), { target: { value: 'Falcon' } })
+    // These tests render the Lego add page, whose placeholder names a set and a
+    // theme rather than a title and an artist (#151). Matched on the leading
+    // "Search" so the wording can be tuned without breaking Load More coverage.
+    fireEvent.change(screen.getByPlaceholderText(/^Search /i), { target: { value: 'Falcon' } })
     fireEvent.click(screen.getByRole('button', { name: /search/i }))
   })
 
