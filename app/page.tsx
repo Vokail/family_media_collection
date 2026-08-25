@@ -22,7 +22,12 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="fixed inset-0 flex flex-col items-center justify-center gap-6 p-6">
+    // Deliberately not `fixed inset-0` (#150). A fixed container cannot scroll,
+    // so on an iOS PWA the on-screen keyboard covered the Enter button with no
+    // way to reach it — you had to dismiss the keyboard first. Normal flow lets
+    // Safari scroll the focused field into view and the user reach the button.
+    // dvh tracks the visible area; min-h-screen is the fallback for older iOS.
+    <main className="min-h-screen [min-height:100dvh] flex flex-col items-center justify-center gap-6 p-6">
       <Image src="/icon.svg" alt="Our Collection" width={96} height={96} className="rounded-2xl shadow-md" priority />
       <h1 className="text-3xl font-serif font-bold">Our Collection</h1>
       <p className="subtitle">Enter the family password or view PIN</p>

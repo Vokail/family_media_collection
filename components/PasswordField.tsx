@@ -29,6 +29,10 @@ export default function PasswordField({ label, onSubmit, error, placeholder = 'P
         onChange={e => setValue(e.target.value)}
         placeholder={placeholder}
         className="input"
+        // Labels the keyboard's return key "Go" so the form can be submitted
+        // without reaching the button at all — the button may still sit under
+        // the on-screen keyboard on a short screen (#150).
+        enterKeyHint="go"
         required
       />
       {error && <p className="text-red-500 text-sm">{error}</p>}

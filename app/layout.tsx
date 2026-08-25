@@ -24,6 +24,11 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
+  // Shrink the layout viewport when the on-screen keyboard opens, so a focused
+  // field near the bottom is not left underneath it (#150). Honoured by Chrome
+  // and Android WebView; iOS ignores it, which is why the login page also has
+  // to stay scrollable rather than relying on this alone.
+  interactiveWidget: 'resizes-content',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
