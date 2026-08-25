@@ -55,13 +55,46 @@ async function searchDiscogsId(creator: string, title: string): Promise<string |
   return data.results?.[0]?.id ? String(data.results[0].id) : null
 }
 
-async function fetchDiscogsRelease(id: string) {
-  // Search results store master IDs; try master first, fall back to release
-  for (const path of [`/masters/${id}`, `/releases/${id}`]) {
+/** Loose artist comparison — Discogs disambiguates duplicates as "Sacred (2)". */
+function sameArtist(a: string | null | undefined, b: string | null | undefined): boolean {
+  const norm = (s: string) => s
+    .normalize('NFKD').replace(/[̀-ͯ]/g, '')
+    .replace(/\(\d+\)|\*/g, '')
+    .toLowerCase().replace(/[^a-z0-9]+/g, ' ')
+    .split(' ').filter(w => w && w !== 'the').sort().join(' ')
+  return !!a && !!b && norm(a) === norm(b)
+}
+
+function artistOf(data: Record<string, unknown>): string | null {
+  return (data.artists_sort as string)
+    || (data.artists as { name: string }[])?.[0]?.name
+    || null
+}
+
+/**
+ * Resolve a stored vinyl external_id, which may sit in either Discogs namespace:
+ * release ids from barcode scans and searchDiscogsId, plus legacy master ids
+ * from when the user-facing search used type=master.
+ *
+ * The namespaces overlap — a release id below ~3.5M is usually also a valid
+ * master id for an unrelated record — so an endpoint that returns 200 is not
+ * proof of the right record. Each candidate is checked against the item's own
+ * creator, and if neither matches we return null so the caller skips the item
+ * rather than overwriting it with another artist's tracklist.
+ */
+async function fetchDiscogsRelease(id: string, expectedCreator: string | null) {
+  let unverified: Record<string, unknown> | null = null
+  for (const path of [`/releases/${id}`, `/masters/${id}`]) {
     const res = await fetch(`${DISCOGS_BASE}${path}`, { headers: discogsHeaders() })
-    if (res.ok) return res.json()
+    if (!res.ok) continue
+    const data = await res.json()
+    if (sameArtist(artistOf(data), expectedCreator)) return data
+    unverified ??= data
+    await delay(1100) // pace between the two candidate lookups
   }
-  return null
+  // Nothing matched the stored creator. If only one namespace resolved at all we
+  // still can't tell whether it is the right record, so decline to write.
+  return expectedCreator ? null : unverified
 }
 
 async function backfillVinyl(db: ReturnType<typeof createServerClient>, force: boolean) {
@@ -80,7 +113,7 @@ async function backfillVinyl(db: ReturnType<typeof createServerClient>, force: b
       }
       if (!id) continue
       await delay(1100) // pace before release fetch (second call for items needing a search)
-      const release = await fetchDiscogsRelease(id)
+      const release = await fetchDiscogsRelease(id, item.creator)
       await delay(1100) // pace after release fetch
       if (!release) continue
       const tracklist = (release.tracklist ?? []).map((t: Record<string, unknown>) => ({

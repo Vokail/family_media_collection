@@ -10,7 +10,7 @@ A private family web app for tracking vinyl records, books, comics, and Lego —
 - **Barcode scanning** — scan ISBN or vinyl barcodes with your phone camera to add items instantly; manga/graphic novel ISBN barcodes work for comics too
 - **Cover scan OCR** — photograph a book, record, or comic cover to auto-identify title and creator using OpenRouter (Llama 3.2 Vision); falls back to manual form if the key is not configured
 - **Descriptions** — books and comics get descriptions auto-fetched on add; language-aware for Dutch/French/German books (Google Books preferred, OpenLibrary fallback)
-- **Vinyl tracklist** — automatically fetched from Discogs when adding a record; search cards show format (LP/7"), label, country, catalogue number to distinguish editions; tap "Details & tracklist" on any search result for a full preview before adding
+- **Vinyl tracklist** — automatically fetched from Discogs when adding a record; search returns individual vinyl pressings, so cards show format (LP/7"), label, country and catalogue number to tell editions apart; tap "Details & tracklist" on any search result for a full preview before adding
 - **Vinyl condition grading** — grade records as Mint / Near Mint / Good / Poor; badge shown on item cards; sort collection by condition with grouped sections; editors grade, viewers see read-only
 - **Lego build status** — mark Lego sets as Built / In box / Apart; badge shown on cards; editors set status, viewers see read-only
 - **Wishlist** — toggle items between owned and wishlist; counts shown on each tab; family-wide wishlist view at `/wishlist`
