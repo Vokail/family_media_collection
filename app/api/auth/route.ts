@@ -18,9 +18,8 @@ export async function POST(request: Request) {
   const ip = getIp()
   const { locked, secondsLeft } = checkLockout(ip)
   if (locked) {
-    const mins = Math.ceil(secondsLeft / 60)
     return NextResponse.json(
-      { error: `Too many attempts. Try again in ${mins} minute${mins === 1 ? '' : 's'}.` },
+      { error: `Too many attempts. Try again in ${secondsLeft} second${secondsLeft === 1 ? '' : 's'}.` },
       { status: 429 },
     )
   }

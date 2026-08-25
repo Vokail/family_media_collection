@@ -79,4 +79,6 @@ export interface ActivityItem {
 export interface SessionData {
   role?: Role
   editableMemberId?: string
+  /** Epoch ms the cookie was last issued — drives sliding renewal in middleware. */
+  issuedAt?: number
 }

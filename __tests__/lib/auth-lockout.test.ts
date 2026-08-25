@@ -87,6 +87,59 @@ describe('checkLockout', () => {
   })
 })
 
+describe('progressive backoff', () => {
+  it('escalates the wait with each failure past the free allowance', () => {
+    const ip = newIp()
+    const t0 = Date.now()
+    try {
+      jest.spyOn(Date, 'now').mockReturnValue(t0)
+      for (let i = 0; i < 5; i++) recordFailure(ip)
+      expect(checkLockout(ip).secondsLeft).toBe(1) // 5th failure -> 1s
+
+      recordFailure(ip)
+      expect(checkLockout(ip).secondsLeft).toBe(2) // 6th -> 2s
+
+      recordFailure(ip)
+      expect(checkLockout(ip).secondsLeft).toBe(4) // 7th -> 4s
+    } finally {
+      jest.spyOn(Date, 'now').mockRestore()
+    }
+  })
+
+  it('never makes a legitimate user wait more than 60 seconds', () => {
+    const ip = newIp()
+    const t0 = Date.now()
+    try {
+      jest.spyOn(Date, 'now').mockReturnValue(t0)
+      // Far past the point where an uncapped 2^n would exceed a minute
+      for (let i = 0; i < 40; i++) recordFailure(ip)
+      expect(checkLockout(ip).secondsLeft).toBe(60)
+    } finally {
+      jest.spyOn(Date, 'now').mockRestore()
+    }
+  })
+
+  it('unlocks once the required delay has elapsed, without clearing the count', () => {
+    const ip = newIp()
+    const t0 = Date.now()
+    try {
+      jest.spyOn(Date, 'now').mockReturnValue(t0)
+      for (let i = 0; i < 5; i++) recordFailure(ip)
+      expect(checkLockout(ip).locked).toBe(true)
+
+      // 1s later the attempt is accepted again...
+      jest.spyOn(Date, 'now').mockReturnValue(t0 + 1001)
+      expect(checkLockout(ip)).toEqual({ locked: false, secondsLeft: 0 })
+
+      // ...but the history is retained, so the next failure costs more, not less
+      recordFailure(ip)
+      expect(checkLockout(ip).secondsLeft).toBe(2)
+    } finally {
+      jest.spyOn(Date, 'now').mockRestore()
+    }
+  })
+})
+
 describe('clearAttempts', () => {
   it('resets the counter so a new sequence of failures starts fresh', () => {
     const ip = newIp()

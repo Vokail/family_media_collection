@@ -61,17 +61,18 @@ const baseItem: Item = {
 const noop = () => {}
 
 describe('ItemCard cover image sizes hint (battery)', () => {
-  it('grid view sets a responsive sizes hint, not the full-size default', () => {
+  it('grid view serves the cover unoptimized, with no generated srcset', () => {
     const { container } = render(
       <ItemCard item={baseItem} isEditor={true} onUpdate={noop} onDelete={noop} supabaseUrl="https://example.com" layout="grid" />
     )
     const img = container.querySelector('img[alt="Abbey Road"]')
     expect(img).not.toBeNull()
-    const sizes = img!.getAttribute('sizes')
-    expect(sizes).toBeTruthy()
-    // The hint must reference a small fixed size on tablet+, not the default
-    // (without `sizes` next/image generates a 100vw srcset which is too big)
-    expect(sizes).toMatch(/200px/)
+    // Covers are pre-resized by sharp on upload (max 600x600, JPEG 85%), so the
+    // grid image is `unoptimized` to avoid burning Vercel's transformation quota.
+    // That makes `sizes` moot — what matters is that no multi-variant srcset is
+    // emitted and the src points straight at Supabase Storage rather than /_next/image.
+    expect(img!.getAttribute('srcset')).toBeNull()
+    expect(img!.getAttribute('src')).toBe('https://example.com/storage/v1/object/public/covers/m-1/abbey.jpg')
   })
 
   it('list view requests an exact 48px thumbnail', () => {
