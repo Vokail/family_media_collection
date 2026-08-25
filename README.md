@@ -26,7 +26,7 @@ A private family web app for tracking vinyl records, books, comics, and Lego —
 - **Pull-to-refresh** — drag down on any page (collection, wishlist, members) to reload fresh data
 - **PWA** — installable on iPhone via Safari → Add to Home Screen; cover images cached locally for offline browsing
 - **Dark mode** — automatic, follows OS setting
-- **Keep-alive cron** — pings Supabase twice a week (Mon/Thu) to prevent the free-tier project from being paused
+- **Keep-alive cron** — `/api/ping` runs a real Supabase query twice a week (Mon/Thu) to register activity on the free tier. Note that this has *not* proved sufficient on its own: pause warnings still arrived with both this cron and an external pinger running. Opening the app or the Supabase dashboard weekly is the reliable fallback; the Pro plan removes pausing entirely
 
 ## Tech Stack
 
