@@ -69,6 +69,12 @@ const SearchPane = forwardRef<SearchPaneHandle, SearchPaneProps>(
     ref,
   ) {
     const [query, setQuery] = useState('')
+    // Vinyl only: Discogs can scope a search to artist= plus release_title=,
+    // which returns the one album instead of everything the words touch.
+    const [artist, setArtist] = useState('')
+    // Discogs answers 429 when over its rate limit. That is not the same as an
+    // album being absent, so it must not read as "No results found."
+    const [rateLimited, setRateLimited] = useState(false)
     const [results, setResults] = useState<SearchResult[]>([])
     const [hasSearched, setHasSearched] = useState(false)
     const [hasMore, setHasMore] = useState(false)
@@ -130,6 +136,7 @@ const SearchPane = forwardRef<SearchPaneHandle, SearchPaneProps>(
       setQuery(q)
       setOffset(0)
       setLastQuery(q)
+      setRateLimited(false)
 
       let data: SearchResult[]
       if (collection === 'book') {
@@ -137,7 +144,10 @@ const SearchPane = forwardRef<SearchPaneHandle, SearchPaneProps>(
         setHasMore(data.length === 20)
       } else {
         const lang = collection === 'comic' ? searchLang : undefined
-        const url = `/api/search?q=${encodeURIComponent(q)}&type=${collection}${lang ? `&lang=${lang}` : ''}`
+        const scopedArtist = collection === 'vinyl' ? artist.trim() : ''
+        const url = `/api/search?q=${encodeURIComponent(q)}&type=${collection}` +
+          (lang ? `&lang=${lang}` : '') +
+          (scopedArtist ? `&artist=${encodeURIComponent(scopedArtist)}` : '')
         const res = await fetch(url)
         if (res.ok) {
           const json = await res.json()
@@ -147,6 +157,7 @@ const SearchPane = forwardRef<SearchPaneHandle, SearchPaneProps>(
           } else {
             data = json.results ?? []
             setHasMore(json.hasMore ?? false)
+            setRateLimited(json.rateLimited ?? false)
           }
         } else {
           data = []
@@ -157,7 +168,7 @@ const SearchPane = forwardRef<SearchPaneHandle, SearchPaneProps>(
       setResults(data)
       setHasSearched(true)
       setLoading(false)
-    }, [collection, searchLang, onIsbnNotFound])
+    }, [collection, searchLang, onIsbnNotFound, artist])
 
     useImperativeHandle(ref, () => ({
       inject(q, newResults, hint = null) {
@@ -174,6 +185,8 @@ const SearchPane = forwardRef<SearchPaneHandle, SearchPaneProps>(
       runSearch,
       reset() {
         setQuery('')
+        setArtist('')
+        setRateLimited(false)
         setResults([])
         setHasSearched(false)
         setHasMore(false)
@@ -270,13 +283,37 @@ const SearchPane = forwardRef<SearchPaneHandle, SearchPaneProps>(
           </p>
         )}
 
+        {/* Artist field — vinyl only. Filling both fields scopes the Discogs
+            query to artist + release_title, which pins the exact album. */}
+        {collection === 'vinyl' && (
+          <div className="relative mb-2">
+            <input
+              className="input w-full pr-8"
+              placeholder="Artist (optional)…"
+              value={artist}
+              onChange={e => { setArtist(e.target.value); setBarcodeHint(null) }}
+              onKeyDown={e => e.key === 'Enter' && runSearch(query)}
+            />
+            {artist && (
+              <button
+                onClick={() => setArtist('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-sm leading-none px-1"
+                style={{ color: 'var(--text-muted)' }}
+                title="Clear artist"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+        )}
+
         {/* Search bar */}
         <div className="flex gap-2 mb-4">
           <div className="relative flex-1">
             <input
               ref={searchInputRef}
               className="input w-full pr-8"
-              placeholder="Search by title or artist…"
+              placeholder={collection === 'vinyl' ? 'Album title…' : 'Search by title or artist…'}
               value={query}
               onChange={e => { setQuery(e.target.value); setBarcodeHint(null) }}
               onKeyDown={e => e.key === 'Enter' && runSearch(query)}
@@ -338,6 +375,9 @@ const SearchPane = forwardRef<SearchPaneHandle, SearchPaneProps>(
             onAdd={onAdd}
             adding={adding}
             getDupeStatus={getDupeStatus}
+            emptyMessage={rateLimited
+              ? 'Discogs is rate-limiting us right now — wait a moment and search again.'
+              : null}
           />
         )}
 

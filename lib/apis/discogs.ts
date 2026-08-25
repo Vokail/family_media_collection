@@ -39,8 +39,53 @@ function mapResult(r: Record<string, unknown>): SearchResult {
   }
 }
 
+// One generous page instead of paging. Collapsing pressings (below) makes the
+// raw-results-to-cards ratio vary per query, so a fixed client-side offset step
+// can no longer line up with Discogs pages — and the same album would reappear
+// later under a different pressing id, slipping past the client's external_id
+// dedupe. 100 pressings reliably covers every distinct album for a real query;
+// beyond that, adding the artist to the query beats paging through reissues.
+const VINYL_SEARCH_PER_PAGE = 100
+
+type RawResult = Record<string, unknown>
+
+const yearOf = (r: RawResult): number | null => {
+  const y = parseInt(String(r.year ?? ''))
+  return Number.isFinite(y) ? y : null
+}
+
 /**
- * Search Discogs for vinyl pressings.
+ * Collapse the pressings of one album into a single card.
+ *
+ * Discogs release results carry the `master_id` of the album they press, so
+ * they can be grouped without extra lookups. Californication alone has 25 vinyl
+ * pressings; ungrouped they filled the whole first page with the same record.
+ *
+ * Metadata comes from the highest-ranked pressing (best cover and label data),
+ * but the year is the group's earliest. A release's year is when *that pressing*
+ * was cut, so the top hit for RHCP's "Greatest Hits" reports 2016 for a 2003
+ * album — and that year feeds the collection's year sort and decade grouping.
+ *
+ * Releases with no master (one-off bootlegs) stand alone, keyed by release id.
+ */
+function collapsePressings(raw: RawResult[]): SearchResult[] {
+  const groups = new Map<string, RawResult[]>()
+  for (const r of raw) {
+    const key = r.master_id ? `master:${r.master_id}` : `release:${r.id}`
+    const existing = groups.get(key)
+    if (existing) existing.push(r)
+    else groups.set(key, [r])
+  }
+
+  return Array.from(groups.values()).map(group => {
+    const card = mapResult(group[0])
+    const years = group.map(yearOf).filter((y): y is number => y !== null)
+    return years.length ? { ...card, year: Math.min(...years) } : card
+  })
+}
+
+/**
+ * Search Discogs for vinyl albums.
  *
  * Searches releases, not masters. A master inherits its format from its *main*
  * release, so `type=master&format=vinyl` silently drops any album whose primary
@@ -48,21 +93,50 @@ function mapResult(r: Record<string, unknown>): SearchResult {
  * that way returned two bootlegs and not the Red Hot Chili Peppers album, whose
  * master is a CD despite 67 vinyl pressings existing.
  *
- * The trade-off is that each pressing is its own result, so popular albums
- * return many near-identical rows. That is what the format/label/country/catno
- * chips on the search cards are for.
+ * Results are then collapsed back to one card per album, so searching releases
+ * does not mean picking through 25 near-identical rows.
  */
-export async function searchVinyl(query: string, offset = 0): Promise<{ results: SearchResult[]; hasMore: boolean }> {
-  const page = Math.floor(offset / 20) + 1
-  const url = `${BASE}/database/search?q=${encodeURIComponent(query)}&type=release&format=vinyl&per_page=20&page=${page}`
+/**
+ * Discogs allows 60 requests/minute with a token, 25 without. Over that it
+ * answers 429, which is not the same as an album being absent — reporting both
+ * as "no results" tells the user their record isn't in the database when it is.
+ */
+async function fetchCollapsed(params: string): Promise<{ results: SearchResult[]; rateLimited: boolean }> {
+  const url = `${BASE}/database/search?${params}&type=release&format=vinyl&per_page=${VINYL_SEARCH_PER_PAGE}&page=1`
   const res = await fetch(url, { headers: headers() })
-  if (!res.ok) return { results: [], hasMore: false }
+  if (res.status === 429) return { results: [], rateLimited: true }
+  if (!res.ok) return { results: [], rateLimited: false }
   const data = await res.json()
-  const totalPages: number = data.pagination?.pages ?? 1
-  return {
-    results: (data.results ?? []).map(mapResult),
-    hasMore: page < totalPages,
+  return { results: collapsePressings(data.results ?? []), rateLimited: false }
+}
+
+export async function searchVinyl(
+  query: string,
+  offset = 0,
+  artist?: string,
+): Promise<{ results: SearchResult[]; hasMore: boolean; rateLimited: boolean }> {
+  // Everything worth showing is in the single page fetched below.
+  if (offset > 0) return { results: [], hasMore: false, rateLimited: false }
+
+  const scopedArtist = artist?.trim()
+  if (scopedArtist && query.trim()) {
+    // Scoping the fields beats free text, which matches anywhere — artist,
+    // title, label, catalogue number — so "eric clapton unplugged" drags in his
+    // whole catalogue. artist= plus release_title= returns the one album.
+    const scoped = await fetchCollapsed(
+      `artist=${encodeURIComponent(scopedArtist)}&release_title=${encodeURIComponent(query)}`,
+    )
+    if (scoped.results.length) return { ...scoped, hasMore: false }
+    // Already throttled — a second call would only be refused too.
+    if (scoped.rateLimited) return { ...scoped, hasMore: false }
+    // Field search matches substrings but has no fuzzy matching, so a swapped or
+    // misremembered field returns nothing at all. Fall through to free text
+    // rather than leaving the user at a dead end.
   }
+
+  const freeText = [scopedArtist, query].filter(Boolean).join(' ')
+  const fallback = await fetchCollapsed(`q=${encodeURIComponent(freeText)}`)
+  return { ...fallback, hasMore: false }
 }
 
 /**

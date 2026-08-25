@@ -31,23 +31,33 @@ describe('searchVinyl', () => {
     expect(hasMore).toBe(false)
   })
 
-  it('returns hasMore=true when more pages exist', async () => {
+  it('fetches one large page and reports hasMore=false', async () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
       json: async () => ({
         pagination: { pages: 36, page: 1 },
         results: Array.from({ length: 16 }, (_, i) => ({
           id: i + 1,
+          master_id: i + 1,
           title: `Bruce Springsteen - Album ${i + 1}`,
           year: '1980',
           cover_image: null,
         }))
       })
     })
-    // 16 results on page 1 but 36 total pages — hasMore must be true
+    // Collapsing makes the raw-to-card ratio vary per query, so a fixed
+    // client-side offset step can no longer line up with Discogs pages.
     const { results, hasMore } = await searchVinyl('Bruce Springsteen')
     expect(results).toHaveLength(16)
-    expect(hasMore).toBe(true)
+    expect(hasMore).toBe(false)
+    expect((mockFetch.mock.calls[0][0] as string)).toContain('per_page=100')
+  })
+
+  it('returns nothing for a non-zero offset rather than repeating page 1', async () => {
+    const { results, hasMore } = await searchVinyl('Bruce Springsteen', 20)
+    expect(results).toEqual([])
+    expect(hasMore).toBe(false)
+    expect(mockFetch).not.toHaveBeenCalled()
   })
 
   it('includes format, label, country, catno, genres and styles when present', async () => {
@@ -81,6 +91,64 @@ describe('searchVinyl', () => {
     })
   })
 
+  it('collapses pressings of the same album into one card', async () => {
+    // Californication has 25 vinyl pressings; ungrouped they filled the whole
+    // first page with the same record.
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        pagination: { pages: 4 },
+        results: [
+          { id: 403972,   master_id: 42546, title: 'Red Hot Chili Peppers - Californication', year: '1999', label: ['Warner Bros.'] },
+          { id: 22983965, master_id: 42546, title: 'Red Hot Chili Peppers - Californication', year: '2021' },
+          { id: 3971421,  master_id: 42546, title: 'Red Hot Chili Peppers - Californication', year: '2012' },
+          { id: 3065687,  master_id: 99999, title: 'Red Hot Chili Peppers - Live Concert',    year: '2019' },
+        ],
+      })
+    })
+    const { results } = await searchVinyl('californication')
+    expect(results).toHaveLength(2)
+    expect(results[0].title).toBe('Californication')
+    // Metadata comes from the highest-ranked pressing of the group
+    expect(results[0].external_id).toBe('403972')
+    expect(results[0].label).toBe('Warner Bros.')
+  })
+
+  it('reports the earliest pressing year, not the top hit\'s', async () => {
+    // A release year is when that pressing was cut. The top hit for RHCP's
+    // "Greatest Hits" is a 2016 reissue of a 2003 album, and that year drives
+    // the collection's year sort and decade grouping.
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        pagination: { pages: 1 },
+        results: [
+          { id: 8, master_id: 500, title: 'Red Hot Chili Peppers - Greatest Hits', year: '2016' },
+          { id: 9, master_id: 500, title: 'Red Hot Chili Peppers - Greatest Hits', year: '2003' },
+        ],
+      })
+    })
+    const { results } = await searchVinyl('greatest hits')
+    expect(results).toHaveLength(1)
+    expect(results[0].year).toBe(2003)
+  })
+
+  it('keeps master-less releases as their own cards', async () => {
+    // One-off bootlegs have no master_id and must not collapse together.
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        pagination: { pages: 1 },
+        results: [
+          { id: 111, title: 'Artist - Bootleg One', year: '2019' },
+          { id: 222, title: 'Artist - Bootleg Two', year: '2020' },
+        ],
+      })
+    })
+    const { results } = await searchVinyl('bootleg')
+    expect(results.map(r => r.external_id)).toEqual(['111', '222'])
+  })
+
   it('searches releases, not masters (#californication)', async () => {
     // A master takes its format from its *main* release, so type=master with
     // format=vinyl drops any album whose primary pressing was a CD. Searching
@@ -108,6 +176,83 @@ describe('searchVinyl', () => {
     })
     const { results } = await searchVinyl('californication')
     expect(results[0].format).toBe('LP, All Media, Album')
+  })
+
+  it('scopes to artist= and release_title= when an artist is given', async () => {
+    // Free text matches anywhere — artist, title, label, catno — so
+    // "eric clapton unplugged" drags in his whole catalogue (9 cards).
+    // Scoping the fields returns the one album.
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        pagination: { pages: 1 },
+        results: [{ id: 412522, master_id: 55, title: 'Eric Clapton - Unplugged', year: '1992' }],
+      })
+    })
+    const { results } = await searchVinyl('unplugged', 0, 'eric clapton')
+    expect(results).toHaveLength(1)
+    const url = mockFetch.mock.calls[0][0] as string
+    expect(url).toContain('artist=eric%20clapton')
+    expect(url).toContain('release_title=unplugged')
+    expect(url).not.toContain('q=')
+  })
+
+  it('falls back to free text when the scoped search finds nothing', async () => {
+    // Field search matches substrings but has no fuzzy matching, so swapped or
+    // misremembered fields return nothing at all rather than a near miss.
+    mockFetch
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ pagination: { pages: 1 }, results: [] }) })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          pagination: { pages: 1 },
+          results: [{ id: 412522, master_id: 55, title: 'Eric Clapton - Unplugged', year: '1992' }],
+        })
+      })
+    // Fields the wrong way round
+    const { results } = await searchVinyl('eric clapton', 0, 'unplugged')
+    expect(results).toHaveLength(1)
+    expect(mockFetch).toHaveBeenCalledTimes(2)
+    expect((mockFetch.mock.calls[1][0] as string)).toContain('q=unplugged%20eric%20clapton')
+  })
+
+  it('uses free text when only one field is filled', async () => {
+    mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ pagination: { pages: 1 }, results: [] }) })
+    await searchVinyl('unplugged')
+    expect(mockFetch).toHaveBeenCalledTimes(1)
+    const url = mockFetch.mock.calls[0][0] as string
+    expect(url).toContain('q=unplugged')
+    expect(url).not.toContain('release_title=')
+  })
+
+  it('ignores a whitespace-only artist rather than scoping on it', async () => {
+    mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ pagination: { pages: 1 }, results: [] }) })
+    await searchVinyl('unplugged', 0, '   ')
+    expect(mockFetch).toHaveBeenCalledTimes(1)
+    expect((mockFetch.mock.calls[0][0] as string)).not.toContain('artist=')
+  })
+
+  it('flags a 429 so it is not reported as "no results"', async () => {
+    // Over the rate limit Discogs answers 429. Treating that the same as an
+    // empty result set tells the user their record is not in the database.
+    mockFetch.mockResolvedValueOnce({ ok: false, status: 429 })
+    const { results, rateLimited } = await searchVinyl('californication')
+    expect(results).toEqual([])
+    expect(rateLimited).toBe(true)
+  })
+
+  it('does not burn a second call on the fallback when already throttled', async () => {
+    mockFetch.mockResolvedValueOnce({ ok: false, status: 429 })
+    const { rateLimited } = await searchVinyl('unplugged', 0, 'eric clapton')
+    expect(rateLimited).toBe(true)
+    expect(mockFetch).toHaveBeenCalledTimes(1)
+  })
+
+  it('reports rateLimited=false for a genuine empty result', async () => {
+    mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ pagination: { pages: 1 }, results: [] }) })
+    const { results, rateLimited } = await searchVinyl('zzzznotanalbum')
+    expect(results).toEqual([])
+    expect(rateLimited).toBe(false)
   })
 
   it('returns empty results and hasMore=false on fetch failure', async () => {

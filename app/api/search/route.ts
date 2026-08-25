@@ -17,11 +17,13 @@ export async function GET(request: Request) {
 
   let rawResults: SearchResult[]
   let hasMore: boolean | undefined
+  let rateLimited = false
 
   if (type === 'vinyl') {
-    const vinyl = await searchVinyl(q, offset)
+    const vinyl = await searchVinyl(q, offset, searchParams.get('artist') ?? undefined)
     rawResults = vinyl.results
     hasMore = vinyl.hasMore
+    rateLimited = vinyl.rateLimited
   } else if (type === 'book') {
     rawResults = await searchBooks(q, lang, offset)
   } else if (type === 'lego') {
@@ -44,5 +46,7 @@ export async function GET(request: Request) {
     return true
   })
 
-  return NextResponse.json(hasMore !== undefined ? { results: unique, hasMore } : unique)
+  return NextResponse.json(
+    hasMore !== undefined ? { results: unique, hasMore, rateLimited } : unique,
+  )
 }
